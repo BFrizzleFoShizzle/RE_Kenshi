@@ -70,14 +70,35 @@ void WaitForInGame()
     }
 }
 
-void main()
+void WaitForMainMenu()
+{
+    MyGUI::Gui* gui = nullptr;
+    while (gui == nullptr)
+    {
+        gui = MyGUI::Gui::getInstancePtr();
+        Sleep(100);
+    }
+    MyGUI::WidgetPtr versionText = nullptr;
+    while (versionText == nullptr)
+    {
+        versionText = KenshiLib::FindWidget(gui->getEnumerator(), "VersionText");
+        Sleep(100);
+    }
+}
+
+void dllmain()
 {
     KenshiLib::Init();
 
-    WaitForInGame();
+    WaitForMainMenu();
 
     MyGUI::RenderManager* renderManager = MyGUI::RenderManager::getInstancePtr();
     MyGUI::Gui* gui = MyGUI::Gui::getInstancePtr();
+    MyGUI::TextBox* versionText = KenshiLib::FindWidget(gui->getEnumerator(), "VersionText")->castType<MyGUI::TextBox>();
+    MyGUI::UString version = versionText->getCaption();
+    versionText->setCaption("RE_Kenshi 0.1 - " + version);
+
+    WaitForInGame();
 
     /*
     std::ofstream outf = std::ofstream("gui_modules.txt");
