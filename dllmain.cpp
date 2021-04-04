@@ -155,9 +155,14 @@ void dllmain()
     }
 }
 
+__declspec(dllexport) void ExportFunc()
+{
+
+}
+
 DWORD WINAPI threadWrapper(LPVOID param)
 {
-    main();
+    dllmain();
     return 0;
 }
 
