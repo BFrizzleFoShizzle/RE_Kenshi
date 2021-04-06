@@ -56,6 +56,16 @@ void decreaseSpeed(MyGUI::WidgetPtr _sender)
     gameSpeedText->setCaption(std::to_string((long double)KenshiLib::GetGameSpeed()));
 }
 
+void playButtonHook(MyGUI::WidgetPtr _sender)
+{
+    // Kenshi will probably set game speed to 1, next time speed3 or speed4 buttons are clicked, will revert to modified game speed...
+    // TODO how to handle this better?
+    std::string gameSpeedMessage = std::to_string((long double)KenshiLib::GetGameSpeed());
+    if(KenshiLib::GetGameSpeed() != gameSpeedValues[gameSpeedIdx])
+        gameSpeedMessage += " (" + std::to_string((long double)gameSpeedValues[gameSpeedIdx]) + ")";
+    gameSpeedText->setCaption(gameSpeedMessage);
+}
+
 void WaitForInGame()
 {
     MyGUI::Gui* gui = nullptr;
@@ -147,6 +157,11 @@ void dllmain()
         MyGUI::WidgetPtr speedButtonsPanel = KenshiLib::FindWidget(gui->getEnumerator(), "SpeedButtonsPanel");
         if (speedButtonsPanel == nullptr)
             MessageBoxA(0, "SpeedButtonsPanel not found.", "Debug", MB_OK);
+        MyGUI::WidgetPtr speedButton2 = KenshiLib::FindWidget(gui->getEnumerator(), "TimeSpeedButton2");// ->castType<MyGUI::Button>();
+        if (speedButton2 == nullptr) {
+            MessageBoxA(0, "TimeSpeedButton2 not found.", "Debug", MB_OK);
+            return;
+        }
         MyGUI::WidgetPtr speedButton3 = KenshiLib::FindWidget(gui->getEnumerator(), "TimeSpeedButton3");// ->castType<MyGUI::Button>();
         if (speedButton3 == nullptr) {
             MessageBoxA(0, "TimeSpeedButton3 not found.", "Debug", MB_OK);
@@ -160,13 +175,16 @@ void dllmain()
         
         MyGUI::FloatCoord gameSpeedCoord = MyGUI::FloatCoord(0.0f, 0.0f, 1.0f, 0.2f);
         gameSpeedText = speedButtonsPanel->createWidgetReal<MyGUI::TextBox>("Kenshi_TextboxStandardText", gameSpeedCoord, MyGUI::Align::Center, "GameSpeedText");
-        gameSpeedText->setCaption("1");
+        // HACK use same code as play button hook to display current in-game speed + current modified speed
+        playButtonHook(nullptr);
+        //gameSpeedText->setCaption("1");
         gameSpeedText->setTextAlign(MyGUI::Align::Center);
 
         //MessageBoxA(0, "Clearing...", "Debug", MB_OK);
         speedButton3->eventMouseButtonClick.clear();
         speedButton4->eventMouseButtonClick.clear();
         //MessageBoxA(0, "Cleared.", "Debug", MB_OK);
+        speedButton2->eventMouseButtonClick += MyGUI::newDelegate(playButtonHook);
         speedButton3->eventMouseButtonClick += MyGUI::newDelegate(decreaseSpeed);
         speedButton4->eventMouseButtonClick += MyGUI::newDelegate(increaseSpeed);
         //MessageBoxA(0, "Delegated.", "Debug", MB_OK);
