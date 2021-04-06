@@ -133,7 +133,7 @@ void dllmain()
     MyGUI::Gui* gui = MyGUI::Gui::getInstancePtr();
     MyGUI::TextBox* versionText = KenshiLib::FindWidget(gui->getEnumerator(), "VersionText")->castType<MyGUI::TextBox>();
     MyGUI::UString version = versionText->getCaption();
-    versionText->setCaption("RE_Kenshi 0.1 - " + version);
+    versionText->setCaption("RE_Kenshi 0.1.1 - " + version);
 
     WaitForInGame();
 
