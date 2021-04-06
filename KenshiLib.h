@@ -6,6 +6,7 @@ namespace KenshiLib {
 	void Init();
 	MyGUI::WidgetPtr FindWidget(MyGUI::EnumeratorWidgetPtr enumerator, std::string name);
 	void SetGameSpeed(float speed);
+	float GetGameSpeed();
 	void* GetKenshiPtr(size_t offset);
 
 	template<typename T>

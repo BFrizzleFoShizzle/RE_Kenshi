@@ -24,6 +24,10 @@ void KenshiLib::SetGameSpeed(float speed)
 	*pKenshiTime = speed;
 }
 
+float KenshiLib::GetGameSpeed()
+{
+    return *pKenshiTime;
+}
 
 // TODO templateize
 // Kenshi prefixes it's widgets with a bunch of non-usefull stuff

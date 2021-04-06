@@ -14,6 +14,9 @@
 float gameSpeed = 1.0f;
 MyGUI::TextBox* gameSpeedText = nullptr;
 
+int gameSpeedIdx = 0;
+std::vector<float> gameSpeedValues;
+
 /*
 std::string ConvertGUIToText(MyGUI::EnumeratorWidgetPtr enumerator, std::string pad)
 {
@@ -41,17 +44,16 @@ std::string ConvertGUIToText(MyGUI::EnumeratorWidgetPtr enumerator, std::string 
 */
 void increaseSpeed(MyGUI::WidgetPtr _sender)
 {
-    gameSpeed += 1.0f;
-    KenshiLib::SetGameSpeed(gameSpeed);
-    gameSpeedText->setCaption(std::to_string((long double)gameSpeed));
+    gameSpeedIdx = min(gameSpeedIdx + 1, gameSpeedValues.size() - 1);
+    KenshiLib::SetGameSpeed(gameSpeedValues[gameSpeedIdx]);
+    gameSpeedText->setCaption(std::to_string((long double)KenshiLib::GetGameSpeed()));
 }
 
 void decreaseSpeed(MyGUI::WidgetPtr _sender)
 {
-    gameSpeed -= 1.0f;
-    gameSpeed = max(gameSpeed, 1.0f);
-    KenshiLib::SetGameSpeed(gameSpeed);
-    gameSpeedText->setCaption(std::to_string((long double)gameSpeed));
+    gameSpeedIdx = max(gameSpeedIdx - 1, 0);
+    KenshiLib::SetGameSpeed(gameSpeedValues[gameSpeedIdx]);
+    gameSpeedText->setCaption(std::to_string((long double)KenshiLib::GetGameSpeed()));
 }
 
 void WaitForInGame()
@@ -86,8 +88,33 @@ void WaitForMainMenu()
     }
 }
 
+void LoadGameSpeedValues(std::string path)
+{
+    float val = -1;
+    std::ifstream gameSpeedValueFile = std::ifstream(path);
+    // if file is empty or doesn't contain values, reset
+    if (!gameSpeedValueFile || !(gameSpeedValueFile >> val))
+    {
+        std::ofstream gameSpeedOutFile = std::ofstream(path);
+        gameSpeedOutFile << "1 2 3 4 5";
+        gameSpeedOutFile.close();
+    }
+
+    // reopen because above logic is bad
+    gameSpeedValueFile = std::ifstream(path);
+    if (!gameSpeedValueFile)
+        MessageBoxA(0, "Could not load/create game speeds settings file!", "Debug", MB_OK);
+
+    while (gameSpeedValueFile >> val)
+    {
+        gameSpeedValues.push_back(val);
+    }
+}
+
 void dllmain()
 {
+    LoadGameSpeedValues("game_speeds.ini");
+
     KenshiLib::Init();
 
     WaitForMainMenu();
