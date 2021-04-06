@@ -4,12 +4,19 @@
 
 float* pKenshiTime;
 
-void KenshiLib::Init()
+// input is offset in bytes
+void* KenshiLib::GetKenshiPtr(size_t offset)
 {
     // pointer to first byte in EXE, as char* so we can do byte offsets
-	char* exeBaseAddr = (char*)GetModuleHandle(L"kenshi_x64.exe");
+    char* exeBaseAddr = (char*)GetModuleHandle(NULL);
+
+    return (exeBaseAddr + offset);
+}
+
+void KenshiLib::Init()
+{
 	// kenshi_x64.exe+1AAE760
-	pKenshiTime = (float*)(exeBaseAddr + 0x1AAE760);
+    pKenshiTime = GetKenshiPtr<float>(0x1AAE760); // 1.0.51 Steam
 }
 
 void KenshiLib::SetGameSpeed(float speed)
