@@ -1,15 +1,20 @@
 // dllmain.cpp : Defines the entry point for the DLL application.
 #include <windows.h>
 
-#include "MyGUI_RenderManager.h"
-#include "MyGUI_Gui.h"
-#include "MyGUI_Button.h"
-#include "MyGUI_TextBox.h"
+#include "mygui/MyGUI_RenderManager.h"
+#include "mygui/MyGUI_Gui.h"
+#include "mygui/MyGUI_Button.h"
+#include "mygui/MyGUI_TextBox.h"
 
 #include <fstream>
 #include <iostream>
+#include <algorithm>
 
-#include "KenshiLib.h"
+#include "kenshi/Kenshi.h"
+#include "kenshi/GameWorld.h"
+
+
+#include <ogre/OgrePrerequisites.h>
 
 float gameSpeed = 1.0f;
 MyGUI::TextBox* gameSpeedText = nullptr;
@@ -44,24 +49,27 @@ std::string ConvertGUIToText(MyGUI::EnumeratorWidgetPtr enumerator, std::string 
 */
 void increaseSpeed(MyGUI::WidgetPtr _sender)
 {
-    gameSpeedIdx = min(gameSpeedIdx + 1, gameSpeedValues.size() - 1);
-    KenshiLib::SetGameSpeed(gameSpeedValues[gameSpeedIdx]);
-    gameSpeedText->setCaption(std::to_string((long double)KenshiLib::GetGameSpeed()));
+    gameSpeedIdx = std::min(gameSpeedIdx + 1, (int)gameSpeedValues.size() - 1);
+    Kenshi::GameWorld& gameWorld = Kenshi::GetGameWorld();
+    gameWorld.gameSpeed = gameSpeedValues[gameSpeedIdx];
+    gameSpeedText->setCaption(std::to_string((long double)gameWorld.gameSpeed));
 }
 
 void decreaseSpeed(MyGUI::WidgetPtr _sender)
 {
-    gameSpeedIdx = max(gameSpeedIdx - 1, 0);
-    KenshiLib::SetGameSpeed(gameSpeedValues[gameSpeedIdx]);
-    gameSpeedText->setCaption(std::to_string((long double)KenshiLib::GetGameSpeed()));
+    gameSpeedIdx = std::max(gameSpeedIdx - 1, 0);
+    Kenshi::GameWorld& gameWorld = Kenshi::GetGameWorld();
+    gameWorld.gameSpeed = gameSpeedValues[gameSpeedIdx];
+    gameSpeedText->setCaption(std::to_string((long double)gameWorld.gameSpeed));
 }
 
 void playButtonHook(MyGUI::WidgetPtr _sender)
 {
     // Kenshi will probably set game speed to 1, next time speed3 or speed4 buttons are clicked, will revert to modified game speed...
     // TODO how to handle this better?
-    std::string gameSpeedMessage = std::to_string((long double)KenshiLib::GetGameSpeed());
-    if(KenshiLib::GetGameSpeed() != gameSpeedValues[gameSpeedIdx])
+    Kenshi::GameWorld& gameWorld = Kenshi::GetGameWorld();
+    std::string gameSpeedMessage = std::to_string((long double)gameWorld.gameSpeed);
+    if(gameWorld.gameSpeed != gameSpeedValues[gameSpeedIdx])
         gameSpeedMessage += " (" + std::to_string((long double)gameSpeedValues[gameSpeedIdx]) + ")";
     gameSpeedText->setCaption(gameSpeedMessage);
 }
@@ -77,7 +85,7 @@ void WaitForInGame()
     MyGUI::WidgetPtr speedButtonsPanel = nullptr;
     while (speedButtonsPanel == nullptr)
     {
-        speedButtonsPanel = KenshiLib::FindWidget(gui->getEnumerator(), "SpeedButtonsPanel");
+        speedButtonsPanel = Kenshi::FindWidget(gui->getEnumerator(), "SpeedButtonsPanel");
         Sleep(100);
     }
 }
@@ -93,7 +101,7 @@ void WaitForMainMenu()
     MyGUI::WidgetPtr versionText = nullptr;
     while (versionText == nullptr)
     {
-        versionText = KenshiLib::FindWidget(gui->getEnumerator(), "VersionText");
+        versionText = Kenshi::FindWidget(gui->getEnumerator(), "VersionText");
         Sleep(100);
     }
 }
@@ -125,13 +133,11 @@ void dllmain()
 {
     LoadGameSpeedValues("game_speeds.ini");
 
-    KenshiLib::Init();
-
     WaitForMainMenu();
 
     MyGUI::RenderManager* renderManager = MyGUI::RenderManager::getInstancePtr();
     MyGUI::Gui* gui = MyGUI::Gui::getInstancePtr();
-    MyGUI::TextBox* versionText = KenshiLib::FindWidget(gui->getEnumerator(), "VersionText")->castType<MyGUI::TextBox>();
+    MyGUI::TextBox* versionText = Kenshi::FindWidget(gui->getEnumerator(), "VersionText")->castType<MyGUI::TextBox>();
     MyGUI::UString version = versionText->getCaption();
     versionText->setCaption("RE_Kenshi 0.1.1 - " + version);
 
@@ -154,20 +160,20 @@ void dllmain()
     try
     {
 
-        MyGUI::WidgetPtr speedButtonsPanel = KenshiLib::FindWidget(gui->getEnumerator(), "SpeedButtonsPanel");
+        MyGUI::WidgetPtr speedButtonsPanel = Kenshi::FindWidget(gui->getEnumerator(), "SpeedButtonsPanel");
         if (speedButtonsPanel == nullptr)
             MessageBoxA(0, "SpeedButtonsPanel not found.", "Debug", MB_OK);
-        MyGUI::WidgetPtr speedButton2 = KenshiLib::FindWidget(gui->getEnumerator(), "TimeSpeedButton2");// ->castType<MyGUI::Button>();
+        MyGUI::WidgetPtr speedButton2 = Kenshi::FindWidget(gui->getEnumerator(), "TimeSpeedButton2");// ->castType<MyGUI::Button>();
         if (speedButton2 == nullptr) {
             MessageBoxA(0, "TimeSpeedButton2 not found.", "Debug", MB_OK);
             return;
         }
-        MyGUI::WidgetPtr speedButton3 = KenshiLib::FindWidget(gui->getEnumerator(), "TimeSpeedButton3");// ->castType<MyGUI::Button>();
+        MyGUI::WidgetPtr speedButton3 = Kenshi::FindWidget(gui->getEnumerator(), "TimeSpeedButton3");// ->castType<MyGUI::Button>();
         if (speedButton3 == nullptr) {
             MessageBoxA(0, "TimeSpeedButton3 not found.", "Debug", MB_OK);
             return;
         }
-        MyGUI::WidgetPtr speedButton4 = KenshiLib::FindWidget(gui->getEnumerator(), "TimeSpeedButton4");// ->castType<MyGUI::Button>();
+        MyGUI::WidgetPtr speedButton4 = Kenshi::FindWidget(gui->getEnumerator(), "TimeSpeedButton4");// ->castType<MyGUI::Button>();
         if (speedButton4 == nullptr) {
             MessageBoxA(0, "TimeSpeedButton4 not found.", "Debug", MB_OK);
             return;

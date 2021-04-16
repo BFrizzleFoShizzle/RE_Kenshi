@@ -4,6 +4,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 16.0.30804.86
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RE_Kenshi", "RE_Kenshi.vcxproj", "{1107F8ED-2449-474D-B7DB-EAEAEE16E447}"
+	ProjectSection(ProjectDependencies) = postProject
+		{BED1FBE0-1FFF-498F-8AB9-788451CDD690} = {BED1FBE0-1FFF-498F-8AB9-788451CDD690}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "KenshiLib", "KenshiLib\KenshiLib.vcxproj", "{BED1FBE0-1FFF-498F-8AB9-788451CDD690}"
 EndProject
