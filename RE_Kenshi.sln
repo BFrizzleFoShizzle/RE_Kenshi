@@ -5,6 +5,8 @@ VisualStudioVersion = 16.0.30804.86
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RE_Kenshi", "RE_Kenshi.vcxproj", "{1107F8ED-2449-474D-B7DB-EAEAEE16E447}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "KenshiLib", "KenshiLib\KenshiLib.vcxproj", "{BED1FBE0-1FFF-498F-8AB9-788451CDD690}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -15,6 +17,10 @@ Global
 		{1107F8ED-2449-474D-B7DB-EAEAEE16E447}.Debug|x64.Build.0 = Debug|x64
 		{1107F8ED-2449-474D-B7DB-EAEAEE16E447}.Release|x64.ActiveCfg = Release|x64
 		{1107F8ED-2449-474D-B7DB-EAEAEE16E447}.Release|x64.Build.0 = Release|x64
+		{BED1FBE0-1FFF-498F-8AB9-788451CDD690}.Debug|x64.ActiveCfg = Debug|x64
+		{BED1FBE0-1FFF-498F-8AB9-788451CDD690}.Debug|x64.Build.0 = Debug|x64
+		{BED1FBE0-1FFF-498F-8AB9-788451CDD690}.Release|x64.ActiveCfg = Release|x64
+		{BED1FBE0-1FFF-498F-8AB9-788451CDD690}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,0 +1,3 @@
+[submodule "KenshiLib"]
+	path = KenshiLib
+	url = https://github.com/KenshiReclaimer/KenshiLib.git
