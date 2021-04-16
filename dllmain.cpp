@@ -206,31 +206,14 @@ void dllmain()
     }
 }
 
-__declspec(dllexport) void ExportFunc()
-{
-
-}
-
 DWORD WINAPI threadWrapper(LPVOID param)
 {
     dllmain();
     return 0;
 }
 
-BOOL APIENTRY DllMain( HMODULE hModule,
-                       DWORD  ul_reason_for_call,
-                       LPVOID lpReserved
-                     )
+// Ogre plugin export
+extern "C" void __declspec(dllexport) dllStartPlugin(void)
 {
-    switch (ul_reason_for_call)
-    {
-    case DLL_PROCESS_ATTACH:
-        CreateThread(NULL, 0, threadWrapper, 0, 0, 0);
-    case DLL_THREAD_ATTACH:
-    case DLL_THREAD_DETACH:
-    case DLL_PROCESS_DETACH:
-        break;
-    }
-    return TRUE;
+    CreateThread(NULL, 0, threadWrapper, 0, 0, 0);
 }
-
