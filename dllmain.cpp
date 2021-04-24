@@ -160,9 +160,9 @@ void dllmain()
     try
     {
 
-        MyGUI::WidgetPtr speedButtonsPanel = Kenshi::FindWidget(gui->getEnumerator(), "SpeedButtonsPanel");
-        if (speedButtonsPanel == nullptr)
-            MessageBoxA(0, "SpeedButtonsPanel not found.", "Debug", MB_OK);
+        MyGUI::WidgetPtr timeMoneyPanel = Kenshi::FindWidget(gui->getEnumerator(), "TimeMoneyPanel");
+        if (timeMoneyPanel == nullptr)
+            MessageBoxA(0, "TimeMoneyPanel not found.", "Debug", MB_OK);
         MyGUI::WidgetPtr speedButton2 = Kenshi::FindWidget(gui->getEnumerator(), "TimeSpeedButton2");// ->castType<MyGUI::Button>();
         if (speedButton2 == nullptr) {
             MessageBoxA(0, "TimeSpeedButton2 not found.", "Debug", MB_OK);
@@ -178,9 +178,9 @@ void dllmain()
             MessageBoxA(0, "TimeSpeedButton4 not found.", "Debug", MB_OK);
             return;
         }
-        
-        MyGUI::FloatCoord gameSpeedCoord = MyGUI::FloatCoord(0.0f, 0.0f, 1.0f, 0.2f);
-        gameSpeedText = speedButtonsPanel->createWidgetReal<MyGUI::TextBox>("Kenshi_TextboxStandardText", gameSpeedCoord, MyGUI::Align::Center, "GameSpeedText");
+
+        MyGUI::FloatCoord gameSpeedCoord = MyGUI::FloatCoord(0.0f, 0.522388f, 1.0f, 0.298507f);
+        gameSpeedText = timeMoneyPanel->createWidgetReal<MyGUI::TextBox>("Kenshi_TextboxStandardText", gameSpeedCoord, MyGUI::Align::Center, "GameSpeedText");
         // HACK use same code as play button hook to display current in-game speed + current modified speed
         playButtonHook(nullptr);
         //gameSpeedText->setCaption("1");
