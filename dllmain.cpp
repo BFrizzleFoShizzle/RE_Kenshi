@@ -23,9 +23,9 @@ MyGUI::TextBox* gameSpeedText = nullptr;
 int gameSpeedIdx = 0;
 std::vector<float> gameSpeedValues;
 
-/*
 const std::string MOD_VERSION = "0.1.2";
 
+/*
 std::string ConvertGUIToText(MyGUI::EnumeratorWidgetPtr enumerator, std::string pad)
 {
     std::string output = "";
@@ -50,6 +50,7 @@ std::string ConvertGUIToText(MyGUI::EnumeratorWidgetPtr enumerator, std::string 
     return output;
 }
 */
+
 void increaseSpeed(MyGUI::WidgetPtr _sender)
 {
     gameSpeedIdx = std::min(gameSpeedIdx + 1, (int)gameSpeedValues.size() - 1);
