@@ -163,9 +163,11 @@
   <ItemGroup>
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="Escort.cpp" />
+    <ClCompile Include="HeightmapHook.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Escort.h" />
+    <ClInclude Include="HeightmapHook.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
