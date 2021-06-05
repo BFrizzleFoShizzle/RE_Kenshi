@@ -1,3 +1,6 @@
 [submodule "KenshiLib"]
 	path = KenshiLib
 	url = https://github.com/KenshiReclaimer/KenshiLib.git
+[submodule "CompressTools"]
+	path = CompressTools
+	url = https://github.com/BFrizzleFoShizzle/CompressTools

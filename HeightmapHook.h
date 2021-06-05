@@ -2,5 +2,6 @@
 
 namespace HeightmapHook
 {
+	void Preload();
 	void Init();
 }

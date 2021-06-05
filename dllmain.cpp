@@ -14,6 +14,7 @@
 #include "kenshi/Kenshi.h"
 #include "kenshi/GameWorld.h"
 
+#include "HeightmapHook.h"
 
 #include <ogre/OgrePrerequisites.h>
 
@@ -144,6 +145,8 @@ void debugMenuButtonPress(MyGUI::Window* _sender, const std::string &name)
 
 void dllmain()
 {
+    HeightmapHook::Preload();
+
     LoadGameSpeedValues("game_speeds.ini");
 
     WaitForMainMenu();
@@ -183,6 +186,8 @@ void dllmain()
         versionText->setCaption("RE_Kenshi " + MOD_VERSION + " (ERROR) - " + version);
         return;
     }
+
+    HeightmapHook::Init();
 
     WaitForInGame();
 

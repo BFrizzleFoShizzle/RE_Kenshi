@@ -7,6 +7,10 @@
 #include <string>
 #include <sstream>
 
+#include "CompressTools/CompressToolsLib.h"
+
+CompressToolsLib::CompressedImageFileHdl heightmapHandle;
+
 // TODO named after reversed behaviour, no idea what it actutally is
 struct TerrainBounds
 {
@@ -42,9 +46,25 @@ void* GetFuncAddress(std::string moduleName, std::string functionName)
 	return GetProcAddress(hMod, functionName.c_str());
 }
 
+// Mine
+struct TerrainPoint
+{
+	int x;
+	int y;
+};
+
+// Crudely reversed, I have many questions and no answers
+TerrainPoint TerrainToImage(const Terrain* terrain, const TerrainPoint terrainPoint)
+{
+	TerrainPoint outPoint;
+	outPoint.y = (terrain->bounds->mapMaxY - 1) - terrainPoint.y;
+	outPoint.x = terrainPoint.x + outPoint.y;
+	return outPoint;
+}
+
 float __cdecl Terrain_getHeight(Terrain* thisPtr, class Ogre::Vector3 const& vec, int unk)
 {
-	// transform into map space
+	// transform into terrain space
 	// reverse-engineered
 	float x_transformed = vec.x - thisPtr->worldToTextureOffset;
 	x_transformed *= thisPtr->worldToTextureScale;
@@ -52,48 +72,67 @@ float __cdecl Terrain_getHeight(Terrain* thisPtr, class Ogre::Vector3 const& vec
 	float z_transformed = vec.z - thisPtr->worldToTextureOffset;
 	z_transformed = z_transformed * thisPtr->worldToTextureScale;
 
-	int pixelX = int(x_transformed);
-	int pixelY = int(z_transformed);
+	int terrainX = int(x_transformed);
+	int terrainY = int(z_transformed);
 
-	/*
-	std::stringstream debugStr;
-	debugStr << "Heightmap pixel: " << pixelX << ", " << pixelY << std::endl;
-	debugStr << "Map max: " << thisPtr->bounds->mapMaxX << " " << thisPtr->bounds->mapMaxY << std::endl;
-	debugStr << "Map min: " << thisPtr->mapMinX << " " << thisPtr->mapMinY << std::endl;
-	MessageBoxA(0, debugStr.str().c_str(), "Debug", MB_OK);
-	*/
-	
 	// in-game bounds checks
 	// TODO is it L or LE
-	if (pixelX <= thisPtr->bounds->mapMaxX
-		&& pixelY <= thisPtr->bounds->mapMaxY
-		&& pixelX > thisPtr->mapMinX
-		&& pixelY > thisPtr->mapMinY)
+	// TODO Is this correct? Dubious given the terrain -> image transform
+	if (terrainX <= thisPtr->bounds->mapMaxX
+		&& terrainY <= thisPtr->bounds->mapMaxY
+		&& terrainX >= thisPtr->mapMinX
+		&& terrainY >= thisPtr->mapMinY)
 	{
-		return 1000 * thisPtr->heightScale;
+		// get point in terrain space
+		TerrainPoint terrainPoint;
+		terrainPoint.x = terrainX;
+		terrainPoint.y = terrainY;
+
+		// transform to image space
+		TerrainPoint imagePoint = TerrainToImage(thisPtr, terrainPoint);
+		uint32_t index = imagePoint.y * thisPtr->bounds->mapMaxX + imagePoint.x;
+		uint16_t height = CompressToolsLib::ReadHeightValue(heightmapHandle, index);
+		return height * thisPtr->heightScale;
 	}
 	else
 	{
 		// TODO
-		return 1000 * thisPtr->heightScale;
+		return 0 * thisPtr->heightScale;
 	}
 }
 
-unsigned __int64 __cdecl Terrain_getRawData(void* thisPtr, int x, int y, int w, int h, char* __ptr64 out)
+
+
+unsigned __int64 __cdecl Terrain_getRawData(Terrain* thisPtr, int x, int y, int w, int h, char* __ptr64 out)
 {
 	uint16_t *shortPtr = reinterpret_cast<uint16_t*>(out);
 	uint64_t written = 0;
+
+	// transform Terrain coord to image coord
+
 	for (int i = 0; i < h; ++i)
 	{
 		for (int j = 0; j < w; ++j)
 		{
-			int x_out = x + j;
-			int y_out = y + i;
-			shortPtr[i * w + j] = 1000;
+			// get point in terrain space
+			TerrainPoint terrainPoint;
+			terrainPoint.x = x + j;
+			terrainPoint.y = y + i;
+
+			// transform to image space
+			TerrainPoint imagePoint = TerrainToImage(thisPtr, terrainPoint);
+			uint32_t index = imagePoint.y * thisPtr->bounds->mapMaxX + imagePoint.x;
+			uint16_t height = CompressToolsLib::ReadHeightValue(heightmapHandle, index);
+			shortPtr[i * w + j] = height;
 			++written;
 		}
 	}
 	return written;
+}
+
+void HeightmapHook::Preload()
+{
+	heightmapHandle = CompressToolsLib::OpenImage("data/newland/land/fullmap.cif");
 }
 
 void HeightmapHook::Init()
