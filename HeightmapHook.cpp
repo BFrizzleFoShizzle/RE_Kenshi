@@ -46,22 +46,6 @@ void* GetFuncAddress(std::string moduleName, std::string functionName)
 	return GetProcAddress(hMod, functionName.c_str());
 }
 
-// Mine
-struct TerrainPoint
-{
-	int x;
-	int y;
-};
-
-// Crudely reversed, I have many questions and no answers
-TerrainPoint TerrainToImage(const Terrain* terrain, const TerrainPoint terrainPoint)
-{
-	TerrainPoint outPoint;
-	outPoint.y = (terrain->bounds->mapMaxY - 1) - terrainPoint.y;
-	outPoint.x = terrainPoint.x + outPoint.y;
-	return outPoint;
-}
-
 float __cdecl Terrain_getHeight(Terrain* thisPtr, class Ogre::Vector3 const& vec, int unk)
 {
 	// transform into terrain space
@@ -72,25 +56,17 @@ float __cdecl Terrain_getHeight(Terrain* thisPtr, class Ogre::Vector3 const& vec
 	float z_transformed = vec.z - thisPtr->worldToTextureOffset;
 	z_transformed = z_transformed * thisPtr->worldToTextureScale;
 
-	int terrainX = int(x_transformed);
-	int terrainY = int(z_transformed);
+	int pixelX = int(x_transformed);
+	int pixelY = int(z_transformed);
 
 	// in-game bounds checks
 	// TODO is it L or LE
-	// TODO Is this correct? Dubious given the terrain -> image transform
-	if (terrainX <= thisPtr->bounds->mapMaxX
-		&& terrainY <= thisPtr->bounds->mapMaxY
-		&& terrainX >= thisPtr->mapMinX
-		&& terrainY >= thisPtr->mapMinY)
+	if (pixelX <= thisPtr->bounds->mapMaxX
+		&& pixelY <= thisPtr->bounds->mapMaxY
+		&& pixelX >= thisPtr->mapMinX
+		&& pixelY >= thisPtr->mapMinY)
 	{
-		// get point in terrain space
-		TerrainPoint terrainPoint;
-		terrainPoint.x = terrainX;
-		terrainPoint.y = terrainY;
-
-		// transform to image space
-		TerrainPoint imagePoint = TerrainToImage(thisPtr, terrainPoint);
-		uint32_t index = imagePoint.y * thisPtr->bounds->mapMaxX + imagePoint.x;
+		uint32_t index = pixelY * thisPtr->bounds->mapMaxX + pixelX;
 		uint16_t height = CompressToolsLib::ReadHeightValue(heightmapHandle, index);
 		return height * thisPtr->heightScale;
 	}
@@ -101,27 +77,19 @@ float __cdecl Terrain_getHeight(Terrain* thisPtr, class Ogre::Vector3 const& vec
 	}
 }
 
-
-
 unsigned __int64 __cdecl Terrain_getRawData(Terrain* thisPtr, int x, int y, int w, int h, char* __ptr64 out)
 {
 	uint16_t *shortPtr = reinterpret_cast<uint16_t*>(out);
 	uint64_t written = 0;
 
-	// transform Terrain coord to image coord
-
 	for (int i = 0; i < h; ++i)
 	{
 		for (int j = 0; j < w; ++j)
 		{
-			// get point in terrain space
-			TerrainPoint terrainPoint;
-			terrainPoint.x = x + j;
-			terrainPoint.y = y + i;
+			int x_out = x + j;
+			int y_out = y + i;
 
-			// transform to image space
-			TerrainPoint imagePoint = TerrainToImage(thisPtr, terrainPoint);
-			uint32_t index = imagePoint.y * thisPtr->bounds->mapMaxX + imagePoint.x;
+			uint32_t index = y_out * thisPtr->bounds->mapMaxX + x_out;
 			uint16_t height = CompressToolsLib::ReadHeightValue(heightmapHandle, index);
 			shortPtr[i * w + j] = height;
 			++written;
