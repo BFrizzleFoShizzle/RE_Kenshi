@@ -66,8 +66,7 @@ float __cdecl Terrain_getHeight(Terrain* thisPtr, class Ogre::Vector3 const& vec
 		&& pixelX >= thisPtr->mapMinX
 		&& pixelY >= thisPtr->mapMinY)
 	{
-		uint32_t index = pixelY * thisPtr->bounds->mapMaxX + pixelX;
-		uint16_t height = CompressToolsLib::ReadHeightValue(heightmapHandle, index);
+		uint16_t height = CompressToolsLib::ReadHeightValue(heightmapHandle, pixelX, pixelY);
 		return height * thisPtr->heightScale;
 	}
 	else
@@ -86,11 +85,10 @@ unsigned __int64 __cdecl Terrain_getRawData(Terrain* thisPtr, int x, int y, int 
 	{
 		for (int j = 0; j < w; ++j)
 		{
-			int x_out = x + j;
-			int y_out = y + i;
+			int pixelX = x + j;
+			int pixelY = y + i;
 
-			uint32_t index = y_out * thisPtr->bounds->mapMaxX + x_out;
-			uint16_t height = CompressToolsLib::ReadHeightValue(heightmapHandle, index);
+			uint16_t height = CompressToolsLib::ReadHeightValue(heightmapHandle, pixelX, pixelY);
 			shortPtr[i * w + j] = height;
 			++written;
 		}
