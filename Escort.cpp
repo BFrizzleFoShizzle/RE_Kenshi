@@ -5,6 +5,8 @@
 #include <array>
 #include <string>
 
+#include "Debug.h"
+
 // call &function (near, relative)
 void Escort::Hook(void* sourceAddr, void* destAddr, size_t replacedBytes)
 {
@@ -156,7 +158,8 @@ void Escort::PushRetHookASM(void* sourceAddr, void* destAddr, size_t replacedByt
 	{
 		DWORD error = GetLastError();
 		std::string errorMsg = "Protection change failed! " + std::to_string((long long)error);
-		MessageBoxA(0, errorMsg.c_str(), "Debug", MB_OK);
+		ErrorLog(errorMsg.c_str());
+		//MessageBoxA(0, errorMsg.c_str(), "Debug", MB_OK);
 	}
 	memcpy(sourceAddr, hookBytes, hookSize);
 	// HACK nop remaining bytes

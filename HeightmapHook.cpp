@@ -8,8 +8,9 @@
 #include <sstream>
 
 #include "CompressTools/CompressToolsLib.h"
+#include "Debug.h"
 
-CompressToolsLib::CompressedImageFileHdl heightmapHandle;
+CompressToolsLib::CompressedImageFileHdl heightmapHandle = nullptr;
 
 // TODO named after reversed behaviour, no idea what it actutally is
 struct TerrainBounds
@@ -99,6 +100,7 @@ unsigned __int64 __cdecl Terrain_getRawData(Terrain* thisPtr, int x, int y, int 
 void HeightmapHook::Preload()
 {
 	heightmapHandle = CompressToolsLib::OpenImage("data/newland/land/fullmap.cif");
+	DebugLog("Heightmap loaded!");
 }
 
 void HeightmapHook::Init()
@@ -117,6 +119,6 @@ void HeightmapHook::Init()
 	Escort::PushRetHookASM(Terrain_getRawDataPtr, Terrain_getRawData, 15);
 
 
-	MessageBoxA(0, "Installed...", "Debug", MB_OK);
+	DebugLog("Heightmap hooks installed...");
 
 }

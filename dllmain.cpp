@@ -15,6 +15,7 @@
 #include "kenshi/GameWorld.h"
 
 #include "HeightmapHook.h"
+#include "Debug.h"
 
 #include <ogre/OgrePrerequisites.h>
 
@@ -135,7 +136,7 @@ void LoadGameSpeedValues(std::string path)
 }
 
 // TODO make nicer
-MyGUI::Window* modMenuWindow;
+MyGUI::Window* modMenuWindow = nullptr;
 
 void debugMenuButtonPress(MyGUI::Window* _sender, const std::string &name)
 {
@@ -157,32 +158,34 @@ void dllmain()
     modMenuWindow = gui->createWidget<MyGUI::Window>("Kenshi_WindowCX", 100, 100, 400, 400, MyGUI::Align::Center, "Window", "DebugWindow");
     modMenuWindow->eventWindowButtonPressed += MyGUI::newDelegate(debugMenuButtonPress);
     MyGUI::Widget* client = modMenuWindow->findWidget("Client");
-    MyGUI::Widget* widg = client->createWidgetReal<MyGUI::Widget>("Kenshi_GenericTextBoxSkin", 0,0,1,1, MyGUI::Align::Center);
+    MyGUI::Widget* widg = client->createWidgetReal<MyGUI::Widget>("Kenshi_GenericTextBoxSkin", 0, 0, 1, 1, MyGUI::Align::Center);
     MyGUI::FloatCoord debugOutCoord = MyGUI::FloatCoord(0.03, 0.03, 0.94, 0.94);
     MyGUI::TextBox* debugOut = widg->createWidgetReal<MyGUI::TextBox>("Kenshi_TextboxStandardText", debugOutCoord, MyGUI::Align::Center, "DebugPrint");
-    debugOut->setCaption("Main menu loaded.\n");
+    DebugLog("Main menu loaded.");
 
     MyGUI::TextBox* versionText = Kenshi::FindWidget(gui->getEnumerator(), "VersionText")->castType<MyGUI::TextBox>();
     MyGUI::UString version = versionText->getCaption();
 
     Kenshi::BinaryVersion gameVersion = Kenshi::GetKenshiVersion();
 
-    debugOut->setCaption(debugOut->getCaption() + "Kenshi version: " + gameVersion.GetVersion() + "\n");
-    debugOut->setCaption(debugOut->getCaption() + "Kenshi platform: " + gameVersion.GetPlatformStr() + "\n");
+    DebugLog("Kenshi version: " + gameVersion.GetVersion());
+    DebugLog("Kenshi platform: " + gameVersion.GetPlatformStr());
+
     // TODO make this better
     if (gameVersion.GetPlatform() != Kenshi::BinaryVersion::UNKNOWN)
     {
-        debugOut->setCaption(debugOut->getCaption() + "Version supported.\n");
+        DebugLog("Version supported.");
         versionText->setCaption("RE_Kenshi " + MOD_VERSION + " - " + version);
     }
     else
     {
-        debugOut->setCaption(debugOut->getCaption() + "ERROR: Game version not recognized.\n");
-        debugOut->setCaption(debugOut->getCaption() + "Supported versions: .\n");
-        // TODO auto-generate?
-        debugOut->setCaption(debugOut->getCaption() + "GOG 1.0.51\n");
-        debugOut->setCaption(debugOut->getCaption() + "Steam 1.0.51\n");
-        debugOut->setCaption(debugOut->getCaption() + "RE_Kenshi initialization aborted!\n");
+        DebugLog("ERROR: Game version not recognized.");
+        DebugLog("");
+        DebugLog("Supported versions:");
+        DebugLog("GOG 1.0.51");
+        DebugLog("Steam 1.0.51");
+        DebugLog("RE_Kenshi initialization aborted!");
+
         versionText->setCaption("RE_Kenshi " + MOD_VERSION + " (ERROR) - " + version);
         return;
     }
@@ -191,7 +194,7 @@ void dllmain()
 
     WaitForInGame();
 
-    debugOut->setCaption(debugOut->getCaption() + "In-game.\n");
+    //debugOut->setCaption(debugOut->getCaption() + "In-game.\n");
 
     try
     {
