@@ -120,5 +120,76 @@ void HeightmapHook::Init()
 
 
 	DebugLog("Heightmap hooks installed...");
+}
 
+// debugging functions
+std::vector<uint8_t> HeightmapHook::GetBlockLODs()
+{
+	uint32_t width = GetBlocksWidth();
+	uint32_t height = GetBlocksHeight();
+	std::vector<uint8_t> blockLODs;
+	blockLODs.resize(width * height);
+
+	CompressToolsLib::GetBlockLODs(heightmapHandle, &blockLODs[0]);
+
+	return std::move(blockLODs);
+}
+
+bool test = false;
+
+void HeightmapHook::WriteBlockLODsToCanvas(MyGUI::Canvas* canvas)
+{
+	// return if heightmap not loaded
+	if (!HeightmapIsLoaded())
+		return;
+
+
+	// Resize if needed
+	uint32_t width = GetBlocksWidth();
+	uint32_t height = GetBlocksHeight();
+
+	// MyGUI will round width + height up to power of 2
+	if (!canvas->isTextureCreated() || canvas->getTextureRealWidth() < width || canvas->getTextureRealHeight() < height)
+	{
+		canvas->createTexture(width, height, MyGUI::Canvas::TextureResizeMode::TRM_PT_CONST_SIZE, MyGUI::TextureUsage::Default, MyGUI::PixelFormat::L8);
+		if (!canvas->isTextureCreated())
+			DebugLog("Error: Canvas texture not created!");
+		// set to black
+		uint8_t* pixels = reinterpret_cast<uint8_t*>(canvas->lock());
+		int textureWidth = canvas->getTextureRealWidth();
+		int textureHeight = canvas->getTextureRealHeight();
+		for (int y = 0; y < textureHeight; ++y)
+			for (int x = 0; x < textureWidth; ++x)
+				pixels[y * textureWidth + x] = 0;
+		canvas->unlock();
+		canvas->updateTexture();
+	}
+
+	uint8_t* pixels = reinterpret_cast<uint8_t*>(canvas->lock());
+
+	std::vector<uint8_t> blockLODs = GetBlockLODs();
+	int textureWidth = canvas->getTextureRealWidth();
+
+	// multiply values to useful range
+	for (int y = 0; y < height; ++y)
+		for (int x = 0; x < width; ++x)
+			pixels[y * textureWidth + x] = 220 - max(blockLODs[y * width + x] * 40, 0);
+
+	canvas->unlock();
+	canvas->updateTexture();
+}
+
+uint32_t HeightmapHook::GetBlocksWidth()
+{
+	return CompressToolsLib::GetImageWidthInBlocks(heightmapHandle);
+}
+
+uint32_t HeightmapHook::GetBlocksHeight()
+{
+	return CompressToolsLib::GetImageHeightInBlocks(heightmapHandle);
+}
+
+bool HeightmapHook::HeightmapIsLoaded()
+{
+	return heightmapHandle != nullptr;
 }

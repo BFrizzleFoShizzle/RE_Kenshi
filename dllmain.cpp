@@ -6,6 +6,7 @@
 #include "mygui/MyGUI_Button.h"
 #include "mygui/MyGUI_Window.h"
 #include "mygui/MyGUI_TextBox.h"
+#include "mygui/MyGUI_Canvas.h"
 
 #include <fstream>
 #include <iostream>
@@ -144,18 +145,24 @@ void debugMenuButtonPress(MyGUI::Window* _sender, const std::string &name)
         _sender->setVisible(false);
 }
 
-void dllmain()
+void debugMenuKeyRelease(MyGUI::Widget* _sender, MyGUI::KeyCode _key)
 {
-    HeightmapHook::Preload();
+    // tilde/backtick
+    if (_key.getValue() == 41)
+        modMenuWindow->setVisible(!modMenuWindow->getVisible());
+}
 
-    LoadGameSpeedValues("game_speeds.ini");
+std::string kenshiVersionStr = "UNKNOWN";
+std::string kenshiPlatformStr = "UNKNOWN";
+MyGUI::CanvasPtr debugImgCanvas = nullptr;
 
-    WaitForMainMenu();
-
+void InitGUI()
+{
     MyGUI::RenderManager* renderManager = MyGUI::RenderManager::getInstancePtr();
     MyGUI::Gui* gui = MyGUI::Gui::getInstancePtr();
     
     modMenuWindow = gui->createWidget<MyGUI::Window>("Kenshi_WindowCX", 100, 100, 400, 400, MyGUI::Align::Center, "Window", "DebugWindow");
+    modMenuWindow->eventKeyButtonReleased += MyGUI::newDelegate(debugMenuKeyRelease);
     modMenuWindow->eventWindowButtonPressed += MyGUI::newDelegate(debugMenuButtonPress);
     MyGUI::Widget* client = modMenuWindow->findWidget("Client");
     MyGUI::Widget* widg = client->createWidgetReal<MyGUI::Widget>("Kenshi_GenericTextBoxSkin", 0, 0, 1, 1, MyGUI::Align::Center);
@@ -163,8 +170,23 @@ void dllmain()
     MyGUI::TextBox* debugOut = widg->createWidgetReal<MyGUI::TextBox>("Kenshi_TextboxStandardText", debugOutCoord, MyGUI::Align::Center, "DebugPrint");
     DebugLog("Main menu loaded.");
 
+    MyGUI::FloatCoord debugCanvasCoord = MyGUI::FloatCoord(0.53, 0.53, 0.94, 0.94);
+    debugImgCanvas = widg->createWidgetReal<MyGUI::Canvas>("Canvas", debugCanvasCoord, MyGUI::Align::Center, "DebugImgCanvas");
+
     MyGUI::TextBox* versionText = Kenshi::FindWidget(gui->getEnumerator(), "VersionText")->castType<MyGUI::TextBox>();
     MyGUI::UString version = versionText->getCaption();
+    std::istringstream stream(version);
+    while (stream)
+    {
+        std::string currWord;
+        stream >> currWord;
+        if (std::count(currWord.begin(), currWord.end(), '.') == 2)
+        {
+            // probably version text
+            // TODO error-checking
+            kenshiVersionStr = currWord;
+        }
+    }
 
     Kenshi::BinaryVersion gameVersion = Kenshi::GetKenshiVersion();
 
@@ -189,9 +211,44 @@ void dllmain()
         versionText->setCaption("RE_Kenshi " + MOD_VERSION + " (ERROR) - " + version);
         return;
     }
+}
 
+
+
+void GUIUpdate(float timeDelta)
+{
+    if (modMenuWindow == nullptr)
+        InitGUI();
+
+    MyGUI::TextBox* debugOut = modMenuWindow->findWidget("DebugPrint")->castType<MyGUI::TextBox>();
+
+    if (debugImgCanvas)
+    {
+        HeightmapHook::WriteBlockLODsToCanvas(debugImgCanvas);
+    }
+    
+    if (debugOut)
+    {
+        std::stringstream debugStr;
+        debugStr << GetDebugLog();
+        debugOut->setCaption(debugStr.str());
+    }
+}
+
+void dllmain()
+{
+    HeightmapHook::Preload();
+
+    LoadGameSpeedValues("game_speeds.ini");
+
+    WaitForMainMenu();
+
+    MyGUI::Gui* gui = MyGUI::Gui::getInstancePtr();
+    // GUI will be created next frame
+    gui->eventFrameStart += MyGUI::newDelegate(GUIUpdate);
+
+    FSHook::Init();
     HeightmapHook::Init();
-
     WaitForInGame();
 
     //debugOut->setCaption(debugOut->getCaption() + "In-game.\n");
