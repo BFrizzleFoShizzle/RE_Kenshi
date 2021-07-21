@@ -7,6 +7,20 @@
 
 #include "Debug.h"
 
+
+void Escort::WriteProtected(void* sourceAddr, void* destAddr, size_t count)
+{
+	DWORD oldProtect;
+	bool success = VirtualProtect(sourceAddr, count, PAGE_EXECUTE_READWRITE, &oldProtect) == 0;
+	if (!success)
+	{
+		DWORD error = GetLastError();
+		std::string errorMsg = "Protection change failed! " + std::to_string((long long)error);
+		ErrorLog(errorMsg.c_str());
+	}
+	memcpy(destAddr, sourceAddr, count);
+}
+
 // call &function (near, relative)
 void Escort::Hook(void* sourceAddr, void* destAddr, size_t replacedBytes)
 {

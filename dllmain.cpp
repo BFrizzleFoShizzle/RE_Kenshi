@@ -159,6 +159,21 @@ void TickButtonBehaviourClick(MyGUI::WidgetPtr sender)
         button->setStateSelected(!button->getStateSelected());
 }
 
+void ToggleUseCompressedHeightmap(MyGUI::WidgetPtr sender)
+{
+    MyGUI::ButtonPtr button = sender->castType<MyGUI::Button>();
+    bool useHeightmapCompression = button->getStateSelected();
+
+    // Update settings (done first in case of crash)
+    Settings::SetUseHeightmapCompression(useHeightmapCompression);
+    
+    // Update hooks
+    if (useHeightmapCompression)
+        HeightmapHook::EnableCompressedHeightmap();
+    else
+        HeightmapHook::DisableCompressedHeightmap();
+}
+
 // Root widget name will be "[namePrefix]SliderRoot"
 MyGUI::WidgetPtr CreateSlider(MyGUI::WidgetPtr parent, int x, int y, int w, int h, std::string namePrefix)
 {
@@ -362,6 +377,13 @@ void InitGUI()
     settingsView->setVisibleHScroll(false);
     int positionY = 2;
     settingsView->setCanvasSize(settingsView->getWidth(), settingsView->getHeight());
+    MyGUI::ButtonPtr useCompressedHeightmap = settingsView->createWidget<MyGUI::Button>("Kenshi_TickButton1", 2, positionY, 500, 26, MyGUI::Align::Top | MyGUI::Align::Left, "UseCompressedHeightmapToggle");
+    useCompressedHeightmap->setStateSelected(Settings::UseHeightmapCompression());
+    useCompressedHeightmap->setCaption("[TOGGLE MAY CRASH] Use compressed heightmap");
+    useCompressedHeightmap->eventMouseButtonClick += MyGUI::newDelegate(TickButtonBehaviourClick);
+    useCompressedHeightmap->eventMouseButtonClick += MyGUI::newDelegate(ToggleUseCompressedHeightmap);
+    useCompressedHeightmap->setStateSelected(Settings::UseHeightmapCompression());
+    positionY += 30;
     MyGUI::TextBox* gameSpeedsLabel = settingsView->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 2, positionY, 500, 30, MyGUI::Align::Top | MyGUI::Align::Center, "GameSpeedsLabel");
     gameSpeedsLabel->setCaption("Game speeds");
     MyGUI::ButtonPtr addGameSpeed = settingsView->createWidget<MyGUI::Button>("Kenshi_Button1", 300, positionY, 200, 30, MyGUI::Align::Top | MyGUI::Align::Right, "AddGameSpeedBtn");

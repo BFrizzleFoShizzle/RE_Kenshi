@@ -13,5 +13,8 @@ namespace HeightmapHook
 	uint32_t GetBlocksWidth();
 	uint32_t GetBlocksHeight();
 
+	void EnableCompressedHeightmap();
+	void DisableCompressedHeightmap();
+
 	bool HeightmapIsLoaded();
 }
