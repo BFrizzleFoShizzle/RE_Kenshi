@@ -4,3 +4,6 @@
 [submodule "CompressTools"]
 	path = CompressTools
 	url = https://github.com/BFrizzleFoShizzle/CompressTools
+[submodule "rapidjson"]
+	path = rapidjson
+	url = https://github.com/Tencent/rapidjson.git

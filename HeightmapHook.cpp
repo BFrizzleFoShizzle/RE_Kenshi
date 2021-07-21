@@ -9,6 +9,7 @@
 
 #include "CompressTools/CompressToolsLib.h"
 #include "Debug.h"
+#include "Settings.h"
 
 CompressToolsLib::CompressedImageFileHdl heightmapHandle = nullptr;
 
@@ -99,7 +100,14 @@ unsigned __int64 __cdecl Terrain_getRawData(Terrain* thisPtr, int x, int y, int 
 
 void HeightmapHook::Preload()
 {
+	// early return if heightmap compression is disabled
+	if (!Settings::UseHeightmapcompression())
+		return;
+
 	CompressToolsLib::ImageMode mode = CompressToolsLib::ImageMode::Streaming;
+
+	if (Settings::PreloadHeightmap())
+		mode = CompressToolsLib::ImageMode::Preload;
 
 	DebugLog("Loading heightmap...");
 	heightmapHandle = CompressToolsLib::OpenImage("data/newland/land/fullmap.cif", mode);
@@ -108,6 +116,10 @@ void HeightmapHook::Preload()
 
 void HeightmapHook::Init()
 {
+	// early return if heightmap compression is disabled
+	if (!Settings::UseHeightmapcompression())
+		return;
+
 	// mangled symbol for protected Terrain::getHeight()
 	// protected: float __cdecl Terrain::getHeight(class Ogre::Vector3 const & __ptr64,int) __ptr64
 	void* Terrain_getHeightPtr = GetFuncAddress("Plugin_Terrain_x64.dll", "?getHeight@Terrain@@IEAAMAEBVVector3@Ogre@@H@Z");
