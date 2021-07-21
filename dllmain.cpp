@@ -6,17 +6,20 @@
 #include "mygui/MyGUI_Button.h"
 #include "mygui/MyGUI_Window.h"
 #include "mygui/MyGUI_TextBox.h"
-#include "mygui/MyGUI_Canvas.h"
+#include "mygui/MyGUI_EditBox.h"
+#include "mygui/MyGUI_ScrollView.h"
+#include "mygui/MyGUI_TabControl.h"
+#include "mygui/MyGUI_TabItem.h"
+#include "mygui/MyGUI_ScrollBar.h"
 
-#include <fstream>
-#include <iostream>
-#include <algorithm>
+#include <iomanip>
 
 #include "kenshi/Kenshi.h"
 #include "kenshi/GameWorld.h"
 
 #include "HeightmapHook.h"
 #include "Debug.h"
+#include "Settings.h"
 
 #include <ogre/OgrePrerequisites.h>
 
@@ -24,7 +27,6 @@ float gameSpeed = 1.0f;
 MyGUI::TextBox* gameSpeedText = nullptr;
 
 int gameSpeedIdx = 0;
-std::vector<float> gameSpeedValues;
 
 const std::string MOD_VERSION = "0.1.2";
 
@@ -56,7 +58,11 @@ std::string ConvertGUIToText(MyGUI::EnumeratorWidgetPtr enumerator, std::string 
 
 void increaseSpeed(MyGUI::WidgetPtr _sender)
 {
-    gameSpeedIdx = std::min(gameSpeedIdx + 1, (int)gameSpeedValues.size() - 1);
+    std::vector<float> gameSpeedValues = Settings::GetGameSpeeds();
+    gameSpeedIdx += 1;
+    // Clamp
+    gameSpeedIdx = std::min(gameSpeedIdx, (int)gameSpeedValues.size() - 1);
+    gameSpeedIdx = std::max(gameSpeedIdx, 0);
     Kenshi::GameWorld& gameWorld = Kenshi::GetGameWorld();
     gameWorld.gameSpeed = gameSpeedValues[gameSpeedIdx];
     gameSpeedText->setCaption(std::to_string((long double)gameWorld.gameSpeed));
@@ -64,7 +70,11 @@ void increaseSpeed(MyGUI::WidgetPtr _sender)
 
 void decreaseSpeed(MyGUI::WidgetPtr _sender)
 {
-    gameSpeedIdx = std::max(gameSpeedIdx - 1, 0);
+    std::vector<float> gameSpeedValues = Settings::GetGameSpeeds();
+    gameSpeedIdx -= 1;
+    // Clamp
+    gameSpeedIdx = std::min(gameSpeedIdx, (int)gameSpeedValues.size() - 1);
+    gameSpeedIdx = std::max(gameSpeedIdx, 0);
     Kenshi::GameWorld& gameWorld = Kenshi::GetGameWorld();
     gameWorld.gameSpeed = gameSpeedValues[gameSpeedIdx];
     gameSpeedText->setCaption(std::to_string((long double)gameWorld.gameSpeed));
@@ -72,6 +82,11 @@ void decreaseSpeed(MyGUI::WidgetPtr _sender)
 
 void playButtonHook(MyGUI::WidgetPtr _sender)
 {
+    std::vector<float> gameSpeedValues = Settings::GetGameSpeeds();
+    // Clamp
+    gameSpeedIdx = std::min(gameSpeedIdx, (int)gameSpeedValues.size() - 1);
+    gameSpeedIdx = std::max(gameSpeedIdx, 0);
+
     // Kenshi will probably set game speed to 1, next time speed3 or speed4 buttons are clicked, will revert to modified game speed...
     // TODO how to handle this better?
     Kenshi::GameWorld& gameWorld = Kenshi::GetGameWorld();
@@ -113,29 +128,6 @@ void WaitForMainMenu()
     }
 }
 
-void LoadGameSpeedValues(std::string path)
-{
-    float val = -1;
-    std::ifstream gameSpeedValueFile = std::ifstream(path);
-    // if file is empty or doesn't contain values, reset
-    if (!gameSpeedValueFile || !(gameSpeedValueFile >> val))
-    {
-        std::ofstream gameSpeedOutFile = std::ofstream(path);
-        gameSpeedOutFile << "1 2 3 4 5";
-        gameSpeedOutFile.close();
-    }
-
-    // reopen because above logic is bad
-    gameSpeedValueFile = std::ifstream(path);
-    if (!gameSpeedValueFile)
-        MessageBoxA(0, "Could not load/create game speeds settings file!", "Debug", MB_OK);
-
-    while (gameSpeedValueFile >> val)
-    {
-        gameSpeedValues.push_back(val);
-    }
-}
-
 // TODO make nicer
 MyGUI::Window* modMenuWindow = nullptr;
 
@@ -155,26 +147,240 @@ void debugMenuKeyRelease(MyGUI::Widget* _sender, MyGUI::KeyCode _key)
 std::string kenshiVersionStr = "UNKNOWN";
 std::string kenshiPlatformStr = "UNKNOWN";
 MyGUI::CanvasPtr debugImgCanvas = nullptr;
+MyGUI::ScrollViewPtr debugLogScrollView = nullptr;
+
+const uint32_t DEBUG_WINDOW_WIDTH = 600;
+const uint32_t DEBUG_WINDOW_HEIGHT = 600;
+
+void TickButtonBehaviourClick(MyGUI::WidgetPtr sender)
+{
+    MyGUI::ButtonPtr button = sender->castType<MyGUI::Button>();
+    if(button)
+        button->setStateSelected(!button->getStateSelected());
+}
+
+// Root widget name will be "[namePrefix]SliderRoot"
+MyGUI::WidgetPtr CreateSlider(MyGUI::WidgetPtr parent, int x, int y, int w, int h, std::string namePrefix)
+{
+    /* THIS TEMPLATE USES A READ-ONLY TEXTBOX SO ISN'T USEFUL
+    MyGUI::IResourcePtr sliderRes = MyGUI::ResourceManager::getInstancePtr()->findByName("Kenshi_Slider");
+    if (!sliderRes)
+        DebugLog("Slider resource not found!");
+
+    MyGUI::ResourceLayout* sliderResLayout = sliderRes->castType<MyGUI::ResourceLayout>();
+
+    MyGUI::VectorWidgetPtr sliderVec = sliderResLayout->createLayout(namePrefix, parent);
+    MyGUI::WidgetPtr slider = sliderVec[0];
+
+    assert(slider->getName() == namePrefix + "Root");
+
+    slider->setCoord(MyGUI::IntCoord(x, y, w, h));
+
+    */
+    // Kenshi doesn't use "Kenshi_Slider" for float sliders, they seem to use custom C++ interface, so I roll my own to match
+    // Naming convention matches "Kenshi_Slider"
+    MyGUI::WidgetPtr sliderRoot = parent->createWidget<MyGUI::Widget>("PanelEmpty", x, y, w, h, MyGUI::Align::Top | MyGUI::Align::Left, namePrefix + "SliderRoot");
+    MyGUI::ButtonPtr deleteButton = sliderRoot->createWidget<MyGUI::Button>("Kenshi_CloseButtonSkin", w - 30, (h - 30) / 2, 30, 30, MyGUI::Align::Right | MyGUI::Align::Top, namePrefix + "DeleteButton");
+    MyGUI::TextBox *sliderLabel = sliderRoot->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 0, 0, 80, h, MyGUI::Align::Left | MyGUI::Align::VStretch, namePrefix + "ElementText");
+    sliderLabel->setTextAlign(MyGUI::Align::Left);
+    MyGUI::ScrollBar *scrollBar = sliderRoot->createWidget<MyGUI::ScrollBar>("Kenshi_ScrollBar", 80, 0, w - 175, h, MyGUI::Align::Stretch, namePrefix + "Slider");
+    MyGUI::EditBox* valueText = sliderRoot->createWidget<MyGUI::EditBox>("Kenshi_TextboxStandardText", w - 90, 0, 60, h, MyGUI::Align::Right | MyGUI::Align::VStretch, namePrefix + "NumberText");
+    valueText->setTextAlign(MyGUI::Align::Center);
+
+    return sliderRoot;
+}
+
+float ScaleGameSpeed(size_t speed)
+{
+    float scaled = std::max(1ull, speed) / 1000.0f;
+    float base = 50.0f;
+    scaled = (powf(base, scaled) - 1.0f) / (base - 1.0f);
+    scaled = scaled * 1000.0f;
+    return scaled;
+}
+
+size_t UnscaleGameSpeed(float speed)
+{
+    float scaled = std::min(1000.0f, speed) / 1000.0f;
+    float base = 50.0f;
+    // undo post-pow scaling
+    scaled = scaled * (base - 1.0f);
+    scaled = scaled + 1.0f;
+    // undo pow
+    scaled = logf(scaled) / logf(base);
+    // scale from 0-1000
+    scaled = scaled * 1000.0f;
+    return scaled;
+}
+
+void GameSpeedScroll(MyGUI::ScrollBar *scrollBar, size_t newPos)
+{
+    // nonlinear scaling to add more resolution to low game speeds
+    float scaled = ScaleGameSpeed(newPos);
+
+    size_t splitIdx = scrollBar->getName().find("_");
+    std::string prefix = scrollBar->getName().substr(0, splitIdx);
+
+    // Extract scroll bar index
+    // length of "SpeedSlider" - 1
+    size_t numberStart = 11;
+    std::string numberStr = scrollBar->getName().substr(numberStart, splitIdx - numberStart);
+
+    // Update number text
+    MyGUI::EditBox* numberText = scrollBar->getParent()->findWidget(prefix + "_NumberText")->castType<MyGUI::EditBox>();
+    if (!numberText)
+        ErrorLog("Number text not found on scrollbar!");
+    std::stringstream str;
+    str << std::setprecision(3) << scaled;
+    numberText->setCaption(str.str());
+    float finalSpeedVal = 0.0f;
+    str >> finalSpeedVal;
+
+    std::vector<float> gameSpeeds = Settings::GetGameSpeeds();
+    // gross str -> int conversion
+    str = std::stringstream(numberStr);
+    int number = 0;
+    str >> number;
+    assert(number < gameSpeeds.size());
+    gameSpeeds[number] = finalSpeedVal;
+    Settings::SetGameSpeeds(gameSpeeds);
+}
+
+void RedrawGameSpeedSettings();
+
+void DeleteGameSpeedScroll(MyGUI::WidgetPtr deleteBtn)
+{
+    size_t splitIdx = deleteBtn->getName().find("_");
+    std::string prefix = deleteBtn->getName().substr(0, splitIdx);
+
+    // Extract scroll bar index
+    // length of "SpeedSlider" - 1
+    size_t numberStart = 11;
+    std::string numberStr = deleteBtn->getName().substr(numberStart, splitIdx - numberStart);
+
+    std::vector<float> gameSpeeds = Settings::GetGameSpeeds();
+
+    // gross str -> int conversion
+    std::stringstream str = std::stringstream(numberStr);
+    int number = 0;
+    str >> number;
+    assert(number < gameSpeeds.size());
+
+    // Remove from speeds
+    gameSpeeds.erase(gameSpeeds.begin() + number);
+
+    // Save
+    Settings::SetGameSpeeds(gameSpeeds);
+
+    // Update GUI
+    RedrawGameSpeedSettings();
+}
+
+MyGUI::ScrollViewPtr settingsView;
+int gameSpeedScrollBarsStart = 0;
+
+void RedrawGameSpeedSettings()
+{
+    MyGUI::Gui* gui = MyGUI::Gui::getInstancePtr();
+
+    // Clear old scroll bars
+    int scrollBarIndex = 0;
+    std::stringstream nameStr;
+    nameStr << "SpeedSlider" << scrollBarIndex << "_";
+    while (settingsView->findWidget(nameStr.str() + "SliderRoot"))
+    {
+        gui->destroyWidget(settingsView->findWidget(nameStr.str() + "SliderRoot"));
+        ++scrollBarIndex;
+        nameStr = std::stringstream();
+        nameStr << "SpeedSlider" << scrollBarIndex << "_";
+    }
+
+    // Create new scroll bars
+    std::vector<float> gameSpeeds = Settings::GetGameSpeeds();
+    int positionY = gameSpeedScrollBarsStart;
+    for (int i = 0; i < gameSpeeds.size(); ++i)
+    {
+        std::stringstream nameStr;
+        nameStr << "SpeedSlider" << i << "_";
+        MyGUI::WidgetPtr slider = CreateSlider(settingsView, 2, positionY, 500, 40, nameStr.str());
+
+        MyGUI::TextBox* elementText = slider->findWidget(nameStr.str() + "ElementText")->castType<MyGUI::TextBox>();
+        if (!elementText)
+            DebugLog("ElementText not found!");
+        std::stringstream label;
+        label << "Speed " << (i + 1) << ":";
+        elementText->setCaption(label.str());
+        MyGUI::ScrollBar* scrollBar = slider->findWidget(nameStr.str() + "Slider")->castType<MyGUI::ScrollBar>();
+        scrollBar->setScrollRange(1000);
+        scrollBar->setScrollPosition(UnscaleGameSpeed(gameSpeeds[i]));
+        scrollBar->eventScrollChangePosition += MyGUI::newDelegate(GameSpeedScroll);
+        MyGUI::TextBox* numberText = slider->findWidget(nameStr.str() + "NumberText")->castType<MyGUI::TextBox>();
+        std::stringstream value;
+        value << gameSpeeds[i];
+        numberText->setCaption(value.str());
+        MyGUI::ButtonPtr deleteButton = slider->findWidget(nameStr.str() + "DeleteButton")->castType<MyGUI::Button>();
+        deleteButton->eventMouseButtonClick += MyGUI::newDelegate(DeleteGameSpeedScroll);
+        positionY += 45;
+    }
+
+    // resize settings
+    MyGUI::IntSize canvasSize = settingsView->getCanvasSize();
+    settingsView->setCanvasSize(canvasSize.width, std::max(positionY, canvasSize.height));
+}
+
+void AddGameSpeed(MyGUI::WidgetPtr button)
+{
+    std::vector<float> gameSpeeds = Settings::GetGameSpeeds();
+
+    if (gameSpeeds.size() > 0)
+        gameSpeeds.push_back(gameSpeeds.back());
+    else
+        gameSpeeds.push_back(1.0f);
+
+    Settings::SetGameSpeeds(gameSpeeds);
+    RedrawGameSpeedSettings();
+}
 
 void InitGUI()
 {
+    DebugLog("Main menu loaded.");
+
     MyGUI::RenderManager* renderManager = MyGUI::RenderManager::getInstancePtr();
     MyGUI::Gui* gui = MyGUI::Gui::getInstancePtr();
-    
-    modMenuWindow = gui->createWidget<MyGUI::Window>("Kenshi_WindowCX", 100, 100, 400, 400, MyGUI::Align::Center, "Window", "DebugWindow");
+
+    // Create mod menu
+    modMenuWindow = gui->createWidget<MyGUI::Window>("Kenshi_WindowCX", 100, 100, DEBUG_WINDOW_WIDTH, DEBUG_WINDOW_HEIGHT, MyGUI::Align::Center, "Window", "DebugWindow");
+    modMenuWindow->setCaption("RE_Kenshi Menu");
     modMenuWindow->eventKeyButtonReleased += MyGUI::newDelegate(debugMenuKeyRelease);
     modMenuWindow->eventWindowButtonPressed += MyGUI::newDelegate(debugMenuButtonPress);
     MyGUI::Widget* client = modMenuWindow->findWidget("Client");
-    MyGUI::Widget* widg = client->createWidgetReal<MyGUI::Widget>("Kenshi_GenericTextBoxSkin", 0, 0, 1, 1, MyGUI::Align::Center);
-    MyGUI::FloatCoord debugOutCoord = MyGUI::FloatCoord(0.03, 0.03, 0.94, 0.94);
-    MyGUI::TextBox* debugOut = widg->createWidgetReal<MyGUI::TextBox>("Kenshi_TextboxStandardText", debugOutCoord, MyGUI::Align::Center, "DebugPrint");
-    DebugLog("Main menu loaded.");
-
-    MyGUI::FloatCoord debugCanvasCoord = MyGUI::FloatCoord(0.53, 0.53, 0.94, 0.94);
-    debugImgCanvas = widg->createWidgetReal<MyGUI::Canvas>("Canvas", debugCanvasCoord, MyGUI::Align::Center, "DebugImgCanvas");
+    MyGUI::TabControl *tabControl = client->createWidget<MyGUI::TabControl>("Kenshi_TabControl", MyGUI::IntCoord(2, 2, modMenuWindow->getClientCoord().width - 4, modMenuWindow->getClientCoord().height - 4), MyGUI::Align::Stretch);
+    
+    // Mod settings
+    MyGUI::TabItemPtr settingsTab = tabControl->addItem("RE_Kenshi settings");
+    settingsView = settingsTab->createWidget<MyGUI::ScrollView>("Kenshi_ScrollView", MyGUI::IntCoord(2, 2, settingsTab->getClientCoord().width - 4, settingsTab->getClientCoord().height - 4), MyGUI::Align::Stretch);
+    settingsView->setVisibleHScroll(false);
+    int positionY = 2;
+    settingsView->setCanvasSize(settingsView->getWidth(), settingsView->getHeight());
+    MyGUI::TextBox* gameSpeedsLabel = settingsView->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 2, positionY, 500, 30, MyGUI::Align::Top | MyGUI::Align::Center, "GameSpeedsLabel");
+    gameSpeedsLabel->setCaption("Game speeds");
+    MyGUI::ButtonPtr addGameSpeed = settingsView->createWidget<MyGUI::Button>("Kenshi_Button1", 300, positionY, 200, 30, MyGUI::Align::Top | MyGUI::Align::Right, "AddGameSpeedBtn");
+    addGameSpeed->setCaption("Add game speed");
+    addGameSpeed->eventMouseButtonClick += MyGUI::newDelegate(AddGameSpeed);
+    positionY += 35;
+    gameSpeedScrollBarsStart = positionY;
+    RedrawGameSpeedSettings();
+    
+    // Debug log
+    MyGUI::TabItemPtr debugLogTab = tabControl->addItem("Debug log");
+    debugLogScrollView = debugLogTab->createWidget<MyGUI::ScrollView>("Kenshi_ScrollView", MyGUI::IntCoord(2, 2, debugLogTab->getClientCoord().width - 4, debugLogTab->getClientCoord().height - 4), MyGUI::Align::Stretch);
+    debugLogScrollView->setVisibleHScroll(false);
+    debugLogScrollView->setCanvasSize(debugLogScrollView->getWidth(), DEBUG_WINDOW_HEIGHT / 2);
+    MyGUI::TextBox* debugOut = debugLogScrollView->createWidgetReal<MyGUI::TextBox>("Kenshi_TextboxStandardText", 0, 0, 1, 1, MyGUI::Align::Stretch, "DebugPrint");
 
     MyGUI::TextBox* versionText = Kenshi::FindWidget(gui->getEnumerator(), "VersionText")->castType<MyGUI::TextBox>();
     MyGUI::UString version = versionText->getCaption();
+    DebugLog(version);
     std::istringstream stream(version);
     while (stream)
     {
@@ -213,7 +419,14 @@ void InitGUI()
     }
 }
 
+bool hookedLoad = false;
 
+void LoadStart(MyGUI::WidgetPtr widget)
+{
+    DebugLog("Game loading...");
+}
+
+bool oldLoadingPanelVisible = false;
 
 void GUIUpdate(float timeDelta)
 {
@@ -222,24 +435,52 @@ void GUIUpdate(float timeDelta)
 
     MyGUI::TextBox* debugOut = modMenuWindow->findWidget("DebugPrint")->castType<MyGUI::TextBox>();
 
-    if (debugImgCanvas)
+    /*
+    if (debugImgCanvas && debugImgCanvas->getInheritedVisible())
     {
         HeightmapHook::WriteBlockLODsToCanvas(debugImgCanvas);
     }
-    
-    if (debugOut)
+    */
+
+    if (!hookedLoad)
+    {
+        MyGUI::WidgetPtr loadBtn = Kenshi::FindWidget(MyGUI::Gui::getInstancePtr()->getEnumerator(), "LoadButton");
+        if (loadBtn)
+        {
+            loadBtn->eventMouseButtonClick += MyGUI::newDelegate(LoadStart);
+            hookedLoad = true;
+        }
+    }
+
+    MyGUI::WidgetPtr loadingPanel = Kenshi::FindWidget(MyGUI::Gui::getInstancePtr()->getEnumerator(), "LoadingPanel");
+    if (loadingPanel && loadingPanel->getInheritedVisible() != oldLoadingPanelVisible)
+    {
+        oldLoadingPanelVisible = loadingPanel->getInheritedVisible();
+        std::string msg = oldLoadingPanelVisible ? "true" : "false";
+        DebugLog("Loading panel visibility changed to " + msg);
+    }
+
+    if (debugLogScrollView && debugLogScrollView->getInheritedVisible() && debugOut)
     {
         std::stringstream debugStr;
         debugStr << GetDebugLog();
         debugOut->setCaption(debugStr.str());
+
+        // update scroll view size if needed
+        int logSize = debugOut->getTextSize().height;
+        if (debugLogScrollView->getCanvasSize().height < logSize)
+        {
+            debugLogScrollView->setCanvasSize(debugLogScrollView->getWidth(), logSize);
+            debugLogScrollView->setVisibleHScroll(false);
+            debugOut->setRealSize(1, 1);
+        }
     }
 }
 
 void dllmain()
 {
+    Settings::Init();
     HeightmapHook::Preload();
-
-    LoadGameSpeedValues("game_speeds.ini");
 
     WaitForMainMenu();
 
@@ -247,9 +488,10 @@ void dllmain()
     // GUI will be created next frame
     gui->eventFrameStart += MyGUI::newDelegate(GUIUpdate);
 
-    FSHook::Init();
     HeightmapHook::Init();
     WaitForInGame();
+
+    DebugLog("In-game.");
 
     //debugOut->setCaption(debugOut->getCaption() + "In-game.\n");
 

@@ -5,8 +5,12 @@ namespace Settings
 {
 	void Init();
 
-	bool UseHeightmapcompression();
+	void SetUseHeightmapCompression(bool value);
+	bool UseHeightmapCompression();
 	// TODO remove after testing
+	void SetPreloadHeightmap(bool value);
 	bool PreloadHeightmap();
-	const std::vector<int> GetGameSpeeds();
+
+	const std::vector<float> GetGameSpeeds();
+	void SetGameSpeeds(std::vector<float> gameSpeeds);
 }
