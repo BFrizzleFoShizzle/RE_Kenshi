@@ -99,7 +99,10 @@ unsigned __int64 __cdecl Terrain_getRawData(Terrain* thisPtr, int x, int y, int 
 
 void HeightmapHook::Preload()
 {
-	heightmapHandle = CompressToolsLib::OpenImage("data/newland/land/fullmap.cif");
+	CompressToolsLib::ImageMode mode = CompressToolsLib::ImageMode::Streaming;
+
+	DebugLog("Loading heightmap...");
+	heightmapHandle = CompressToolsLib::OpenImage("data/newland/land/fullmap.cif", mode);
 	DebugLog("Heightmap loaded!");
 }
 
@@ -117,7 +120,6 @@ void HeightmapHook::Init()
 	// public: unsigned __int64 __cdecl Terrain::getRawData(int,int,int,int,char * __ptr64)const __ptr64
 	void* Terrain_getRawDataPtr = GetFuncAddress("Plugin_Terrain_x64.dll", "?getRawData@Terrain@@QEBA_KHHHHPEAD@Z");
 	Escort::PushRetHookASM(Terrain_getRawDataPtr, Terrain_getRawData, 15);
-
 
 	DebugLog("Heightmap hooks installed...");
 }
