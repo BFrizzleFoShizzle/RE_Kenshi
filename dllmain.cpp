@@ -174,6 +174,71 @@ void ToggleUseCompressedHeightmap(MyGUI::WidgetPtr sender)
         HeightmapHook::DisableCompressedHeightmap();
 }
 
+int SliderIndexFromName(std::string name)
+{
+    size_t splitIdx = name.find("_");
+
+    // Extract scroll bar index
+    // length of "SpeedSlider" - 1
+    size_t numberStart = 11;
+    std::string numberStr = name.substr(numberStart, splitIdx - numberStart);
+
+    // gross str -> int conversion
+    std::stringstream str = std::stringstream(numberStr);
+    int number = -1;
+    str >> number;
+    return number;
+}
+
+float ScaleGameSpeed(size_t speed)
+{
+    float scaled = std::max(1ull, speed) / 1000.0f;
+    float base = 50.0f;
+    scaled = (powf(base, scaled) - 1.0f) / (base - 1.0f);
+    scaled = scaled * 1000.0f;
+    return scaled;
+}
+
+size_t UnscaleGameSpeed(float speed)
+{
+    float scaled = std::min(1000.0f, speed) / 1000.0f;
+    float base = 50.0f;
+    // undo post-pow scaling
+    scaled = scaled * (base - 1.0f);
+    scaled = scaled + 1.0f;
+    // undo pow
+    scaled = logf(scaled) / logf(base);
+    // scale from 0-1000
+    scaled = scaled * 1000.0f;
+    return std::min(1000, (int)scaled);
+}
+
+void SliderTextChange(MyGUI::EditBox* editBox)
+{
+    std::string valueStr = editBox->getCaption();
+    float value = -1;
+    // parse float
+    std::stringstream str(valueStr);
+    str >> value;
+    // bounds check - ignore if invalid
+    if (value < 0.0f)
+        return;
+
+    std::vector<float> gameSpeeds = Settings::GetGameSpeeds();
+
+    int sliderIdx = SliderIndexFromName(editBox->getName());
+
+    assert(sliderIdx < gameSpeeds.size());
+    gameSpeeds[sliderIdx] = value;
+
+    std::stringstream prefix;
+    prefix << "SpeedSlider" << sliderIdx << "_";
+    MyGUI::ScrollBar *scrollBar = editBox->getParent()->findWidget(prefix.str() + "Slider")->castType<MyGUI::ScrollBar>();
+    scrollBar->setScrollPosition(UnscaleGameSpeed(value));
+
+    Settings::SetGameSpeeds(gameSpeeds);
+}
+
 // Root widget name will be "[namePrefix]SliderRoot"
 MyGUI::WidgetPtr CreateSlider(MyGUI::WidgetPtr parent, int x, int y, int w, int h, std::string namePrefix)
 {
@@ -199,33 +264,10 @@ MyGUI::WidgetPtr CreateSlider(MyGUI::WidgetPtr parent, int x, int y, int w, int 
     MyGUI::TextBox *sliderLabel = sliderRoot->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 0, 0, 80, h, MyGUI::Align::Left | MyGUI::Align::VStretch, namePrefix + "ElementText");
     sliderLabel->setTextAlign(MyGUI::Align::Left);
     MyGUI::ScrollBar *scrollBar = sliderRoot->createWidget<MyGUI::ScrollBar>("Kenshi_ScrollBar", 80, 0, w - 175, h, MyGUI::Align::Stretch, namePrefix + "Slider");
-    MyGUI::EditBox* valueText = sliderRoot->createWidget<MyGUI::EditBox>("Kenshi_TextboxStandardText", w - 90, 0, 60, h, MyGUI::Align::Right | MyGUI::Align::VStretch, namePrefix + "NumberText");
-    valueText->setTextAlign(MyGUI::Align::Center);
+    MyGUI::EditBox* valueText = sliderRoot->createWidget<MyGUI::EditBox>("Kenshi_EditBox", w - 90, 0, 60, h, MyGUI::Align::Right | MyGUI::Align::VStretch, namePrefix + "NumberText");
+    valueText->eventEditTextChange += MyGUI::newDelegate(SliderTextChange);
 
     return sliderRoot;
-}
-
-float ScaleGameSpeed(size_t speed)
-{
-    float scaled = std::max(1ull, speed) / 1000.0f;
-    float base = 50.0f;
-    scaled = (powf(base, scaled) - 1.0f) / (base - 1.0f);
-    scaled = scaled * 1000.0f;
-    return scaled;
-}
-
-size_t UnscaleGameSpeed(float speed)
-{
-    float scaled = std::min(1000.0f, speed) / 1000.0f;
-    float base = 50.0f;
-    // undo post-pow scaling
-    scaled = scaled * (base - 1.0f);
-    scaled = scaled + 1.0f;
-    // undo pow
-    scaled = logf(scaled) / logf(base);
-    // scale from 0-1000
-    scaled = scaled * 1000.0f;
-    return scaled;
 }
 
 void GameSpeedScroll(MyGUI::ScrollBar *scrollBar, size_t newPos)
@@ -235,11 +277,6 @@ void GameSpeedScroll(MyGUI::ScrollBar *scrollBar, size_t newPos)
 
     size_t splitIdx = scrollBar->getName().find("_");
     std::string prefix = scrollBar->getName().substr(0, splitIdx);
-
-    // Extract scroll bar index
-    // length of "SpeedSlider" - 1
-    size_t numberStart = 11;
-    std::string numberStr = scrollBar->getName().substr(numberStart, splitIdx - numberStart);
 
     // Update number text
     MyGUI::EditBox* numberText = scrollBar->getParent()->findWidget(prefix + "_NumberText")->castType<MyGUI::EditBox>();
@@ -252,10 +289,8 @@ void GameSpeedScroll(MyGUI::ScrollBar *scrollBar, size_t newPos)
     str >> finalSpeedVal;
 
     std::vector<float> gameSpeeds = Settings::GetGameSpeeds();
-    // gross str -> int conversion
-    str = std::stringstream(numberStr);
-    int number = 0;
-    str >> number;
+
+    int number = SliderIndexFromName(scrollBar->getName());
     assert(number < gameSpeeds.size());
     gameSpeeds[number] = finalSpeedVal;
     Settings::SetGameSpeeds(gameSpeeds);
@@ -265,20 +300,9 @@ void RedrawGameSpeedSettings();
 
 void DeleteGameSpeedScroll(MyGUI::WidgetPtr deleteBtn)
 {
-    size_t splitIdx = deleteBtn->getName().find("_");
-    std::string prefix = deleteBtn->getName().substr(0, splitIdx);
-
-    // Extract scroll bar index
-    // length of "SpeedSlider" - 1
-    size_t numberStart = 11;
-    std::string numberStr = deleteBtn->getName().substr(numberStart, splitIdx - numberStart);
-
     std::vector<float> gameSpeeds = Settings::GetGameSpeeds();
 
-    // gross str -> int conversion
-    std::stringstream str = std::stringstream(numberStr);
-    int number = 0;
-    str >> number;
+    int number = SliderIndexFromName(deleteBtn->getName());
     assert(number < gameSpeeds.size());
 
     // Remove from speeds
@@ -326,7 +350,8 @@ void RedrawGameSpeedSettings()
         label << "Speed " << (i + 1) << ":";
         elementText->setCaption(label.str());
         MyGUI::ScrollBar* scrollBar = slider->findWidget(nameStr.str() + "Slider")->castType<MyGUI::ScrollBar>();
-        scrollBar->setScrollRange(1000);
+        // 0...range-1 = 0...1000
+        scrollBar->setScrollRange(1001);
         scrollBar->setScrollPosition(UnscaleGameSpeed(gameSpeeds[i]));
         scrollBar->eventScrollChangePosition += MyGUI::newDelegate(GameSpeedScroll);
         MyGUI::TextBox* numberText = slider->findWidget(nameStr.str() + "NumberText")->castType<MyGUI::TextBox>();
