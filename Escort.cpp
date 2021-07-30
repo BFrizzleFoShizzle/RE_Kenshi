@@ -8,6 +8,14 @@
 #include "Debug.h"
 
 
+void* Escort::GetFuncAddress(std::string moduleName, std::string functionName)
+{
+	HMODULE hMod = GetModuleHandleA(moduleName.c_str());
+	std::string debugStr = "DLL handle: " + std::to_string((uint64_t)hMod);
+	//MessageBoxA(0, debugStr.c_str(), "Debug", MB_OK);
+	return GetProcAddress(hMod, functionName.c_str());
+}
+
 void Escort::WriteProtected(void* sourceAddr, void* destAddr, size_t count)
 {
 	DWORD oldProtect;

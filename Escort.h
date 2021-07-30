@@ -19,4 +19,5 @@ namespace Escort
 	void MovAbsRAX(void* value, std::vector<uint8_t>& bytes);
 	void CallRAX(std::vector<uint8_t>& bytes);
 	void WriteProtected(void* sourceAddr, void* destAddr, size_t count);
+	void* GetFuncAddress(std::string moduleName, std::string functionName);
 }

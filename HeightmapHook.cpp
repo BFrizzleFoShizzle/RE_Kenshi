@@ -41,13 +41,6 @@ struct Terrain
 
 };
 
-void* GetFuncAddress(std::string moduleName, std::string functionName)
-{
-	HMODULE hMod = GetModuleHandleA(moduleName.c_str());
-	std::string debugStr = "DLL handle: " + std::to_string((uint64_t)hMod);
-	//MessageBoxA(0, debugStr.c_str(), "Debug", MB_OK);
-	return GetProcAddress(hMod, functionName.c_str());
-}
 
 float __cdecl Terrain_getHeight(Terrain* thisPtr, class Ogre::Vector3 const& vec, int unk)
 {
@@ -204,7 +197,7 @@ void HeightmapHook::EnableCompressedHeightmap()
 {
 	// mangled symbol for protected Terrain::getHeight()
 	// protected: float __cdecl Terrain::getHeight(class Ogre::Vector3 const & __ptr64,int) __ptr64
-	void* Terrain_getHeightPtr = GetFuncAddress("Plugin_Terrain_x64.dll", "?getHeight@Terrain@@IEAAMAEBVVector3@Ogre@@H@Z");
+	void* Terrain_getHeightPtr = Escort::GetFuncAddress("Plugin_Terrain_x64.dll", "?getHeight@Terrain@@IEAAMAEBVVector3@Ogre@@H@Z");
 	// backup bytes
 	memcpy(Terrain_getHeightOld, Terrain_getHeightPtr, 15);
 	Escort::PushRetHookASM(Terrain_getHeightPtr, Terrain_getHeight, 15);
@@ -212,7 +205,7 @@ void HeightmapHook::EnableCompressedHeightmap()
 
 	// mangled symbol for Terrain::getRawData()
 	// public: unsigned __int64 __cdecl Terrain::getRawData(int,int,int,int,char * __ptr64)const __ptr64
-	void* Terrain_getRawDataPtr = GetFuncAddress("Plugin_Terrain_x64.dll", "?getRawData@Terrain@@QEBA_KHHHHPEAD@Z");
+	void* Terrain_getRawDataPtr = Escort::GetFuncAddress("Plugin_Terrain_x64.dll", "?getRawData@Terrain@@QEBA_KHHHHPEAD@Z");
 	// backup bytes
 	memcpy(Terrain_getRawDataOld, Terrain_getRawDataPtr, 15);
 	Escort::PushRetHookASM(Terrain_getRawDataPtr, Terrain_getRawData, 15);
@@ -224,14 +217,14 @@ void HeightmapHook::DisableCompressedHeightmap()
 {
 	// mangled symbol for protected Terrain::getHeight()
 	// protected: float __cdecl Terrain::getHeight(class Ogre::Vector3 const & __ptr64,int) __ptr64
-	void* Terrain_getHeightPtr = GetFuncAddress("Plugin_Terrain_x64.dll", "?getHeight@Terrain@@IEAAMAEBVVector3@Ogre@@H@Z");
+	void* Terrain_getHeightPtr = Escort::GetFuncAddress("Plugin_Terrain_x64.dll", "?getHeight@Terrain@@IEAAMAEBVVector3@Ogre@@H@Z");
 	// Restore backup
 	Escort::WriteProtected(Terrain_getHeightPtr, Terrain_getHeightOld, 15);
 
 
 	// mangled symbol for Terrain::getRawData()
 	// public: unsigned __int64 __cdecl Terrain::getRawData(int,int,int,int,char * __ptr64)const __ptr64
-	void* Terrain_getRawDataPtr = GetFuncAddress("Plugin_Terrain_x64.dll", "?getRawData@Terrain@@QEBA_KHHHHPEAD@Z");
+	void* Terrain_getRawDataPtr = Escort::GetFuncAddress("Plugin_Terrain_x64.dll", "?getRawData@Terrain@@QEBA_KHHHHPEAD@Z");
 	// Restore backup
 	Escort::WriteProtected(Terrain_getRawDataPtr, Terrain_getRawDataOld, 15);
 
