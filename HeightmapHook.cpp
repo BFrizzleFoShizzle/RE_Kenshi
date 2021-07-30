@@ -195,6 +195,10 @@ uint8_t Terrain_getRawDataOld[15];
 
 void HeightmapHook::EnableCompressedHeightmap()
 {
+	// start loading heightmap if not done yet
+	if (!HeightmapIsLoaded())
+		Preload();
+
 	// mangled symbol for protected Terrain::getHeight()
 	// protected: float __cdecl Terrain::getHeight(class Ogre::Vector3 const & __ptr64,int) __ptr64
 	void* Terrain_getHeightPtr = Escort::GetFuncAddress("Plugin_Terrain_x64.dll", "?getHeight@Terrain@@IEAAMAEBVVector3@Ogre@@H@Z");
