@@ -35,8 +35,9 @@ struct Terrain
 	// 0x1DC
 	char unk3[0x84];
 	// 0x260
-	int mapMinX;
-	int mapMinY;
+	// THIS IS WRONG - don't know where I got it from
+	//int mapMinX;
+	//int mapMinY;
 
 };
 
@@ -65,8 +66,8 @@ float __cdecl Terrain_getHeight(Terrain* thisPtr, class Ogre::Vector3 const& vec
 	// TODO is it L or LE
 	if (pixelX <= thisPtr->bounds->mapMaxX
 		&& pixelY <= thisPtr->bounds->mapMaxY
-		&& pixelX >= thisPtr->mapMinX
-		&& pixelY >= thisPtr->mapMinY)
+		&& pixelX >= 0
+		&& pixelY >= 0)
 	{
 		uint16_t height = CompressToolsLib::ReadHeightValue(heightmapHandle, pixelX, pixelY);
 		return height * thisPtr->heightScale;
