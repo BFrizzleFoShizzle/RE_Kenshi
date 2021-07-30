@@ -386,6 +386,33 @@ void AddGameSpeed(MyGUI::WidgetPtr button)
     RedrawGameSpeedSettings();
 }
 
+// Takes into account mods
+int defaultAttackSlots = -1;
+
+void AttackSlotScroll(MyGUI::ScrollBar* scrollBar, size_t newPos)
+{
+    // Update number text
+    MyGUI::EditBox* numberText = scrollBar->getParent()->findWidget("AttackSlotsSlider_NumberText")->castType<MyGUI::EditBox>();
+
+    if (newPos > 0)
+    {
+        std::stringstream str;
+        str << newPos;
+        numberText->setCaption(str.str());
+        Settings::SetAttackSlots(newPos);
+        // TODO this sometimes causes a crash if Kenshi is unpaused
+        Kenshi::GetNumAttackSlots() = newPos;
+    }
+    else
+    {
+        std::stringstream str;
+        str << "(" << defaultAttackSlots << ")";
+        numberText->setCaption(str.str());
+        Settings::SetAttackSlots(-1);
+        Kenshi::GetNumAttackSlots() = defaultAttackSlots;
+    }
+}
+
 void InitGUI()
 {
     DebugLog("Main menu loaded.");
@@ -414,6 +441,33 @@ void InitGUI()
     useCompressedHeightmap->eventMouseButtonClick += MyGUI::newDelegate(ToggleUseCompressedHeightmap);
     useCompressedHeightmap->setStateSelected(Settings::UseHeightmapCompression());
     positionY += 30;
+    // Attack slots
+    defaultAttackSlots = Kenshi::GetNumAttackSlots();
+    int numAttackSlots = Settings::GetAttackSlots();
+    // Apply settings
+    if (numAttackSlots > 0)
+        Kenshi::GetNumAttackSlots() = numAttackSlots;
+    MyGUI::WidgetPtr attackSlotsSlider = CreateSlider(settingsView, 2, positionY, 500, 40, "AttackSlotsSlider_");
+    MyGUI::TextBox* elementText = attackSlotsSlider->findWidget("AttackSlotsSlider_ElementText")->castType<MyGUI::TextBox>();
+    std::stringstream attackSlotsLabel;
+    attackSlotsLabel << "Attack slots (" << defaultAttackSlots << "):";
+    elementText->setCaption(attackSlotsLabel.str());
+    MyGUI::EditBox* numberText = attackSlotsSlider->findWidget("AttackSlotsSlider_NumberText")->castType<MyGUI::EditBox>();
+    numberText->setEditStatic(true);
+    std::stringstream attackSlotsStr;
+    if (numAttackSlots > 0)
+        attackSlotsStr << numAttackSlots;
+    else
+        attackSlotsStr << "(" << defaultAttackSlots << ")";
+    numberText->setCaption(attackSlotsStr.str());
+    MyGUI::ScrollBar* attackSlotsScrollBar = attackSlotsSlider->findWidget("AttackSlotsSlider_Slider")->castType<MyGUI::ScrollBar>();
+    attackSlotsScrollBar->setScrollRange(6);
+    if(numAttackSlots > 0)
+        attackSlotsScrollBar->setScrollPosition(Settings::GetAttackSlots());
+    else
+        attackSlotsScrollBar->setScrollPosition(0);
+    attackSlotsScrollBar->eventScrollChangePosition += MyGUI::newDelegate(AttackSlotScroll);
+    positionY += 45;
     MyGUI::TextBox* gameSpeedsLabel = settingsView->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 2, positionY, 500, 30, MyGUI::Align::Top | MyGUI::Align::Center, "GameSpeedsLabel");
     gameSpeedsLabel->setCaption("Game speeds");
     MyGUI::ButtonPtr addGameSpeed = settingsView->createWidget<MyGUI::Button>("Kenshi_Button1", 300, positionY, 200, 30, MyGUI::Align::Top | MyGUI::Align::Right, "AddGameSpeedBtn");

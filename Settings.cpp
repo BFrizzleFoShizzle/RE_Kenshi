@@ -28,6 +28,7 @@ rapidjson::Document GenerateDefaultSettings()
     defaultSettings.SetObject();
     defaultSettings.AddMember("UseCompressedHeightmap", true, defaultSettings.GetAllocator());
     defaultSettings.AddMember("PreloadHeightmap", false, defaultSettings.GetAllocator());
+    defaultSettings.AddMember("AttackSlots", -1, defaultSettings.GetAllocator());
     rapidjson::Value gameSpeeds(rapidjson::kArrayType);
     std::vector<float> defaultGameSpeeds = GetDefaultGameSpeeds();
     for(int i=0;i<defaultGameSpeeds.size(); ++i)
@@ -89,6 +90,31 @@ bool Settings::PreloadHeightmap()
 {
     rapidjson::Value& val = settingsDOM["PreloadHeightmap"];
     return val.GetBool();
+}
+
+// -1 = use mod value
+int Settings::GetAttackSlots()
+{
+    rapidjson::Value& val = settingsDOM["AttackSlots"];
+    if (!val.IsInt())
+    {
+        SetAttackSlots(-1);
+        return -1;
+    }
+    else
+    {
+        return val.GetInt();
+    }
+}
+
+void Settings::SetAttackSlots(int num)
+{
+    if (!settingsDOM.HasMember("AttackSlots"))
+        settingsDOM.AddMember("AttackSlots", num, settingsDOM.GetAllocator());
+    else
+        settingsDOM["AttackSlots"] = num;
+
+    SaveSettings();
 }
 
 const std::vector<float> Settings::GetGameSpeeds()
