@@ -131,6 +131,11 @@ void WaitForMainMenu()
 // TODO make nicer
 MyGUI::Window* modMenuWindow = nullptr;
 
+void openSettingsMenu(MyGUI::WidgetPtr button)
+{
+    modMenuWindow->setVisible(true);
+}
+
 void debugMenuButtonPress(MyGUI::Window* _sender, const std::string &name)
 {
     if (name == "close")
@@ -397,7 +402,7 @@ void InitGUI()
     MyGUI::TabControl *tabControl = client->createWidget<MyGUI::TabControl>("Kenshi_TabControl", MyGUI::IntCoord(2, 2, modMenuWindow->getClientCoord().width - 4, modMenuWindow->getClientCoord().height - 4), MyGUI::Align::Stretch);
     
     // Mod settings
-    MyGUI::TabItemPtr settingsTab = tabControl->addItem("RE_Kenshi settings");
+    MyGUI::TabItemPtr settingsTab = tabControl->addItem("Settings");
     settingsView = settingsTab->createWidget<MyGUI::ScrollView>("Kenshi_ScrollView", MyGUI::IntCoord(2, 2, settingsTab->getClientCoord().width - 4, settingsTab->getClientCoord().height - 4), MyGUI::Align::Stretch);
     settingsView->setVisibleHScroll(false);
     int positionY = 2;
@@ -475,10 +480,40 @@ void LoadStart(MyGUI::WidgetPtr widget)
 
 bool oldLoadingPanelVisible = false;
 
+void InjectSettings()
+{
+    MyGUI::Gui* gui = MyGUI::Gui::getInstancePtr();
+
+    //  inject mod menu into Kenshi's settings menu "MODS" tab
+    MyGUI::TabControl* optionsTabCtrl = Kenshi::FindWidget(gui->getEnumerator(), "OptionsTab")->castType<MyGUI::TabControl>();
+    if (optionsTabCtrl == nullptr)
+        return;
+
+    if (optionsTabCtrl->getItemCount() <= 0)
+        return;
+
+    MyGUI::TabItemPtr modsTab = optionsTabCtrl->getItemAt(optionsTabCtrl->getItemCount() - 1);
+    if (modsTab == nullptr || modsTab->getCaption() != "MODS")
+        return;
+
+    // This causes crashes when the options menu is closed
+    //optionsTabCtrl->addItem("RE_KENSHI");
+
+    MyGUI::ButtonPtr settingsButton = modsTab->createWidgetReal<MyGUI::Button>("Kenshi_Button1", 0.7f, 0.02f, 0.25f, 0.05f, MyGUI::Align::Top | MyGUI::Align::Left, "ModSettingsOpen");
+    settingsButton->setCaption("RE_Kenshi settings");
+    settingsButton->eventMouseButtonClick += MyGUI::newDelegate(openSettingsMenu);
+    DebugLog("Injected settings button");
+}
+
 void GUIUpdate(float timeDelta)
 {
+    MyGUI::Gui* gui = MyGUI::Gui::getInstancePtr();
     if (modMenuWindow == nullptr)
         InitGUI();
+
+    // HACK button gets deleted when settings menu is closed
+    if (gui->findWidget<MyGUI::Button>("ModSettingsOpen", false) == nullptr)
+        InjectSettings();
 
     MyGUI::TextBox* debugOut = modMenuWindow->findWidget("DebugPrint")->castType<MyGUI::TextBox>();
 
