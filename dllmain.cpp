@@ -28,8 +28,8 @@ MyGUI::TextBox* gameSpeedText = nullptr;
 
 int gameSpeedIdx = 0;
 
-const std::string MOD_VERSION = "0.1.2";
 
+const std::string MOD_VERSION = "0.2.0";
 
 void increaseSpeed(MyGUI::WidgetPtr _sender)
 {
