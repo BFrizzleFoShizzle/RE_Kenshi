@@ -114,7 +114,7 @@ void HeightmapHook::Init()
 	if (!Settings::UseHeightmapCompression())
 		return;
 
-	EnableCompressedHeightmap();
+	EnableHeightmapHooks();
 }
 
 // debugging functions
@@ -189,15 +189,20 @@ bool HeightmapHook::HeightmapIsLoaded()
 	return heightmapHandle != nullptr;
 }
 
+bool hooksInstalled = false;
+
 // bytes before modification
 uint8_t Terrain_getHeightOld[15];
 uint8_t Terrain_getRawDataOld[15];
 
-void HeightmapHook::EnableCompressedHeightmap()
+void HeightmapHook::EnableHeightmapHooks()
 {
 	// start loading heightmap if not done yet
 	if (!HeightmapIsLoaded())
 		Preload();
+
+	if (hooksInstalled)
+		return;
 
 	// mangled symbol for protected Terrain::getHeight()
 	// protected: float __cdecl Terrain::getHeight(class Ogre::Vector3 const & __ptr64,int) __ptr64
@@ -214,11 +219,16 @@ void HeightmapHook::EnableCompressedHeightmap()
 	memcpy(Terrain_getRawDataOld, Terrain_getRawDataPtr, 15);
 	Escort::PushRetHookASM(Terrain_getRawDataPtr, Terrain_getRawData, 15);
 
+	hooksInstalled = true;
+
 	DebugLog("Heightmap hooks installed...");
 }
 
-void HeightmapHook::DisableCompressedHeightmap()
+void HeightmapHook::DisableHeightmapHooks()
 {
+	if (!hooksInstalled)
+		return;
+
 	// mangled symbol for protected Terrain::getHeight()
 	// protected: float __cdecl Terrain::getHeight(class Ogre::Vector3 const & __ptr64,int) __ptr64
 	void* Terrain_getHeightPtr = Escort::GetFuncAddress("Plugin_Terrain_x64.dll", "?getHeight@Terrain@@IEAAMAEBVVector3@Ogre@@H@Z");
@@ -231,6 +241,8 @@ void HeightmapHook::DisableCompressedHeightmap()
 	void* Terrain_getRawDataPtr = Escort::GetFuncAddress("Plugin_Terrain_x64.dll", "?getRawData@Terrain@@QEBA_KHHHHPEAD@Z");
 	// Restore backup
 	Escort::WriteProtected(Terrain_getRawDataPtr, Terrain_getRawDataOld, 15);
+
+	hooksInstalled = false;
 
 	DebugLog("Heightmap hooks uninstalled...");
 }

@@ -174,9 +174,9 @@ void ToggleUseCompressedHeightmap(MyGUI::WidgetPtr sender)
     
     // Update hooks
     if (useHeightmapCompression)
-        HeightmapHook::EnableCompressedHeightmap();
+        HeightmapHook::EnableHeightmapHooks();
     else
-        HeightmapHook::DisableCompressedHeightmap();
+        HeightmapHook::DisableHeightmapHooks();
 }
 
 int SliderIndexFromName(std::string name)
@@ -439,7 +439,6 @@ void InitGUI()
     useCompressedHeightmap->setCaption("[TOGGLE MAY CRASH] Use compressed heightmap");
     useCompressedHeightmap->eventMouseButtonClick += MyGUI::newDelegate(TickButtonBehaviourClick);
     useCompressedHeightmap->eventMouseButtonClick += MyGUI::newDelegate(ToggleUseCompressedHeightmap);
-    useCompressedHeightmap->setStateSelected(Settings::UseHeightmapCompression());
     positionY += 30;
     // Attack slots
     defaultAttackSlots = Kenshi::GetNumAttackSlots();
