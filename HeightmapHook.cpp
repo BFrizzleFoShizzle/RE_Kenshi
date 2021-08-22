@@ -95,7 +95,7 @@ unsigned __int64 __cdecl Terrain_getRawData(Terrain* thisPtr, int x, int y, int 
 void HeightmapHook::Preload()
 {
 	// early return if heightmap compression is disabled
-	if (!Settings::UseHeightmapCompression())
+	if (!Settings::UseHeightmapCompression() || !CompressedHeightmapFileExists())
 		return;
 
 	CompressToolsLib::ImageMode mode = CompressToolsLib::ImageMode::Streaming;
@@ -111,7 +111,7 @@ void HeightmapHook::Preload()
 void HeightmapHook::Init()
 {
 	// early return if heightmap compression is disabled
-	if (!Settings::UseHeightmapCompression())
+	if (!Settings::UseHeightmapCompression() || !CompressedHeightmapFileExists())
 		return;
 
 	EnableHeightmapHooks();
@@ -204,6 +204,11 @@ void HeightmapHook::EnableHeightmapHooks()
 	if (hooksInstalled)
 		return;
 
+	// if heightmap *still* isn't loaded, something has gone wrong
+	assert(HeightmapIsLoaded());
+	if (!HeightmapIsLoaded())
+		return;
+
 	// mangled symbol for protected Terrain::getHeight()
 	// protected: float __cdecl Terrain::getHeight(class Ogre::Vector3 const & __ptr64,int) __ptr64
 	void* Terrain_getHeightPtr = Escort::GetFuncAddress("Plugin_Terrain_x64.dll", "?getHeight@Terrain@@IEAAMAEBVVector3@Ogre@@H@Z");
@@ -245,4 +250,19 @@ void HeightmapHook::DisableHeightmapHooks()
 	hooksInstalled = false;
 
 	DebugLog("Heightmap hooks uninstalled...");
+}
+
+
+bool HeightmapHook::CompressedHeightmapFileExists()
+{
+	std::ifstream file("data/newland/land/fullmap.cif");
+	if (file.is_open())
+	{
+		file.close();
+		return true;
+	}
+	else
+	{
+		return false;
+	}
 }

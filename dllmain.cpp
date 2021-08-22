@@ -409,11 +409,22 @@ void InitGUI()
     settingsView->setVisibleHScroll(false);
     int positionY = 2;
     settingsView->setCanvasSize(settingsView->getWidth(), settingsView->getHeight());
+    if (!HeightmapHook::CompressedHeightmapFileExists())
+    {
+        MyGUI::TextBox* noCompressedHeightmapLabel = settingsView->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 2, positionY, 500, 30, MyGUI::Align::Top | MyGUI::Align::Left, "NoCompressedHeightmapLabel");
+        noCompressedHeightmapLabel->setCaption("To enable, reinstall RE_Kenshi and check \"Compress Heightmap\"");
+        positionY += 30;
+    }
     MyGUI::ButtonPtr useCompressedHeightmap = settingsView->createWidget<MyGUI::Button>("Kenshi_TickButton1", 2, positionY, 500, 26, MyGUI::Align::Top | MyGUI::Align::Left, "UseCompressedHeightmapToggle");
     useCompressedHeightmap->setStateSelected(Settings::UseHeightmapCompression());
     useCompressedHeightmap->setCaption("[TOGGLE MAY CRASH] Use compressed heightmap");
     useCompressedHeightmap->eventMouseButtonClick += MyGUI::newDelegate(TickButtonBehaviourClick);
     useCompressedHeightmap->eventMouseButtonClick += MyGUI::newDelegate(ToggleUseCompressedHeightmap);
+    // Disable if the file doesn't exist
+    if (!HeightmapHook::CompressedHeightmapFileExists())
+    {
+        useCompressedHeightmap->setEnabled(false);
+    }
     positionY += 30;
     // Attack slots
     defaultAttackSlots = Kenshi::GetNumAttackSlots();

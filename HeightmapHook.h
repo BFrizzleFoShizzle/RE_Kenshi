@@ -17,4 +17,6 @@ namespace HeightmapHook
 	void DisableHeightmapHooks();
 
 	bool HeightmapIsLoaded();
+
+	bool CompressedHeightmapFileExists();
 }
