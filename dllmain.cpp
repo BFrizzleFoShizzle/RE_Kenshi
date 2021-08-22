@@ -30,31 +30,6 @@ int gameSpeedIdx = 0;
 
 const std::string MOD_VERSION = "0.1.2";
 
-/*
-std::string ConvertGUIToText(MyGUI::EnumeratorWidgetPtr enumerator, std::string pad)
-{
-    std::string output = "";
-    // you might think this should be a do..while() loop.
-    // You'd be wrong. The first next() call does nothing in MyGUI.
-    // if you don't call next() before processing the first element, 
-    // the first element gets returned twice.
-    while (enumerator.next())
-    {
-        std::string widgetName = enumerator.current()->getName();
-        std::string widgetType = enumerator.current()->getTypeName();
-        std::string widgetClass = enumerator.current()->getClassTypeName();
-        std::string widgetEnabled = enumerator.current()->getEnabled() ? "true" : "false";
-        std::string widgetVisible = enumerator.current()->getVisible() ? "true" : "false";
-        std::string widgetUserStrings = "";
-        output += pad + "\"" + widgetName + "\" - \"" + widgetType + "\" - " + widgetClass + "\" - " + widgetEnabled + " " + widgetVisible +  " \"" + widgetUserStrings + "\"\n";
-        if (enumerator.current()->getChildCount() > 0)
-        {
-            output += ConvertGUIToText(enumerator.current()->getEnumerator(), "\t" + pad);
-        }
-    } 
-    return output;
-}
-*/
 
 void increaseSpeed(MyGUI::WidgetPtr _sender)
 {
