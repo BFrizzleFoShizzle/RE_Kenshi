@@ -16,12 +16,15 @@
 
 #include "kenshi/Kenshi.h"
 #include "kenshi/GameWorld.h"
+#include "Kenshi/KeyBind.h"
 
 #include "HeightmapHook.h"
 #include "Debug.h"
 #include "Settings.h"
 
 #include <ogre/OgrePrerequisites.h>
+#include "OISKeyboard.h"
+#include "win32/Win32KeyBoard.h"
 
 float gameSpeed = 1.0f;
 MyGUI::TextBox* gameSpeedText = nullptr;
@@ -31,31 +34,9 @@ int gameSpeedIdx = 0;
 
 const std::string MOD_VERSION = "0.2.0";
 
-void increaseSpeed(MyGUI::WidgetPtr _sender)
-{
-    std::vector<float> gameSpeedValues = Settings::GetGameSpeeds();
-    gameSpeedIdx += 1;
-    // Clamp
-    gameSpeedIdx = std::min(gameSpeedIdx, (int)gameSpeedValues.size() - 1);
-    gameSpeedIdx = std::max(gameSpeedIdx, 0);
-    Kenshi::GameWorld& gameWorld = Kenshi::GetGameWorld();
-    gameWorld.gameSpeed = gameSpeedValues[gameSpeedIdx];
-    gameSpeedText->setCaption(std::to_string((long double)gameWorld.gameSpeed));
-}
-
-void decreaseSpeed(MyGUI::WidgetPtr _sender)
-{
-    std::vector<float> gameSpeedValues = Settings::GetGameSpeeds();
-    gameSpeedIdx -= 1;
-    // Clamp
-    gameSpeedIdx = std::min(gameSpeedIdx, (int)gameSpeedValues.size() - 1);
-    gameSpeedIdx = std::max(gameSpeedIdx, 0);
-    Kenshi::GameWorld& gameWorld = Kenshi::GetGameWorld();
-    gameWorld.gameSpeed = gameSpeedValues[gameSpeedIdx];
-    gameSpeedText->setCaption(std::to_string((long double)gameWorld.gameSpeed));
-}
-
-void playButtonHook(MyGUI::WidgetPtr _sender)
+// Game speed functions
+// "play"
+void SetSpeed1()
 {
     std::vector<float> gameSpeedValues = Settings::GetGameSpeeds();
     // Clamp
@@ -66,9 +47,176 @@ void playButtonHook(MyGUI::WidgetPtr _sender)
     // TODO how to handle this better?
     Kenshi::GameWorld& gameWorld = Kenshi::GetGameWorld();
     std::string gameSpeedMessage = std::to_string((long double)gameWorld.gameSpeed);
-    if(gameWorld.gameSpeed != gameSpeedValues[gameSpeedIdx])
+    if (gameWorld.gameSpeed != gameSpeedValues[gameSpeedIdx])
         gameSpeedMessage += " (" + std::to_string((long double)gameSpeedValues[gameSpeedIdx]) + ")";
+    //gameSpeedMessage += " (" + std::to_string((unsigned long long)fileCount) + ")";
     gameSpeedText->setCaption(gameSpeedMessage);
+}
+// "2x speed" - decreases speed
+void SetSpeed2()
+{
+    std::vector<float> gameSpeedValues = Settings::GetGameSpeeds();
+    gameSpeedIdx -= 1;
+    // Clamp
+    gameSpeedIdx = std::min(gameSpeedIdx, (int)gameSpeedValues.size() - 1);
+    gameSpeedIdx = std::max(gameSpeedIdx, 0);
+    Kenshi::GameWorld& gameWorld = Kenshi::GetGameWorld();
+    gameWorld.gameSpeed = gameSpeedValues[gameSpeedIdx];
+    gameSpeedText->setCaption(std::to_string((long double)gameWorld.gameSpeed));
+}
+// "5x speed" - increases speed
+void SetSpeed3()
+{
+    std::vector<float> gameSpeedValues = Settings::GetGameSpeeds();
+    gameSpeedIdx += 1;
+    // Clamp
+    gameSpeedIdx = std::min(gameSpeedIdx, (int)gameSpeedValues.size() - 1);
+    gameSpeedIdx = std::max(gameSpeedIdx, 0);
+    Kenshi::GameWorld& gameWorld = Kenshi::GetGameWorld();
+    gameWorld.gameSpeed = gameSpeedValues[gameSpeedIdx];
+    gameSpeedText->setCaption(std::to_string((long double)gameWorld.gameSpeed));
+}
+// Used to re-overwrite Kenshi's value when required
+void ForceWriteSpeed()
+{
+    std::vector<float> gameSpeedValues = Settings::GetGameSpeeds();
+    // Clamp
+    gameSpeedIdx = std::min(gameSpeedIdx, (int)gameSpeedValues.size() - 1);
+    gameSpeedIdx = std::max(gameSpeedIdx, 0);
+    Kenshi::GameWorld& gameWorld = Kenshi::GetGameWorld();
+    gameWorld.gameSpeed = gameSpeedValues[gameSpeedIdx];
+    gameSpeedText->setCaption(std::to_string((long double)gameWorld.gameSpeed));
+}
+
+// reversed from game
+Kenshi::KeyBind* FindBindingForKey(uint32_t keyCode, Kenshi::KeyBind* rootBind)
+{
+    Kenshi::KeyBind* high = rootBind;
+    Kenshi::KeyBind* low = rootBind->ptr2;
+    int i = 0;
+    while (low->isLeaf == false)
+    {
+        if (low->keyCode < keyCode)
+        {
+            low = low->ptr3;
+        }
+        else
+        {
+            high = low;
+            low = low->ptr1;
+        }
+        ++i;
+        if (i > 100)
+        {
+            ErrorLog("Could not find key binding!");
+            break;
+        }
+    }
+    if (high->keyCode == keyCode)
+    {
+        return high;
+    }
+    else
+    {
+        return nullptr;
+    }
+}
+
+std::string FindEventNameForKey(uint32_t keyCode, Kenshi::KeyBind* rootBind)
+{
+    Kenshi::KeyBind* keyBind = FindBindingForKey(keyCode, rootBind);
+    if (keyBind != nullptr && keyBind->keyEvent != nullptr)
+        return keyBind->keyEvent->eventName;
+    return "ERROR";
+}
+
+uint32_t FindEventCodeForKey(uint32_t keyCode, Kenshi::KeyBind* rootBind)
+{
+    Kenshi::KeyBind* keyBind = FindBindingForKey(keyCode, rootBind);
+    if (keyBind != nullptr && keyBind->keyEvent != nullptr)
+        return keyBind->keyEvent->eventCode;
+    return -1;
+}
+
+class KeyboardHook : public OIS::KeyListener
+{
+public:
+    KeyboardHook(OIS::KeyListener* kenshiKeyListener)
+        : kenshiKeyListener(kenshiKeyListener)
+    {
+
+    }
+    ~KeyboardHook()
+    {
+        // TODO delete?
+        kenshiKeyListener->~KeyListener();
+    }
+    bool keyPressed(const OIS::KeyEvent& arg) override
+    {
+        Kenshi::InputHandler& inputHandler = Kenshi::GetInputHandler();
+        // Game speed hooks - runs after game listener so we can overwrite values
+        std::string eventName = FindEventNameForKey(arg.key, inputHandler.keyBindingsStart);
+        bool output = kenshiKeyListener->keyPressed(arg);
+        // TODO pause?
+        if (eventName == "speed_1")
+        {
+            SetSpeed1();
+        }
+        else if (eventName == "speed_2")
+        {
+            // decrement on press
+            SetSpeed2();
+        }
+        else if (eventName == "speed_3")
+        {
+            // increment on press
+            SetSpeed3();
+        }
+        return output;
+    };
+    bool keyReleased(const OIS::KeyEvent& arg) override
+    {
+        Kenshi::InputHandler& inputHandler = Kenshi::GetInputHandler();
+        // Game speed hooks - runs after game listener so we can overwrite values
+        std::string eventName = FindEventNameForKey(arg.key, inputHandler.keyBindingsStart);
+        bool output = kenshiKeyListener->keyReleased(arg);
+        // TODO pause?
+        if (eventName == "speed_1")
+        {
+            SetSpeed1();
+        }
+        else if (eventName == "speed_2")
+        {
+            // update on release
+            ForceWriteSpeed();
+        }
+        else if (eventName == "speed_3")
+        {
+            // update on release
+            ForceWriteSpeed();
+        }
+        return output;
+    };
+private:
+    // Games key listener
+    OIS::KeyListener* kenshiKeyListener;
+};
+
+std::shared_ptr<KeyboardHook> keyboardHook;
+
+void increaseSpeed(MyGUI::WidgetPtr _sender)
+{
+    SetSpeed3();
+}
+
+void decreaseSpeed(MyGUI::WidgetPtr _sender)
+{
+    SetSpeed2();
+}
+
+void playButtonHook(MyGUI::WidgetPtr _sender)
+{
+    SetSpeed1();
 }
 
 void WaitForInGame()
@@ -653,6 +801,14 @@ void dllmain()
         speedButton3->eventMouseButtonClick += MyGUI::newDelegate(decreaseSpeed);
         speedButton4->eventMouseButtonClick += MyGUI::newDelegate(increaseSpeed);
         //MessageBoxA(0, "Delegated.", "Debug", MB_OK);
+
+        // Keyboard hooks
+        if (!keyboardHook)
+        {
+            Kenshi::InputHandler& inputHandler = Kenshi::GetInputHandler();
+            keyboardHook = std::make_shared<KeyboardHook>(inputHandler.keyboardInput->getEventCallback());
+            inputHandler.keyboardInput->setEventCallback(keyboardHook.get());
+        }
     }
     catch (MyGUI::Exception e)
     {
