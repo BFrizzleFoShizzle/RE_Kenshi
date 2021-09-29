@@ -1,0 +1,6 @@
+
+
+namespace FSHook
+{
+	void Init();
+}

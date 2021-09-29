@@ -18,6 +18,7 @@
 #include "kenshi/GameWorld.h"
 #include "Kenshi/KeyBind.h"
 
+#include "FSHook.h"
 #include "HeightmapHook.h"
 #include "Debug.h"
 #include "Settings.h"
@@ -748,6 +749,7 @@ void GUIUpdate(float timeDelta)
 
 void dllmain()
 {
+    FSHook::Init();
     Settings::Init();
     HeightmapHook::Preload();
 

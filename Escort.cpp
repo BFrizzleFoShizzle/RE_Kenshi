@@ -189,6 +189,57 @@ void Escort::PushRetHookASM(void* sourceAddr, void* destAddr, size_t replacedByt
 	NOP(sourceBytePtr + hookSize, replacedBytes - hookSize);
 }
 
+void* Escort::AllocateRWXNear(void* targetAddr, size_t allocSize)
+{
+	// scan up to 2GB before giving up
+	uint8_t* allocAddr = (uint8_t*)targetAddr;
+	for (int i = 0; ptrdiff_t(allocAddr - (uint8_t*)targetAddr) < 0x7F0000; ++i)
+	{
+		MEMORY_BASIC_INFORMATION output;
+		size_t written = VirtualQuery((uint8_t*)allocAddr, &output, sizeof(MEMORY_BASIC_INFORMATION));
+		if (written == 0)
+		{
+			DebugLog("AllocateRWXNear: 0 written");
+			return nullptr;
+		}
+		else if (output.RegionSize == 0)
+		{
+			DebugLog("AllocateRWXNear: size 0");
+			return nullptr;
+		}
+		else if (output.State == MEM_FREE && output.RegionSize > allocSize)
+		{
+			void* allocLocation = output.AllocationBase;
+			// Edge case - if we're already in an allocable block, closest address is the target address
+			/*
+			if (allocLocation < targetAddr)
+				allocLocation = targetAddr;
+			*/
+			// found free page, try and alloc
+			void* alloc = (uint8_t*)VirtualAlloc(allocLocation, allocSize, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+			if (alloc == NULL)
+			{
+				std::stringstream str;
+				str << std::hex << "Failed RWX alloc at: " << allocLocation << ", continuing...";
+				DebugLog(str.str());
+			}
+			else
+			{
+				// success
+				return alloc;
+			}
+		}
+		// HACK
+		if (i > 100)
+			break;
+
+		allocAddr = (uint8_t*)output.BaseAddress + output.RegionSize;
+	}
+
+	ErrorLog("Near RWX alloc failed!");
+	return nullptr;
+}
+
 
 void Escort::PushRAX(std::vector<uint8_t>& bytes)
 {
@@ -213,6 +264,42 @@ void Escort::CallRAX(std::vector<uint8_t>& bytes)
 	bytes.push_back(0xd0);
 }
 
+// rel call: 
+// call +0x12345678
+// Offset = 0x12345673 (-5 from instruction size)
+// 0xE8 0x73 0x56 0x34 0x12
+void Escort::CallRel(std::vector<uint8_t>& bytes, int32_t offset)
+{
+	// Bitshift of signed int is technically implementation-dependant
+	// so we convert to uint. Pretty sure the C++ standard guarantees 
+	// this will work
+	// Currently untested for negative numbers, but theoretically works
+	uint32_t offsetUint = offset;
+	// subtract instruction length
+	offsetUint -= 5;
+	bytes.push_back(0xE8);
+	bytes.push_back(offsetUint & 0xFF);
+	bytes.push_back((offsetUint >> 8) & 0xFF);
+	bytes.push_back((offsetUint >> 16) & 0xFF);
+	bytes.push_back(offsetUint >> 24);
+}
+
+// rel jmp:
+// jmp +0x12345678
+// Offset = 0x12345673 (-5 from instruction size)
+// 0xE9 0x73 0x56 0x34 0x12
+void Escort::JmpRel(std::vector<uint8_t>& bytes, int32_t offset)
+{
+	// subtract instruction length
+	offset -= 5;
+	// Same as CallRel
+	uint32_t offsetUint = offset;
+	bytes.push_back(0xE9);
+	bytes.push_back(offsetUint & 0xFF);
+	bytes.push_back((offsetUint >> 8) & 0xFF);
+	bytes.push_back((offsetUint >> 16) & 0xFF);
+	bytes.push_back(offsetUint >> 24);
+}
 void Escort::NOP(void* codeAddr, size_t replacedBytes)
 {
 	memset(codeAddr, 0x90, replacedBytes);
