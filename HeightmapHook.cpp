@@ -238,14 +238,14 @@ void HeightmapHook::DisableHeightmapHooks()
 	// protected: float __cdecl Terrain::getHeight(class Ogre::Vector3 const & __ptr64,int) __ptr64
 	void* Terrain_getHeightPtr = Escort::GetFuncAddress("Plugin_Terrain_x64.dll", "?getHeight@Terrain@@IEAAMAEBVVector3@Ogre@@H@Z");
 	// Restore backup
-	Escort::WriteProtected(Terrain_getHeightPtr, Terrain_getHeightOld, 15);
+	Escort::WriteProtected(Terrain_getHeightOld, Terrain_getHeightPtr, 15);
 
 
 	// mangled symbol for Terrain::getRawData()
 	// public: unsigned __int64 __cdecl Terrain::getRawData(int,int,int,int,char * __ptr64)const __ptr64
 	void* Terrain_getRawDataPtr = Escort::GetFuncAddress("Plugin_Terrain_x64.dll", "?getRawData@Terrain@@QEBA_KHHHHPEAD@Z");
 	// Restore backup
-	Escort::WriteProtected(Terrain_getRawDataPtr, Terrain_getRawDataOld, 15);
+	Escort::WriteProtected(Terrain_getRawDataOld, Terrain_getRawDataPtr, 15);
 
 	hooksInstalled = false;
 

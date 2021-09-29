@@ -16,10 +16,10 @@ void* Escort::GetFuncAddress(std::string moduleName, std::string functionName)
 	return GetProcAddress(hMod, functionName.c_str());
 }
 
-void Escort::WriteProtected(void* sourceAddr, void* destAddr, size_t count)
+void Escort::WriteProtected(void* destAddr, void* sourceAddr, size_t count)
 {
 	DWORD oldProtect;
-	bool success = VirtualProtect(sourceAddr, count, PAGE_EXECUTE_READWRITE, &oldProtect) == 0;
+	bool success = VirtualProtect(destAddr, count, PAGE_EXECUTE_READWRITE, &oldProtect) == 0;
 	if (!success)
 	{
 		DWORD error = GetLastError();

@@ -18,6 +18,6 @@ namespace Escort
 	void PopRAX(std::vector<uint8_t>& bytes);
 	void MovAbsRAX(void* value, std::vector<uint8_t>& bytes);
 	void CallRAX(std::vector<uint8_t>& bytes);
-	void WriteProtected(void* sourceAddr, void* destAddr, size_t count);
+	void WriteProtected(void* destAddr, void* sourceAddr, size_t count);
 	void* GetFuncAddress(std::string moduleName, std::string functionName);
 }
