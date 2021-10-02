@@ -7,6 +7,14 @@
 
 #include "Debug.h"
 
+// internal functions
+namespace Escort
+{
+	// Returns true if we can do a relative jmp between
+	inline bool IsNear(void* ptr1, void* ptr2);
+	void* AllocateRWXPageNear(void* targetAddr, size_t allocSize);
+	size_t GetPageSize(void* ptr);
+}
 
 void* Escort::GetFuncAddress(std::string moduleName, std::string functionName)
 {
@@ -189,14 +197,68 @@ void Escort::PushRetHookASM(void* sourceAddr, void* destAddr, size_t replacedByt
 	NOP(sourceBytePtr + hookSize, replacedBytes - hookSize);
 }
 
-void* Escort::AllocateRWXNear(void* targetAddr, size_t allocSize)
+// Returns true if we can do a relative jmp between
+inline bool Escort::IsNear(void* ptr1, void* ptr2)
 {
+	return abs(int64_t((uint8_t*)ptr1 - (uint8_t*)ptr2)) < 0x7F000000;
+}
+
+// Internal function for 
+void* Escort::AllocateRWXPageNear(void* targetAddr, size_t allocSize)
+{
+	/*
+	SetLastError(0);
+
+	// DEBUG CODE REMOVE ME
+	SYSTEM_INFO sysInfo;
+	GetSystemInfo(&sysInfo);
+	std::stringstream outStr;
+	outStr << std::hex << "Max. addr: " << sysInfo.lpMaximumApplicationAddress;
+	outStr << std::hex << "Min. addr: " << sysInfo.lpMinimumApplicationAddress;
+	outStr << std::hex << "Allocation granularity: " << sysInfo.dwAllocationGranularity;
+	outStr << std::hex << "Target addr: " << targetAddr;
+	DebugLog(outStr.str());
+	*/
 	// scan up to 2GB before giving up
 	uint8_t* allocAddr = (uint8_t*)targetAddr;
-	for (int i = 0; ptrdiff_t(allocAddr - (uint8_t*)targetAddr) < 0x7F0000; ++i)
+	for (int i = 0; IsNear(allocAddr, targetAddr); ++i)
 	{
 		MEMORY_BASIC_INFORMATION output;
-		size_t written = VirtualQuery((uint8_t*)allocAddr, &output, sizeof(MEMORY_BASIC_INFORMATION));
+		size_t written = VirtualQuery(allocAddr, &output, sizeof(MEMORY_BASIC_INFORMATION));
+
+		// Let me tell you the tale of my people
+		// So, windows allows you to query memory as 4KB pages
+		// However, under the hood, memory is reserved/allocated in 64KB chunks
+		// In this code block, we have scanned memory for a 4KB page that is marked as "free"
+		// to quote their docs: 
+		// "Indicates free pages not accessible to the calling process and available to be allocated"
+		// So, you'd think you'd be able to call VirtualAlloc and allocate that page, as it's marked
+		// as free, and the docs say pages marked as free can be allocated.
+		// You'd be WRONG. Why, you ask?
+		// Depending on how the 64KB block is set up, you may have regions marked as free that cannot be allocated.
+		// Now, you'd think there'd be an easy solution to this. Surely if we keep scanning for free pages,
+		// we should find a 4KB page in a 64KB block that we can allocate in?
+		// Oh, how naive. 
+		// I, too, was once a sweet summer child.
+		// Microsoft, in all there wisdom, decided that VirtualQuery should report any continuous blocks
+		// of 4KB pages with identical attribures as a single item.
+		// Did you catch the issue?
+		// Let's say there's a page with 60KB allocated, so there's a single 4KB page at the end of it
+		// marked as free. That last page cannot be allocated because god knows why.
+		// The entire next 64KB of pages after that free page CAN be allocated as it's in a different
+		// 64KB block.
+		// But VirtualQuery WON'T give you a pointer to the 64KB of ACTUALLY ALLOCATEABLE MEMORY.
+		// It'll ONLY give you the pointer to the start of the free block, the 4KB of memory YOU ARE NOT ABLE TO ALLOCATE.
+		// WHAT IN THE HOLY FUCK.
+		// So, we have to take the pointer we get out of VirtualQuery and round up to the next 64KB
+		// WHY IN GODS NAME IS NONE OF THIS IN THE DOCS FOR VirutalAlloc AND VirtualQuery?!?
+
+		uint8_t* allocateTargetAddress = (uint8_t*)output.BaseAddress;
+		size_t remainder = (intptr_t)output.BaseAddress % 0x10000;
+
+		if (remainder != 0)
+			allocateTargetAddress += 0x10000 - remainder;
+
 		if (written == 0)
 		{
 			DebugLog("AllocateRWXNear: 0 written");
@@ -207,30 +269,62 @@ void* Escort::AllocateRWXNear(void* targetAddr, size_t allocSize)
 			DebugLog("AllocateRWXNear: size 0");
 			return nullptr;
 		}
-		else if (output.State == MEM_FREE && output.RegionSize > allocSize)
+		else if (output.State == MEM_FREE
+			&& allocateTargetAddress + allocSize < (uint8_t*)output.BaseAddress + output.RegionSize
+			&& IsNear(allocateTargetAddress, targetAddr))
 		{
-			void* allocLocation = output.AllocationBase;
 			// Edge case - if we're already in an allocable block, closest address is the target address
 			/*
 			if (allocLocation < targetAddr)
 				allocLocation = targetAddr;
 			*/
 			// found free page, try and alloc
-			void* alloc = (uint8_t*)VirtualAlloc(allocLocation, allocSize, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+			void* alloc = (uint8_t*)VirtualAlloc(allocateTargetAddress, allocSize, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE);
 			if (alloc == NULL)
 			{
 				std::stringstream str;
-				str << std::hex << "Failed RWX alloc at: " << allocLocation << ", continuing...";
+				str << std::hex << "Failed RWX alloc at: " << allocateTargetAddress << ", continuing...";
 				DebugLog(str.str());
+				DebugLog(GetLastErrorAsString());
 			}
 			else
 			{
+				/*
+				std::stringstream str;
+				str << "Offset: " << int64_t(allocAddr - (uint8_t*)targetAddr);
+				str << " Offset2: " << int64_t((uint8_t*)allocateTargetAddress - (uint8_t*)targetAddr);
+				str << "\nOffset3: " << int64_t((uint8_t*)alloc - (uint8_t*)targetAddr);
+				//str << " Alloc addr: " << output.BaseAddress;
+				str << " Size: " << output.RegionSize;
+				str << " State: " << output.State;
+				str << " Type: " << output.Type;
+				DebugLog(str.str());
+				*/
 				// success
 				return alloc;
 			}
 		}
+
+		
+		/*
+		if (allocAddr != output.BaseAddress)
+			DebugLog("Addresses didn't line up");
+		
+		std::stringstream str;
+		str << std::hex << "Offset: " << ptrdiff_t(allocAddr - (uint8_t*)targetAddr);
+		str << " Alloc base: " << output.AllocationBase;
+		str << " Base addr: " << output.BaseAddress;
+		str << " Size: " << output.RegionSize;
+		str << " State: " << output.State;
+		str << " Type: " << output.Type;
+		DebugLog(str.str());
+		*/
+
 		// HACK
 		if (i > 100)
+			break;
+		
+		if ((uint8_t*)output.BaseAddress + output.RegionSize == 0)
 			break;
 
 		allocAddr = (uint8_t*)output.BaseAddress + output.RegionSize;
@@ -240,6 +334,90 @@ void* Escort::AllocateRWXNear(void* targetAddr, size_t allocSize)
 	return nullptr;
 }
 
+size_t Escort::GetPageSize(void* ptr)
+{
+	MEMORY_BASIC_INFORMATION output;
+	size_t written = VirtualQuery((uint8_t*)ptr, &output, sizeof(MEMORY_BASIC_INFORMATION));
+	if (written == 0)
+		return 0;
+	return output.RegionSize;
+}
+
+// Shitty memory "heap" (it's not a heap)
+// No freeing/garbage collection, alignment is done through skipping bytes
+class RWXPage
+{
+public:
+	RWXPage(void* base, size_t allocatedSize)
+		: base((uint8_t*)base), allocatedSize(allocatedSize), nextOffset(0)
+	{
+
+	}
+	uint8_t* GetNextOffset(bool align = false)
+	{
+		if(!align)
+			return &base[nextOffset];
+		else
+			return &base[nextOffset + GetBytesToAlign()];
+	}
+	bool CanAllocate(size_t size, bool align = false)
+	{
+		if(!align)
+			return size < allocatedSize - nextOffset;
+		else
+			return CanAllocate(size + GetBytesToAlign());
+	}
+	uint8_t* Allocate(size_t size, bool align = false)
+	{
+		if (align)
+		{
+			// skip till aligned
+			Allocate(GetBytesToAlign());
+		}
+		// TODO error-checking
+		uint8_t* allocated = &base[nextOffset];
+		nextOffset += size;
+		return allocated;
+	}
+private:
+	// 64-bit/8-byte alignment
+	size_t GetBytesToAlign()
+	{
+		size_t remainder = nextOffset % 8;
+		if (remainder == 0)
+			return 0;
+		else
+			return 8 - remainder;
+	}
+	uint8_t* base;
+	ptrdiff_t nextOffset;
+	size_t allocatedSize;
+};
+// TODO locks/threading?
+std::vector<RWXPage> allocatedPages;
+
+void* Escort::AllocateRWXNear(void* targetAddr, size_t allocSize, bool align)
+{
+	// Check if we can alloc from existing pages
+	for (int i = 0; i < allocatedPages.size(); ++i)
+	{
+		if (IsNear(targetAddr, allocatedPages[i].GetNextOffset(align))
+			&& allocatedPages[i].CanAllocate(allocSize, align))
+		{
+			// Allocate from existing page
+			return allocatedPages[i].Allocate(allocSize, align);
+		}
+	}
+
+	// Need to allocate new page
+	void* rwxMemory = AllocateRWXPageNear(targetAddr, allocSize);
+	size_t newPageSize = GetPageSize(rwxMemory);
+
+	// TODO error-checking/threading
+	RWXPage newPage = RWXPage(rwxMemory, newPageSize);
+	allocatedPages.push_back(newPage);
+	return allocatedPages.back().Allocate(allocSize, align);
+}
 
 void Escort::PushRAX(std::vector<uint8_t>& bytes)
 {
@@ -300,6 +478,26 @@ void Escort::JmpRel(std::vector<uint8_t>& bytes, int32_t offset)
 	bytes.push_back((offsetUint >> 16) & 0xFF);
 	bytes.push_back(offsetUint >> 24);
 }
+
+// jmp to addr held in ptr
+// rex.W jmp FWORD PTR [0x12345678]
+// 0x48 0xFF 0x2C 0x25 0x78 0x56 0x32 0x12
+void Escort::JmpAbsPtr(std::vector<uint8_t>& bytes, int32_t offset)
+{
+	// subtract instruction length
+	offset -= 6;
+	// Same as CallRel
+	uint32_t offsetUint = offset;
+	//bytes.push_back(0x48);
+	bytes.push_back(0xFF);
+	//bytes.push_back(0x2C);
+	bytes.push_back(0x25);
+	bytes.push_back(offsetUint & 0xFF);
+	bytes.push_back((offsetUint >> 8) & 0xFF);
+	bytes.push_back((offsetUint >> 16) & 0xFF);
+	bytes.push_back(offsetUint >> 24);
+}
+
 void Escort::NOP(void* codeAddr, size_t replacedBytes)
 {
 	memset(codeAddr, 0x90, replacedBytes);

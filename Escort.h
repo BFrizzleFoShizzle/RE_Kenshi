@@ -12,12 +12,17 @@ namespace Escort
 	// in your code
 	template<typename T>
 	//  Must be at least 5 bytes
+	// Only works if code is <32 bits away
+	T* JmpReplaceHook32(void* sourceAddr, void* targetAddr, size_t replacedBytes);
+	template<typename T>
+	// Must be at least 6 bytes
+	// Uses an indirect jump, allocated in external page near code
 	T* JmpReplaceHook(void* sourceAddr, void* targetAddr, size_t replacedBytes);
 	// this messes up the stack so should only be used for naked/assembler calls
 	void CallRAXHook(void* sourceAddr, void* targetAddr, size_t replacedBytes);
 	void NOP(void* codeAddr, size_t replacedBytes);
 	// Allocate RWX page near address, useful for relative jmps
-	void* AllocateRWXNear(void* targetAddr, size_t allocSize);
+	void* AllocateRWXNear(void* targetAddr, size_t allocSize, bool align = false);
 	// ASM methods, mostly used internally
 	void PushRetHookASM(void* sourceAddr, void* targetAddr, size_t replacedBytes);
 	void Push64ASM(void* value, std::vector<uint8_t> &bytes);
@@ -29,6 +34,7 @@ namespace Escort
 	void CallRAX(std::vector<uint8_t>& bytes);
 	void CallRel(std::vector<uint8_t>& bytes, int32_t offset);
 	void JmpRel(std::vector<uint8_t>& bytes, int32_t offset);
+	void JmpAbsPtr(std::vector<uint8_t>& bytes, int32_t ptrOffset);
 	void WriteProtected(void* destAddr, void* sourceAddr, size_t count);
 	void* GetFuncAddress(std::string moduleName, std::string functionName);
 }
@@ -36,7 +42,7 @@ namespace Escort
 // template functions
 
 template<typename T>
-T* Escort::JmpReplaceHook(void* sourceAddr, void* targetAddr, size_t replacedBytes)
+T* Escort::JmpReplaceHook32(void* sourceAddr, void* targetAddr, size_t replacedBytes)
 {
 
 	uint8_t* sourceInstructionsPtr = (uint8_t*)sourceAddr;
@@ -87,4 +93,57 @@ T* Escort::JmpReplaceHook(void* sourceAddr, void* targetAddr, size_t replacedByt
 	
 	// return address of old backup
 	return (T*)rwxAlloc;
+}
+
+// Uses an indirect jmp /w jump table in newly-allocated page near code
+template<typename T>
+T* Escort::JmpReplaceHook(void* sourceAddr, void* targetAddr, size_t replacedBytes)
+{
+	uint8_t* sourceInstructionsPtr = (uint8_t*)sourceAddr;
+	uint8_t* sourceContinuePtr = sourceInstructionsPtr + replacedBytes;
+	int64_t hookStartRel = (int64_t)targetAddr - (int64_t)sourceInstructionsPtr;
+
+	// RWX-allocated - code for calling the old function
+	std::vector<uint8_t> rwxBytes;
+	// Offsets in RWX buffer
+	size_t hookPtrOffset = 0;
+
+	// allocate pointer to hook function for indirect jmp
+	void** hookIndJmpPtr = (void**)Escort::AllocateRWXNear(sourceAddr, sizeof(void*), true);
+	*hookIndJmpPtr = targetAddr;
+
+	// allocate ptr for hook
+	rwxBytes.resize(replacedBytes);
+
+	// write instructions copy
+	memcpy(&rwxBytes[0], sourceInstructionsPtr, replacedBytes);
+
+	// jmp to continue execution of old function (ptr filled in after alloc)
+	JmpRel(rwxBytes, 0);
+
+	uint8_t* continueAlloc = (uint8_t*)Escort::AllocateRWXNear(sourceAddr, rwxBytes.size());
+
+	// write continue pointer in jmp instruction
+	uint32_t continuePtrAddr = uint32_t(sourceContinuePtr - (continueAlloc + rwxBytes.size()));
+	rwxBytes[rwxBytes.size() - 1] = (continuePtrAddr >> 24) & 0xFF;
+	rwxBytes[rwxBytes.size() - 2] = (continuePtrAddr >> 16) & 0xFF;
+	rwxBytes[rwxBytes.size() - 3] = (continuePtrAddr >> 8) & 0xFF;
+	rwxBytes[rwxBytes.size() - 4] = continuePtrAddr & 0xFF;
+
+	// write bytes to alloc'd memory
+	memcpy(continueAlloc, &rwxBytes[0], rwxBytes.size());
+
+	// bytes to overwrite the start of the function with
+	std::vector<uint8_t> hookBytes;
+	JmpAbsPtr(hookBytes, (int32_t)((uint8_t*)hookIndJmpPtr - sourceInstructionsPtr));
+
+	int64_t diff = int64_t(((uint8_t*)hookIndJmpPtr) - sourceInstructionsPtr);
+
+	// copy hook instructions 
+	Escort::WriteProtected(sourceAddr, &hookBytes[0], hookBytes.size());
+	//memcpy(sourceAddr, &hookBytes[0], hookBytes.size());
+	//Escort::WriteProtected(&continueAlloc[rwxBytes.size()], &hookBytes[0], hookBytes.size());
+
+	// return address of old backup
+	return (T*)continueAlloc;
 }
