@@ -141,8 +141,6 @@ T* Escort::JmpReplaceHook(void* sourceAddr, void* targetAddr, size_t replacedByt
 
 	// copy hook instructions 
 	Escort::WriteProtected(sourceAddr, &hookBytes[0], hookBytes.size());
-	//memcpy(sourceAddr, &hookBytes[0], hookBytes.size());
-	//Escort::WriteProtected(&continueAlloc[rwxBytes.size()], &hookBytes[0], hookBytes.size());
 
 	// return address of old backup
 	return (T*)continueAlloc;

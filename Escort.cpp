@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <array>
 #include <string>
+#include <map>
 
 #include "Debug.h"
 
@@ -206,19 +207,6 @@ inline bool Escort::IsNear(void* ptr1, void* ptr2)
 // Internal function for 
 void* Escort::AllocateRWXPageNear(void* targetAddr, size_t allocSize)
 {
-	/*
-	SetLastError(0);
-
-	// DEBUG CODE REMOVE ME
-	SYSTEM_INFO sysInfo;
-	GetSystemInfo(&sysInfo);
-	std::stringstream outStr;
-	outStr << std::hex << "Max. addr: " << sysInfo.lpMaximumApplicationAddress;
-	outStr << std::hex << "Min. addr: " << sysInfo.lpMinimumApplicationAddress;
-	outStr << std::hex << "Allocation granularity: " << sysInfo.dwAllocationGranularity;
-	outStr << std::hex << "Target addr: " << targetAddr;
-	DebugLog(outStr.str());
-	*/
 	// scan up to 2GB before giving up
 	uint8_t* allocAddr = (uint8_t*)targetAddr;
 	for (int i = 0; IsNear(allocAddr, targetAddr); ++i)
@@ -285,40 +273,13 @@ void* Escort::AllocateRWXPageNear(void* targetAddr, size_t allocSize)
 				std::stringstream str;
 				str << std::hex << "Failed RWX alloc at: " << allocateTargetAddress << ", continuing...";
 				DebugLog(str.str());
-				DebugLog(GetLastErrorAsString());
 			}
 			else
 			{
-				/*
-				std::stringstream str;
-				str << "Offset: " << int64_t(allocAddr - (uint8_t*)targetAddr);
-				str << " Offset2: " << int64_t((uint8_t*)allocateTargetAddress - (uint8_t*)targetAddr);
-				str << "\nOffset3: " << int64_t((uint8_t*)alloc - (uint8_t*)targetAddr);
-				//str << " Alloc addr: " << output.BaseAddress;
-				str << " Size: " << output.RegionSize;
-				str << " State: " << output.State;
-				str << " Type: " << output.Type;
-				DebugLog(str.str());
-				*/
 				// success
 				return alloc;
 			}
 		}
-
-		
-		/*
-		if (allocAddr != output.BaseAddress)
-			DebugLog("Addresses didn't line up");
-		
-		std::stringstream str;
-		str << std::hex << "Offset: " << ptrdiff_t(allocAddr - (uint8_t*)targetAddr);
-		str << " Alloc base: " << output.AllocationBase;
-		str << " Base addr: " << output.BaseAddress;
-		str << " Size: " << output.RegionSize;
-		str << " State: " << output.State;
-		str << " Type: " << output.Type;
-		DebugLog(str.str());
-		*/
 
 		// HACK
 		if (i > 100)
