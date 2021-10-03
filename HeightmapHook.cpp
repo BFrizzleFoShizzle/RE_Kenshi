@@ -104,7 +104,7 @@ void HeightmapHook::Preload()
 		mode = CompressToolsLib::ImageMode::Preload;
 
 	DebugLog("Loading heightmap...");
-	heightmapHandle = CompressToolsLib::OpenImage("data/newland/land/fullmap.cif", mode);
+	heightmapHandle = CompressToolsLib::OpenImage(Settings::ResolvePath("data/newland/land/fullmap.cif").c_str(), mode);
 	DebugLog("Heightmap loaded!");
 }
 
@@ -255,7 +255,7 @@ void HeightmapHook::DisableHeightmapHooks()
 
 bool HeightmapHook::CompressedHeightmapFileExists()
 {
-	std::ifstream file("data/newland/land/fullmap.cif");
+	std::ifstream file(Settings::ResolvePath("data/newland/land/fullmap.cif"));
 	if (file.is_open())
 	{
 		file.close();

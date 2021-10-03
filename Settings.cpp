@@ -4,7 +4,12 @@
 #include <rapidjson/istreamwrapper.h>
 #include <rapidjson/ostreamwrapper.h>
 #include <rapidjson/prettywriter.h>
+#include <rapidjson/error/en.h>
 #include <fstream>
+
+#include "kenshi/Kenshi.h"
+#include "kenshi/GameWorld.h"
+#include "Kenshi/ModInfo.h"
 
 #include "Debug.h"
 
@@ -29,6 +34,7 @@ rapidjson::Document GenerateDefaultSettings()
     defaultSettings.AddMember("UseCompressedHeightmap", true, defaultSettings.GetAllocator());
     defaultSettings.AddMember("PreloadHeightmap", false, defaultSettings.GetAllocator());
     defaultSettings.AddMember("AttackSlots", -1, defaultSettings.GetAllocator());
+    defaultSettings.AddMember("LogFileIO", false, defaultSettings.GetAllocator());
     rapidjson::Value gameSpeeds(rapidjson::kArrayType);
     std::vector<float> defaultGameSpeeds = GetDefaultGameSpeeds();
     for(int i=0;i<defaultGameSpeeds.size(); ++i)
@@ -71,6 +77,99 @@ void Settings::Init()
 
     // TODO REMOVE AFTER TESTING
     SaveSettings();
+}
+
+std::unordered_map<std::string, std::string> fileOverrides;
+
+// crappy system for inserting mod folder root dynamically
+std::string ParsePath(std::string path)
+{
+    size_t namePos = path.find("$(modroot \"");
+    if (namePos != std::string::npos)
+    {
+        size_t nameEnd = path.find("\")");
+        if (nameEnd != std::string::npos)
+        {
+            size_t nameStart = namePos + 11;
+            std::string modName = path.substr(nameStart, nameEnd - nameStart);
+
+            // find mod
+            Kenshi::lektor<Kenshi::ModInfo*> &loadedMods = Kenshi::GetGameWorld().loadedMods;
+            for (int i = 0; i < loadedMods.size(); ++i)
+            {
+                if (loadedMods[i]->modName == modName)
+                {
+                    // mod found, insert into path
+                    return path.substr(0, namePos) + loadedMods[i]->fileDir + path.substr(nameEnd + 2);
+                }
+            }
+            ErrorLog("Path override modroot not found: \"" + modName + "\"");
+        }
+    }
+    else if (path.find("$") != std::string::npos)
+    {
+        ErrorLog("Error parsing override path: \"" + path + "\"");
+    }
+
+    return path;
+}
+
+// Load settings from mods
+void Settings::LoadModOverrides()
+{
+    Kenshi::lektor<Kenshi::ModInfo*>& loadedMods = Kenshi::GetGameWorld().loadedMods;
+    for (int i = 0; i < loadedMods.size(); ++i)
+    {
+        // attempt to load RE_Kenshi settings from mod dir
+        std::string settingsPath = loadedMods[i]->fileDir + "\\RE_Kenshi.json";
+        std::ifstream settingsFile(settingsPath);
+
+        // skip if settings file doesn't exist
+        if (!settingsFile.is_open())
+            continue;
+
+        DebugLog("Loading mod overrides from \"" + loadedMods[i]->modName + "\"...");
+        rapidjson::IStreamWrapper isw(settingsFile);
+        rapidjson::Document modDOM;
+        if (modDOM.ParseStream(isw).HasParseError())
+            ErrorLog("Error parsing \"" + settingsPath + "\" : " + rapidjson::GetParseError_En(modDOM.GetParseError()));
+
+        // parse output
+        if (modDOM.HasMember("FileRebinds") && modDOM["FileRebinds"].IsObject())
+        {
+            const rapidjson::Value& itemn = modDOM["FileRebinds"];
+            for (rapidjson::Value::ConstMemberIterator itr = itemn.MemberBegin();
+                itr != itemn.MemberEnd(); ++itr)
+            {
+                if (itr->value.IsString())
+                {
+                    std::string origPath = itr->name.GetString();
+                    std::string newPath = ParsePath(itr->value.GetString());
+
+                    // Note: mods lower (?) in the mod order get precedence
+                    fileOverrides[origPath] = newPath;
+                    DebugLog("Override: \"" + origPath + "\" -> \"" + newPath + "\"");
+                }
+            }
+        }
+    }
+}
+
+const std::unordered_map<std::string, std::string>* Settings::GetFileOverrides()
+{
+    return &fileOverrides;
+}
+
+std::string Settings::ResolvePath(std::string path)
+{
+    std::unordered_map<std::string, std::string>::const_iterator fileOverride = Settings::GetFileOverrides()->find(path);
+
+    // match, return override
+    if (fileOverride != Settings::GetFileOverrides()->end())
+        return fileOverride->second;
+
+    // no match
+    return path;
 }
 
 bool Settings::UseHeightmapCompression()
@@ -152,4 +251,20 @@ void Settings::SetGameSpeeds(std::vector<float> speeds)
         settingsDOM.AddMember("GameSpeeds", gameSpeeds, settingsDOM.GetAllocator());
 
     SaveSettings();
+}
+
+void Settings::SetLogFileIO(bool value)
+{
+    if (!settingsDOM.HasMember("LogFileIO"))
+        settingsDOM.AddMember("LogFileIO", value, settingsDOM.GetAllocator());
+    else
+        settingsDOM["LogFileIO"] = value;
+
+    SaveSettings();
+}
+
+bool Settings::GetLogFileIO()
+{
+    rapidjson::Value& val = settingsDOM["LogFileIO"];
+    return val.GetBool();
 }

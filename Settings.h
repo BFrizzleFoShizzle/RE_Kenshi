@@ -1,9 +1,10 @@
 #include <vector>
-
+#include <unordered_map>
 
 namespace Settings
 {
 	void Init();
+	void LoadModOverrides();
 
 	void SetUseHeightmapCompression(bool value);
 	bool UseHeightmapCompression();
@@ -12,6 +13,11 @@ namespace Settings
 	bool PreloadHeightmap();
 	int GetAttackSlots();
 	void SetAttackSlots(int num);
+	void SetLogFileIO(bool value);
+	bool GetLogFileIO();
+
+	const std::unordered_map<std::string, std::string> *GetFileOverrides();
+	std::string ResolvePath(std::string path);
 
 	const std::vector<float> GetGameSpeeds();
 	void SetGameSpeeds(std::vector<float> gameSpeeds);

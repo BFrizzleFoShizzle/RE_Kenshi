@@ -22,6 +22,7 @@
 #include "HeightmapHook.h"
 #include "Debug.h"
 #include "Settings.h"
+#include "Escort.h"
 
 #include <ogre/OgrePrerequisites.h>
 #include "OISKeyboard.h"
@@ -537,6 +538,15 @@ void AttackSlotScroll(MyGUI::ScrollBar* scrollBar, size_t newPos)
     }
 }
 
+void ToggleLogFileIO(MyGUI::WidgetPtr sender)
+{
+    MyGUI::ButtonPtr button = sender->castType<MyGUI::Button>();
+    bool logFileIO = button->getStateSelected();
+
+    // Update settings + hooks
+    Settings::SetLogFileIO(logFileIO);
+}
+
 void InitGUI()
 {
     DebugLog("Main menu loaded.");
@@ -558,6 +568,14 @@ void InitGUI()
     settingsView->setVisibleHScroll(false);
     int positionY = 2;
     settingsView->setCanvasSize(settingsView->getWidth(), settingsView->getHeight());
+
+    MyGUI::ButtonPtr logFileIO = settingsView->createWidget<MyGUI::Button>("Kenshi_TickButton1", 2, positionY, 500, 26, MyGUI::Align::Top | MyGUI::Align::Left, "LogFileIO");
+    logFileIO->setStateSelected(Settings::GetLogFileIO());
+    logFileIO->setCaption("Log file IO");
+    logFileIO->eventMouseButtonClick += MyGUI::newDelegate(TickButtonBehaviourClick);
+    logFileIO->eventMouseButtonClick += MyGUI::newDelegate(ToggleLogFileIO);
+    positionY += 30;
+
     if (!HeightmapHook::CompressedHeightmapFileExists())
     {
         MyGUI::TextBox* noCompressedHeightmapLabel = settingsView->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 2, positionY, 500, 30, MyGUI::Align::Top | MyGUI::Align::Left, "NoCompressedHeightmapLabel");
@@ -747,8 +765,31 @@ void GUIUpdate(float timeDelta)
     }
 }
 
+// I haven't reverse-engineered this function, it probably does more than just load mods
+// but we hook it for sync'ing with the mod loader
+void (*LoadMods_orig)(Kenshi::GameWorld* gameWorld);
+bool setupMods = false;
+void LoadMods_hook(Kenshi::GameWorld* gameWorld)
+{
+    LoadMods_orig(gameWorld);
+
+    if (!setupMods)
+    {
+        DebugLog("Load mod hook");
+        // Must be called AFTER mod load
+        Settings::LoadModOverrides();
+        setupMods = true;
+    }
+
+    return;
+}
+
+
 void dllmain()
 {
+    // hook for loading mod config - has to be done early so we can override certain early I/O operations
+    LoadMods_orig = Escort::JmpReplaceHook<void(Kenshi::GameWorld*)>(Kenshi::GetModLoadFunction(), LoadMods_hook, 6);
+
     FSHook::Init();
     Settings::Init();
     HeightmapHook::Preload();
