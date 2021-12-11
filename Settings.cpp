@@ -48,6 +48,20 @@ rapidjson::Document GenerateDefaultSettings()
     return defaultSettings;
 }
 
+void AddDefaultSettings(rapidjson::Document &document)
+{
+    rapidjson::Document defaultSettings = GenerateDefaultSettings();
+
+    // add missing properties
+    for (rapidjson::Document::MemberIterator srcIt = defaultSettings.MemberBegin(); srcIt != defaultSettings.MemberEnd(); ++srcIt)
+    {
+        if (!document.HasMember(srcIt->name))
+        {
+            document.AddMember(srcIt->name, srcIt->value, document.GetAllocator());
+        }
+    }
+}
+
 void SaveSettings()
 {
     DebugLog("Saving settings...");
@@ -78,6 +92,9 @@ void Settings::Init()
         DebugLog("Loading settings file...");
         rapidjson::IStreamWrapper isw(settingsFile);
         settingsDOM.ParseStream(isw);
+
+        // Add missing settings
+        AddDefaultSettings(settingsDOM);
     }
 
     // TODO REMOVE AFTER TESTING
