@@ -15,3 +15,6 @@ Open "Plugins_x64.cfg" in your kenshi install directory and add the line:
 after:  
 `Plugin=Plugin_Terrain_x64`  
 Run Kenshi and the mod will be loaded automatically.  
+
+# License
+This project is currently GPLv3, but I may downgrade it to LGPL in the future. No promises though.
