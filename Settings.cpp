@@ -7,6 +7,8 @@
 #include <rapidjson/error/en.h>
 #include <fstream>
 
+#include "WinHttpClient.h"
+
 #include "kenshi/Kenshi.h"
 #include "kenshi/GameWorld.h"
 #include "Kenshi/ModInfo.h"
@@ -14,6 +16,9 @@
 #include "Debug.h"
 
 rapidjson::Document settingsDOM;
+
+std::string version = "0.2.2";
+const bool isPrerelease = true;
 
 std::vector<float> GetDefaultGameSpeeds()
 {
@@ -77,6 +82,12 @@ void Settings::Init()
 
     // TODO REMOVE AFTER TESTING
     SaveSettings();
+
+    if (!IsCurrentVersion())
+    {
+        DebugLog("Opening browser...");
+        system("start https://www.nexusmods.com/kenshi/mods/847?tab=files");
+    }
 }
 
 std::unordered_map<std::string, std::string> fileOverrides;
@@ -267,4 +278,82 @@ bool Settings::GetLogFileIO()
 {
     rapidjson::Value& val = settingsDOM["LogFileIO"];
     return val.GetBool();
+}
+
+std::string Settings::GetCurrentVersion()
+{
+    return version;
+}
+
+std::string Settings::GetDisplayVersion()
+{
+    return GetCurrentVersion() + (isPrerelease ? " prerelease" : "");
+}
+
+std::vector<int> ExtractVersion(std::string version)
+{
+    std::vector<int> versionNumbers;
+
+    if (version[0] == 'v')
+        version = version.substr(1);
+
+    std::stringstream versionStream(version);
+    while (versionStream.good())
+    {
+        int versionNum = -1;
+        versionStream >> versionNum;
+
+        if (versionStream.peek() == '.')
+            versionStream.ignore();
+
+        versionNumbers.push_back(versionNum);
+    }
+
+    return versionNumbers;
+}
+
+// is versionStr1 newer than versionStr2
+bool IsVersionNewer(std::string versionStr1, std::string versionStr2)
+{
+    std::vector<int> version1 = ExtractVersion(versionStr1);
+    std::vector<int> version2 = ExtractVersion(versionStr2);
+
+    int count = min(version1.size(), version2.size());
+
+    for (int i = 0; i < count; ++i)
+    {
+        if (version1[i] > version2[i])
+            return true;
+        if (version1[i] < version2[i])
+            return false;
+    }
+
+    // versions are equal
+    return false;
+}
+
+// get version number of latest release on GitHub
+bool Settings::IsCurrentVersion()
+{
+    // get info of latest release on GitHub
+    WinHttpClient client(L"https://api.github.com/repos/BFrizzleFoShizzle/RE_Kenshi/releases/latest");
+    client.SendHttpRequest();
+    // convert to regular string
+    std::wstring responseWstr = client.GetHttpResponse();
+    std::string responseStr(responseWstr.begin(), responseWstr.end());
+    // parse json
+    rapidjson::Document document;
+    document.Parse(responseStr.c_str());
+    // "tag_name" is version of release
+    // "vx.x.x"
+    std::string remoteVersion = document["tag_name"].GetString();
+    DebugLog("Latest public release: " + remoteVersion);
+
+    // parse + compare version number strings
+    bool isRemoteNewer = IsVersionNewer(remoteVersion, GetCurrentVersion());
+    if (!isRemoteNewer)
+        DebugLog("We are up to date.");
+    else
+        DebugLog("Update is available from " + GetCurrentVersion() + " to " + remoteVersion);
+    return !isRemoteNewer;
 }
