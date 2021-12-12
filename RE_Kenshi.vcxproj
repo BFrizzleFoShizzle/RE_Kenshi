@@ -79,12 +79,12 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
     <LibraryPath>$(SolutionDir)$(Platform)\$(Configuration)\;$(LibraryPath);$(VSInstallDir);$(VSInstallDir)lib\amd64</LibraryPath>
-    <IncludePath>KenshiLib/Include;$(WindowsSdkDir)\include;$(VCInstallDir)include</IncludePath>
+    <IncludePath>KenshiLib/Include;$(VC_IncludePath);$(WindowsSDK_IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <LibraryPath>$(SolutionDir)$(Platform)\$(Configuration)\;$(LibraryPath)</LibraryPath>
-    <IncludePath>KenshiLib/Include;$(VC_IncludePath);$(WindowsSDK_IncludePath);$(IncludePath)</IncludePath>
+    <IncludePath>CompressTools;KenshiLib/Include/ois;KenshiLib/Include;$(VC_IncludePath);$(WindowsSDK_IncludePath);rapidjson\include;3rdparty/;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -176,12 +176,16 @@
     <ClCompile Include="FSHook.cpp" />
     <ClCompile Include="HeightmapHook.cpp" />
     <ClCompile Include="Settings.cpp" />
+    <ClCompile Include="Version.cpp" />
+    <ClCompile Include="WinHttpClient.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Escort.h" />
     <ClInclude Include="FSHook.h" />
     <ClInclude Include="HeightmapHook.h" />
     <ClInclude Include="Settings.h" />
+    <ClInclude Include="Version.h" />
+    <ClInclude Include="WinHttpClient.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
