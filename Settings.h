@@ -15,13 +15,8 @@ namespace Settings
 	void SetAttackSlots(int num);
 	void SetLogFileIO(bool value);
 	bool GetLogFileIO();
-
-	// May block for a while
-	bool IsCurrentVersion();
-	// "x.x.x"
-	std::string GetCurrentVersion();
-	// version text to display in main menu
-	std::string GetDisplayVersion();
+	bool GetCheckUpdates();
+	void SetCheckUpdates(bool value);
 
 	const std::unordered_map<std::string, std::string> *GetFileOverrides();
 	std::string ResolvePath(std::string path);
