@@ -22,6 +22,7 @@
 #include "HeightmapHook.h"
 #include "Debug.h"
 #include "Settings.h"
+#include "Version.h"
 #include "Escort.h"
 
 #include <ogre/OgrePrerequisites.h>
@@ -33,8 +34,6 @@ MyGUI::TextBox* gameSpeedText = nullptr;
 
 int gameSpeedIdx = 0;
 
-
-const std::string MOD_VERSION = "0.2.0";
 
 // Game speed functions
 // "play"
@@ -547,6 +546,15 @@ void ToggleLogFileIO(MyGUI::WidgetPtr sender)
     Settings::SetLogFileIO(logFileIO);
 }
 
+void ToggleCheckUpdates(MyGUI::WidgetPtr sender)
+{
+    MyGUI::ButtonPtr button = sender->castType<MyGUI::Button>();
+    bool checkUpdates = button->getStateSelected();
+
+    // Update settings + hooks
+    Settings::SetCheckUpdates(checkUpdates);
+}
+
 void InitGUI()
 {
     DebugLog("Main menu loaded.");
@@ -568,6 +576,13 @@ void InitGUI()
     settingsView->setVisibleHScroll(false);
     int positionY = 2;
     settingsView->setCanvasSize(settingsView->getWidth(), settingsView->getHeight());
+
+    MyGUI::ButtonPtr checkUpdatesToggle = settingsView->createWidget<MyGUI::Button>("Kenshi_TickButton1", 2, positionY, 500, 26, MyGUI::Align::Top | MyGUI::Align::Left, "CheckUpdates");
+    checkUpdatesToggle->setStateSelected(Settings::GetCheckUpdates());
+    checkUpdatesToggle->setCaption("Automatically check for updates");
+    checkUpdatesToggle->eventMouseButtonClick += MyGUI::newDelegate(TickButtonBehaviourClick);
+    checkUpdatesToggle->eventMouseButtonClick += MyGUI::newDelegate(ToggleCheckUpdates);
+    positionY += 30;
 
     MyGUI::ButtonPtr logFileIO = settingsView->createWidget<MyGUI::Button>("Kenshi_TickButton1", 2, positionY, 500, 26, MyGUI::Align::Top | MyGUI::Align::Left, "LogFileIO");
     logFileIO->setStateSelected(Settings::GetLogFileIO());
@@ -661,7 +676,7 @@ void InitGUI()
     if (gameVersion.GetPlatform() != Kenshi::BinaryVersion::UNKNOWN)
     {
         DebugLog("Version supported.");
-        versionText->setCaption("RE_Kenshi " + MOD_VERSION + " - " + version);
+        versionText->setCaption("RE_Kenshi " + Version::GetDisplayVersion() + " - " + version);
     }
     else
     {
@@ -672,7 +687,7 @@ void InitGUI()
         DebugLog("Steam 1.0.51");
         DebugLog("RE_Kenshi initialization aborted!");
 
-        versionText->setCaption("RE_Kenshi " + MOD_VERSION + " (ERROR) - " + version);
+        versionText->setCaption("RE_Kenshi " + Version::GetDisplayVersion() + " (ERROR) - " + version);
         return;
     }
 }
@@ -792,6 +807,7 @@ void dllmain()
 
     FSHook::Init();
     Settings::Init();
+    Version::Init();
     HeightmapHook::Preload();
 
     WaitForMainMenu();
