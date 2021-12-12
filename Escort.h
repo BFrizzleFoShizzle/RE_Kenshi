@@ -2,6 +2,9 @@
 
 #include <vector>
 #include <stdint.h>
+#include <sstream>
+
+#include "Debug.h"
 
 namespace Escort
 {

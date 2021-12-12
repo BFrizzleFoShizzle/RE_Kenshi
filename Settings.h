@@ -13,6 +13,8 @@ namespace Settings
 	bool PreloadHeightmap();
 	int GetAttackSlots();
 	void SetAttackSlots(int num);
+	bool GetFixRNG();
+	void SetFixRNG(bool value);
 	void SetLogFileIO(bool value);
 	bool GetLogFileIO();
 	bool GetCheckUpdates();

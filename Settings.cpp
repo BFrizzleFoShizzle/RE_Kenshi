@@ -34,6 +34,7 @@ rapidjson::Document GenerateDefaultSettings()
     defaultSettings.AddMember("UseCompressedHeightmap", true, defaultSettings.GetAllocator());
     defaultSettings.AddMember("PreloadHeightmap", false, defaultSettings.GetAllocator());
     defaultSettings.AddMember("AttackSlots", -1, defaultSettings.GetAllocator());
+    defaultSettings.AddMember("FixRNG", true, defaultSettings.GetAllocator());
     defaultSettings.AddMember("LogFileIO", false, defaultSettings.GetAllocator());
     defaultSettings.AddMember("CheckUpdates", true, defaultSettings.GetAllocator());
     rapidjson::Value gameSpeeds(rapidjson::kArrayType);
