@@ -726,11 +726,86 @@ void InjectSettings()
     DebugLog("Injected settings button");
 }
 
+void ReHookTimeButtons()
+{
+    MyGUI::Gui* gui = MyGUI::Gui::getInstancePtr();
+    try
+    {
+        MyGUI::WidgetPtr timeMoneyPanel = Kenshi::FindWidget(gui->getEnumerator(), "TimeMoneyPanel");
+
+        // When the game recreates it's GUI, gameSpeedText gets totally messed up
+        // various calls on gameSpeedText succeed with sane values
+        // re-adding gameSpeedText to new nodes throws an exception
+        // gui->destroyWidget(gameSpeedText) throws an error
+        // as best I can tell, the game deallocates this without telling us, but not 100% sure
+        // so, I'm not going to deallocate it here as that may or may not lead to a double-free
+        // and an occasional memory leak is less bad than a double-free
+        
+        if (timeMoneyPanel == nullptr)
+            MessageBoxA(0, "TimeMoneyPanel not found.", "Debug", MB_OK);
+        MyGUI::WidgetPtr speedButton2 = Kenshi::FindWidget(gui->getEnumerator(), "TimeSpeedButton2");// ->castType<MyGUI::Button>();
+        if (speedButton2 == nullptr) {
+            MessageBoxA(0, "TimeSpeedButton2 not found.", "Debug", MB_OK);
+            return;
+        }
+        MyGUI::WidgetPtr speedButton3 = Kenshi::FindWidget(gui->getEnumerator(), "TimeSpeedButton3");// ->castType<MyGUI::Button>();
+        if (speedButton3 == nullptr) {
+            MessageBoxA(0, "TimeSpeedButton3 not found.", "Debug", MB_OK);
+            return;
+        }
+        MyGUI::WidgetPtr speedButton4 = Kenshi::FindWidget(gui->getEnumerator(), "TimeSpeedButton4");// ->castType<MyGUI::Button>();
+        if (speedButton4 == nullptr) {
+            MessageBoxA(0, "TimeSpeedButton4 not found.", "Debug", MB_OK);
+            return;
+        }
+
+        MyGUI::FloatCoord gameSpeedCoord = MyGUI::FloatCoord(0.0f, 0.522388f, 1.0f, 0.298507f);
+        gameSpeedText = timeMoneyPanel->createWidgetReal<MyGUI::TextBox>("Kenshi_TextboxStandardText", gameSpeedCoord, MyGUI::Align::Center, "GameSpeedText");
+        // HACK use same code as play button hook to display current in-game speed + current modified speed
+        playButtonHook(nullptr);
+        //gameSpeedText->setCaption("1");
+        gameSpeedText->setTextAlign(MyGUI::Align::Center);
+
+        //MessageBoxA(0, "Clearing...", "Debug", MB_OK);
+        speedButton3->eventMouseButtonClick.clear();
+        speedButton4->eventMouseButtonClick.clear();
+        //MessageBoxA(0, "Cleared.", "Debug", MB_OK);
+        speedButton2->eventMouseButtonClick += MyGUI::newDelegate(playButtonHook);
+        speedButton3->eventMouseButtonClick += MyGUI::newDelegate(decreaseSpeed);
+        speedButton4->eventMouseButtonClick += MyGUI::newDelegate(increaseSpeed);
+        //MessageBoxA(0, "Delegated.", "Debug", MB_OK);
+    }
+    catch (MyGUI::Exception e)
+    {
+        MessageBoxA(0, e.what(), "Debug - Error", MB_OK);
+
+    }
+    catch (std::exception e)
+    {
+        MessageBoxA(0, e.what(), "Debug - Error", MB_OK);
+    }
+}
+
 void GUIUpdate(float timeDelta)
 {
     MyGUI::Gui* gui = MyGUI::Gui::getInstancePtr();
     if (modMenuWindow == nullptr)
         InitGUI();
+
+    // HACK sometimes Kenshi re-generates it's UI and we have to re-inject our elements
+    // a nicer method would be to call "gameSpeedText->getParent() == nullptr", but
+    // I have a hunch Kenshi may have actually freed our gameSpeedText object,
+    // which would make that dangerous.
+    // C++03 is awful. Shared pointers would completely solve this problem.
+    MyGUI::WidgetPtr timeMoneyPanel = Kenshi::FindWidget(gui->getEnumerator(), "TimeMoneyPanel");
+    if (timeMoneyPanel != nullptr)
+    {
+        if (timeMoneyPanel->findWidget("GameSpeedText") == nullptr)
+        {
+            DebugLog("UI borked, re-generating...");
+            ReHookTimeButtons();
+        }
+    }
 
     // HACK button gets deleted when settings menu is closed
     if (gui->findWidget<MyGUI::Button>("ModSettingsOpen", false) == nullptr)
@@ -802,6 +877,8 @@ void LoadMods_hook(Kenshi::GameWorld* gameWorld)
 
 void dllmain()
 {
+    DebugLog("RE_Kenshi " + Version::GetDisplayVersion());
+
     Kenshi::BinaryVersion gameVersion = Kenshi::GetKenshiVersion();
 
     // TODO refactor these branches
@@ -841,61 +918,14 @@ void dllmain()
 
         DebugLog("In-game.");
 
-        try
+        ReHookTimeButtons();
+
+        // Keyboard hooks
+        if (!keyboardHook)
         {
-
-            MyGUI::WidgetPtr timeMoneyPanel = Kenshi::FindWidget(gui->getEnumerator(), "TimeMoneyPanel");
-            if (timeMoneyPanel == nullptr)
-                MessageBoxA(0, "TimeMoneyPanel not found.", "Debug", MB_OK);
-            MyGUI::WidgetPtr speedButton2 = Kenshi::FindWidget(gui->getEnumerator(), "TimeSpeedButton2");// ->castType<MyGUI::Button>();
-            if (speedButton2 == nullptr) {
-                MessageBoxA(0, "TimeSpeedButton2 not found.", "Debug", MB_OK);
-                return;
-            }
-            MyGUI::WidgetPtr speedButton3 = Kenshi::FindWidget(gui->getEnumerator(), "TimeSpeedButton3");// ->castType<MyGUI::Button>();
-            if (speedButton3 == nullptr) {
-                MessageBoxA(0, "TimeSpeedButton3 not found.", "Debug", MB_OK);
-                return;
-            }
-            MyGUI::WidgetPtr speedButton4 = Kenshi::FindWidget(gui->getEnumerator(), "TimeSpeedButton4");// ->castType<MyGUI::Button>();
-            if (speedButton4 == nullptr) {
-                MessageBoxA(0, "TimeSpeedButton4 not found.", "Debug", MB_OK);
-                return;
-            }
-
-            MyGUI::FloatCoord gameSpeedCoord = MyGUI::FloatCoord(0.0f, 0.522388f, 1.0f, 0.298507f);
-            gameSpeedText = timeMoneyPanel->createWidgetReal<MyGUI::TextBox>("Kenshi_TextboxStandardText", gameSpeedCoord, MyGUI::Align::Center, "GameSpeedText");
-            // HACK use same code as play button hook to display current in-game speed + current modified speed
-            playButtonHook(nullptr);
-            //gameSpeedText->setCaption("1");
-            gameSpeedText->setTextAlign(MyGUI::Align::Center);
-
-            //MessageBoxA(0, "Clearing...", "Debug", MB_OK);
-            speedButton3->eventMouseButtonClick.clear();
-            speedButton4->eventMouseButtonClick.clear();
-            //MessageBoxA(0, "Cleared.", "Debug", MB_OK);
-            speedButton2->eventMouseButtonClick += MyGUI::newDelegate(playButtonHook);
-            speedButton3->eventMouseButtonClick += MyGUI::newDelegate(decreaseSpeed);
-            speedButton4->eventMouseButtonClick += MyGUI::newDelegate(increaseSpeed);
-            //MessageBoxA(0, "Delegated.", "Debug", MB_OK);
-
-            // Keyboard hooks
-            if (!keyboardHook)
-            {
-                Kenshi::InputHandler& inputHandler = Kenshi::GetInputHandler();
-                keyboardHook = std::make_shared<KeyboardHook>(inputHandler.keyboardInput->getEventCallback());
-                inputHandler.keyboardInput->setEventCallback(keyboardHook.get());
-            }
-
-        }
-        catch (MyGUI::Exception e)
-        {
-            MessageBoxA(0, e.what(), "Debug - Error", MB_OK);
-
-        }
-        catch (std::exception e)
-        {
-            MessageBoxA(0, e.what(), "Debug - Error", MB_OK);
+            Kenshi::InputHandler& inputHandler = Kenshi::GetInputHandler();
+            keyboardHook = std::make_shared<KeyboardHook>(inputHandler.keyboardInput->getEventCallback());
+            inputHandler.keyboardInput->setEventCallback(keyboardHook.get());
         }
     }
     else
