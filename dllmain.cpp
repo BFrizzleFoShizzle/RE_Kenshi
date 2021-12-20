@@ -802,81 +802,113 @@ void LoadMods_hook(Kenshi::GameWorld* gameWorld)
 
 void dllmain()
 {
-    // hook for loading mod config - has to be done early so we can override certain early I/O operations
-    LoadMods_orig = Escort::JmpReplaceHook<void(Kenshi::GameWorld*)>(Kenshi::GetModLoadFunction(), LoadMods_hook, 6);
+    Kenshi::BinaryVersion gameVersion = Kenshi::GetKenshiVersion();
 
-    FSHook::Init();
+    // TODO refactor these branches
+    if (gameVersion.GetPlatform() != Kenshi::BinaryVersion::UNKNOWN)
+    {
+        // hook for loading mod config - has to be done early so we can override certain early I/O operations
+        LoadMods_orig = Escort::JmpReplaceHook<void(Kenshi::GameWorld*)>(Kenshi::GetModLoadFunction(), LoadMods_hook, 6);
+
+        FSHook::Init();
+    }
+    else
+    {
+        DebugLog("Error: Unsupported Kenshi version. Hooks disabled.");
+    }
+    
     Settings::Init();
     Version::Init();
-    HeightmapHook::Preload();
+
+    if (gameVersion.GetPlatform() != Kenshi::BinaryVersion::UNKNOWN)
+    {
+        HeightmapHook::Preload();
+        MiscHooks::Init();
+    }
 
     WaitForMainMenu();
 
     MyGUI::Gui* gui = MyGUI::Gui::getInstancePtr();
-    // GUI will be created next frame
-    gui->eventFrameStart += MyGUI::newDelegate(GUIUpdate);
-
-    HeightmapHook::Init();
-    WaitForInGame();
-
-    DebugLog("In-game.");
-
-    //debugOut->setCaption(debugOut->getCaption() + "In-game.\n");
-
-    try
+    
+    if (gameVersion.GetPlatform() != Kenshi::BinaryVersion::UNKNOWN)
     {
+        // GUI will be created next frame
+        gui->eventFrameStart += MyGUI::newDelegate(GUIUpdate);
 
-        MyGUI::WidgetPtr timeMoneyPanel = Kenshi::FindWidget(gui->getEnumerator(), "TimeMoneyPanel");
-        if (timeMoneyPanel == nullptr)
-            MessageBoxA(0, "TimeMoneyPanel not found.", "Debug", MB_OK);
-        MyGUI::WidgetPtr speedButton2 = Kenshi::FindWidget(gui->getEnumerator(), "TimeSpeedButton2");// ->castType<MyGUI::Button>();
-        if (speedButton2 == nullptr) {
-            MessageBoxA(0, "TimeSpeedButton2 not found.", "Debug", MB_OK);
-            return;
-        }
-        MyGUI::WidgetPtr speedButton3 = Kenshi::FindWidget(gui->getEnumerator(), "TimeSpeedButton3");// ->castType<MyGUI::Button>();
-        if (speedButton3 == nullptr) {
-            MessageBoxA(0, "TimeSpeedButton3 not found.", "Debug", MB_OK);
-            return;
-        }
-        MyGUI::WidgetPtr speedButton4 = Kenshi::FindWidget(gui->getEnumerator(), "TimeSpeedButton4");// ->castType<MyGUI::Button>();
-        if (speedButton4 == nullptr) {
-            MessageBoxA(0, "TimeSpeedButton4 not found.", "Debug", MB_OK);
-            return;
-        }
+        HeightmapHook::Init();
 
-        MyGUI::FloatCoord gameSpeedCoord = MyGUI::FloatCoord(0.0f, 0.522388f, 1.0f, 0.298507f);
-        gameSpeedText = timeMoneyPanel->createWidgetReal<MyGUI::TextBox>("Kenshi_TextboxStandardText", gameSpeedCoord, MyGUI::Align::Center, "GameSpeedText");
-        // HACK use same code as play button hook to display current in-game speed + current modified speed
-        playButtonHook(nullptr);
-        //gameSpeedText->setCaption("1");
-        gameSpeedText->setTextAlign(MyGUI::Align::Center);
+        WaitForInGame();
 
-        //MessageBoxA(0, "Clearing...", "Debug", MB_OK);
-        speedButton3->eventMouseButtonClick.clear();
-        speedButton4->eventMouseButtonClick.clear();
-        //MessageBoxA(0, "Cleared.", "Debug", MB_OK);
-        speedButton2->eventMouseButtonClick += MyGUI::newDelegate(playButtonHook);
-        speedButton3->eventMouseButtonClick += MyGUI::newDelegate(decreaseSpeed);
-        speedButton4->eventMouseButtonClick += MyGUI::newDelegate(increaseSpeed);
-        //MessageBoxA(0, "Delegated.", "Debug", MB_OK);
+        DebugLog("In-game.");
 
-        // Keyboard hooks
-        if (!keyboardHook)
+        try
         {
-            Kenshi::InputHandler& inputHandler = Kenshi::GetInputHandler();
-            keyboardHook = std::make_shared<KeyboardHook>(inputHandler.keyboardInput->getEventCallback());
-            inputHandler.keyboardInput->setEventCallback(keyboardHook.get());
+
+            MyGUI::WidgetPtr timeMoneyPanel = Kenshi::FindWidget(gui->getEnumerator(), "TimeMoneyPanel");
+            if (timeMoneyPanel == nullptr)
+                MessageBoxA(0, "TimeMoneyPanel not found.", "Debug", MB_OK);
+            MyGUI::WidgetPtr speedButton2 = Kenshi::FindWidget(gui->getEnumerator(), "TimeSpeedButton2");// ->castType<MyGUI::Button>();
+            if (speedButton2 == nullptr) {
+                MessageBoxA(0, "TimeSpeedButton2 not found.", "Debug", MB_OK);
+                return;
+            }
+            MyGUI::WidgetPtr speedButton3 = Kenshi::FindWidget(gui->getEnumerator(), "TimeSpeedButton3");// ->castType<MyGUI::Button>();
+            if (speedButton3 == nullptr) {
+                MessageBoxA(0, "TimeSpeedButton3 not found.", "Debug", MB_OK);
+                return;
+            }
+            MyGUI::WidgetPtr speedButton4 = Kenshi::FindWidget(gui->getEnumerator(), "TimeSpeedButton4");// ->castType<MyGUI::Button>();
+            if (speedButton4 == nullptr) {
+                MessageBoxA(0, "TimeSpeedButton4 not found.", "Debug", MB_OK);
+                return;
+            }
+
+            MyGUI::FloatCoord gameSpeedCoord = MyGUI::FloatCoord(0.0f, 0.522388f, 1.0f, 0.298507f);
+            gameSpeedText = timeMoneyPanel->createWidgetReal<MyGUI::TextBox>("Kenshi_TextboxStandardText", gameSpeedCoord, MyGUI::Align::Center, "GameSpeedText");
+            // HACK use same code as play button hook to display current in-game speed + current modified speed
+            playButtonHook(nullptr);
+            //gameSpeedText->setCaption("1");
+            gameSpeedText->setTextAlign(MyGUI::Align::Center);
+
+            //MessageBoxA(0, "Clearing...", "Debug", MB_OK);
+            speedButton3->eventMouseButtonClick.clear();
+            speedButton4->eventMouseButtonClick.clear();
+            //MessageBoxA(0, "Cleared.", "Debug", MB_OK);
+            speedButton2->eventMouseButtonClick += MyGUI::newDelegate(playButtonHook);
+            speedButton3->eventMouseButtonClick += MyGUI::newDelegate(decreaseSpeed);
+            speedButton4->eventMouseButtonClick += MyGUI::newDelegate(increaseSpeed);
+            //MessageBoxA(0, "Delegated.", "Debug", MB_OK);
+
+            // Keyboard hooks
+            if (!keyboardHook)
+            {
+                Kenshi::InputHandler& inputHandler = Kenshi::GetInputHandler();
+                keyboardHook = std::make_shared<KeyboardHook>(inputHandler.keyboardInput->getEventCallback());
+                inputHandler.keyboardInput->setEventCallback(keyboardHook.get());
+            }
+
+        }
+        catch (MyGUI::Exception e)
+        {
+            MessageBoxA(0, e.what(), "Debug - Error", MB_OK);
+
+        }
+        catch (std::exception e)
+        {
+            MessageBoxA(0, e.what(), "Debug - Error", MB_OK);
         }
     }
-    catch (MyGUI::Exception e)
+    else
     {
-        MessageBoxA(0, e.what(), "Debug - Error", MB_OK);
-
-    }
-    catch (std::exception e)
-    {
-        MessageBoxA(0, e.what(), "Debug - Error", MB_OK);
+        // TODO refactor this so version text only gets set in one place
+        // display error in version text
+        // this *probably* won't crash new versions
+        MyGUI::TextBox* versionText = Kenshi::FindWidget(gui->getEnumerator(), "VersionText")->castType<MyGUI::TextBox>();
+        if (versionText != nullptr)
+        {
+            MyGUI::UString version = versionText->getCaption();
+            versionText->setCaption("RE_Kenshi " + Version::GetDisplayVersion() + " (ERROR) - " + version + " - [NOT SUPPORTED, MOD DISABLED]");
+        }       
     }
 }
 
