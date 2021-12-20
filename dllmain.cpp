@@ -823,7 +823,7 @@ void dllmain()
     if (gameVersion.GetPlatform() != Kenshi::BinaryVersion::UNKNOWN)
     {
         HeightmapHook::Preload();
-        MiscHooks::Init();
+        //MiscHooks::Init();
     }
 
     WaitForMainMenu();
