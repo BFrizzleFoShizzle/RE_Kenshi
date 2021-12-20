@@ -61,6 +61,9 @@ bool IsVersionNewer(std::string versionStr1, std::string versionStr2)
     }
 
     // versions are equal
+    if (isPrerelease)
+        return true;
+
     return false;
 }
 
@@ -68,37 +71,46 @@ void Version::Init()
 {
     if (Settings::GetCheckUpdates())
     {
+        DebugLog("Checking latest version...");
+
         // get info of latest release on GitHub
         WinHttpClient client(L"https://api.github.com/repos/BFrizzleFoShizzle/RE_Kenshi/releases/latest");
-        client.SendHttpRequest();
-        // convert to regular string
-        std::wstring responseWstr = client.GetHttpResponse();
-        std::string responseStr(responseWstr.begin(), responseWstr.end());
-
-        // parse json
-        rapidjson::Document document;
-        document.Parse(responseStr.c_str());
-        // "tag_name" is version of release
-        // "vx.x.x"
-        latestVersionCache = document["tag_name"].GetString();
-        DebugLog("Latest public release: " + latestVersionCache);
-
-        // parse + compare version number strings
-        bool isRemoteNewer = IsVersionNewer(latestVersionCache, GetCurrentVersion());
-        if (!isRemoteNewer)
-            DebugLog("We are up to date.");
-        else
-            DebugLog("Update is available from " + GetCurrentVersion() + " to " + latestVersionCache);
-
-        // Ask if user wants to update if needed
-        if (!IsCurrentVersion())
+        bool success = client.SendHttpRequest();
+        if (success)
         {
-            int result = MessageBoxA(NULL, "A new version of  RE_Kenshi has been released.\nDo you want to update?", "RE_Kenshi update", MB_YESNO | MB_TOPMOST);
-            if (result == IDYES)
+            // convert to regular string
+            std::wstring responseWstr = client.GetHttpResponse();
+            std::string responseStr(responseWstr.begin(), responseWstr.end());
+
+            // parse json
+            rapidjson::Document document;
+            document.Parse(responseStr.c_str());
+            // "tag_name" is version of release
+            // "vx.x.x"
+            latestVersionCache = document["tag_name"].GetString();
+            DebugLog("Latest public release: " + latestVersionCache);
+
+            // parse + compare version number strings
+            bool isRemoteNewer = IsVersionNewer(latestVersionCache, GetCurrentVersion());
+            if (!isRemoteNewer)
+                DebugLog("We are up to date.");
+            else
+                DebugLog("Update is available from " + GetCurrentVersion() + " to " + latestVersionCache);
+
+            // Ask if user wants to update if needed
+            if (!IsCurrentVersion())
             {
-                DebugLog("Opening browser...");
-                system("start https://www.nexusmods.com/kenshi/mods/847?tab=files");
+                int result = MessageBoxA(NULL, "A new version of  RE_Kenshi has been released.\nDo you want to update?", "RE_Kenshi update", MB_YESNO | MB_TOPMOST);
+                if (result == IDYES)
+                {
+                    DebugLog("Opening browser...");
+                    system("start https://www.nexusmods.com/kenshi/mods/847?tab=files");
+                }
             }
+        }
+        else
+        {
+            DebugLog("Could not connect to update server. Update check failed.");
         }
     }
 }
