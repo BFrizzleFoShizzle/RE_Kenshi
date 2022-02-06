@@ -700,8 +700,8 @@ void InitGUI()
         DebugLog("ERROR: Game version not recognized.");
         DebugLog("");
         DebugLog("Supported versions:");
-        DebugLog("GOG 1.0.51, 1.0.55");
-        DebugLog("Steam 1.0.51, 1.0.55");
+        DebugLog("GOG 1.0.51, 1.0.55, 1.0.59");
+        DebugLog("Steam 1.0.51, 1.0.55, 1.0.59");
         DebugLog("RE_Kenshi initialization aborted!");
 
         versionText->setCaption("RE_Kenshi " + Version::GetDisplayVersion() + " (ERROR) - " + version);
