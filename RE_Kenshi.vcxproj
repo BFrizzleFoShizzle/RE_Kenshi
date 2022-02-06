@@ -175,6 +175,7 @@
     <ClCompile Include="Escort.cpp" />
     <ClCompile Include="FSHook.cpp" />
     <ClCompile Include="HeightmapHook.cpp" />
+    <ClCompile Include="MiscHooks.cpp" />
     <ClCompile Include="Settings.cpp" />
     <ClCompile Include="Version.cpp" />
     <ClCompile Include="WinHttpClient.cpp" />
@@ -183,6 +184,7 @@
     <ClInclude Include="Escort.h" />
     <ClInclude Include="FSHook.h" />
     <ClInclude Include="HeightmapHook.h" />
+    <ClInclude Include="MiscHooks.h" />
     <ClInclude Include="Settings.h" />
     <ClInclude Include="Version.h" />
     <ClInclude Include="WinHttpClient.h" />

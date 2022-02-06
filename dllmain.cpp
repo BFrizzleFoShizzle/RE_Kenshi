@@ -20,6 +20,7 @@
 
 #include "FSHook.h"
 #include "HeightmapHook.h"
+#include "MiscHooks.h"
 #include "Debug.h"
 #include "Settings.h"
 #include "Version.h"
@@ -537,6 +538,15 @@ void AttackSlotScroll(MyGUI::ScrollBar* scrollBar, size_t newPos)
     }
 }
 
+void ToggleFixRNG(MyGUI::WidgetPtr sender)
+{
+    MyGUI::ButtonPtr button = sender->castType<MyGUI::Button>();
+    bool fixRNG = button->getStateSelected();
+
+    // Update settings + hooks
+    MiscHooks::SetFixRNG(fixRNG);
+}
+
 void ToggleLogFileIO(MyGUI::WidgetPtr sender)
 {
     MyGUI::ButtonPtr button = sender->castType<MyGUI::Button>();
@@ -582,6 +592,13 @@ void InitGUI()
     checkUpdatesToggle->setCaption("Automatically check for updates");
     checkUpdatesToggle->eventMouseButtonClick += MyGUI::newDelegate(TickButtonBehaviourClick);
     checkUpdatesToggle->eventMouseButtonClick += MyGUI::newDelegate(ToggleCheckUpdates);
+    positionY += 30;
+
+    MyGUI::ButtonPtr fixRNGToggle = settingsView->createWidget<MyGUI::Button>("Kenshi_TickButton1", 2, positionY, 500, 26, MyGUI::Align::Top | MyGUI::Align::Left, "FixRNGToggle");
+    fixRNGToggle->setStateSelected(Settings::GetFixRNG());
+    fixRNGToggle->setCaption("Fix Kenshi's RNG bug");
+    fixRNGToggle->eventMouseButtonClick += MyGUI::newDelegate(TickButtonBehaviourClick);
+    fixRNGToggle->eventMouseButtonClick += MyGUI::newDelegate(ToggleFixRNG);
     positionY += 30;
 
     MyGUI::ButtonPtr logFileIO = settingsView->createWidget<MyGUI::Button>("Kenshi_TickButton1", 2, positionY, 500, 26, MyGUI::Align::Top | MyGUI::Align::Left, "LogFileIO");
@@ -900,7 +917,7 @@ void dllmain()
     if (gameVersion.GetPlatform() != Kenshi::BinaryVersion::UNKNOWN)
     {
         HeightmapHook::Preload();
-        //MiscHooks::Init();
+        MiscHooks::Init();
     }
 
     WaitForMainMenu();
