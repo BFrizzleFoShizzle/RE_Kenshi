@@ -487,3 +487,22 @@ void Escort::RetASM(std::vector<uint8_t>& bytes)
 {
 	bytes.push_back(0xc3);
 }
+
+
+size_t Escort::GetPrologueSize(void* function)
+{
+	// get size of function prologue via SEH unwind info
+	uint8_t* imageBase;
+	UNWIND_HISTORY_TABLE historyTable;
+	PRUNTIME_FUNCTION runtimeFunction = RtlLookupFunctionEntry((DWORD64)function, reinterpret_cast<PDWORD64>(&imageBase), &historyTable);
+
+	if (runtimeFunction == nullptr)
+	{
+		ErrorLog("RtlLookup failed, function probably lacks SEH info");
+		return 0;
+	}
+
+	UNWIND_INFO* unwindInfo = reinterpret_cast<UNWIND_INFO*>(imageBase + runtimeFunction->UnwindData);
+
+	return unwindInfo->SizeOfProlog;
+}

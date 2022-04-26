@@ -81,9 +81,10 @@ void FSHook::Init()
 
 	std::string debugStr = "Address: " + std::to_string((uint64_t)fsopen);
 
-	_fsopen_orig = Escort::JmpReplaceHook<FILE*(const char* filename, const char* mode, int shflag)>(fsopen, _fsopen_hook, 10);
+	_fsopen_orig = Escort::JmpReplaceHook<FILE*(const char* filename, const char* mode, int shflag)>(fsopen, _fsopen_hook);
 	
 	// First instruction has a relative offset that gets bork'd by the hook, so we call the kernel32 function instead
+	// I think this is a leaf function, so can't use SEH prologue lookup, need to hard-code replaced bytes...
 	FindFirstFileW_orig = Escort::JmpReplaceHook<HANDLE (LPCWSTR lpFileName, LPWIN32_FIND_DATAW lpFindFileData)>(findFirstFileW, FindFirstFileW_hook, 6);
 	
 	// Windows reserves the bottom 64k of the address space?

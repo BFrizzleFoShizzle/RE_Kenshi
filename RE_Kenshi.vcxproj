@@ -186,6 +186,7 @@
     <ClInclude Include="HeightmapHook.h" />
     <ClInclude Include="MiscHooks.h" />
     <ClInclude Include="Settings.h" />
+    <ClInclude Include="UnwindCode.h" />
     <ClInclude Include="Version.h" />
     <ClInclude Include="WinHttpClient.h" />
   </ItemGroup>

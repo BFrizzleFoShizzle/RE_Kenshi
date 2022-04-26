@@ -6,6 +6,8 @@
 
 #include "Debug.h"
 
+#include "UnwindCode.h"
+
 namespace Escort
 {
 	void Hook(void* sourceAddr, void* targetAddr, size_t replacedBytes);
@@ -17,10 +19,16 @@ namespace Escort
 	//  Must be at least 5 bytes
 	// Only works if code is <32 bits away
 	T* JmpReplaceHook32(void* sourceAddr, void* targetAddr, size_t replacedBytes);
+	// Same as above, but uses SEH info to get size of relocatable function prologue
+	template<typename T>
+	T* JmpReplaceHook32(void* sourceAddr, void* targetAddr);
 	template<typename T>
 	// Must be at least 6 bytes
 	// Uses an indirect jump, allocated in external page near code
 	T* JmpReplaceHook(void* sourceAddr, void* targetAddr, size_t replacedBytes);
+	// Same as above, but uses SEH info to get size of relocatable function prologue
+	template<typename T>
+	T* JmpReplaceHook(void* sourceAddr, void* targetAddr);
 	// this messes up the stack so should only be used for naked/assembler calls
 	void CallRAXHook(void* sourceAddr, void* targetAddr, size_t replacedBytes);
 	void NOP(void* codeAddr, size_t replacedBytes);
@@ -40,6 +48,7 @@ namespace Escort
 	void JmpAbsPtr(std::vector<uint8_t>& bytes, int32_t ptrOffset);
 	void WriteProtected(void* destAddr, void* sourceAddr, size_t count);
 	void* GetFuncAddress(std::string moduleName, std::string functionName);
+	size_t GetPrologueSize(void* function);
 }
 
 // template functions
@@ -98,6 +107,22 @@ T* Escort::JmpReplaceHook32(void* sourceAddr, void* targetAddr, size_t replacedB
 	return (T*)rwxAlloc;
 }
 
+template<typename T>
+T* Escort::JmpReplaceHook32(void* sourceAddr, void* targetAddr)
+{
+	// TODO this can be improved by iterating through unwind codes until you reach an offset 
+	// greater than the size of the hook
+	size_t prologueBytes = GetPrologueSize(sourceAddr);
+
+	if (prologueBytes < 5)
+	{
+		ErrorLog("Prologue shorter than 5 bytes!");
+		return nullptr;
+	}
+
+	return JmpReplaceHook32<T>(sourceAddr, targetAddr, prologueBytes);
+}
+
 // Uses an indirect jmp /w jump table in newly-allocated page near code
 template<typename T>
 T* Escort::JmpReplaceHook(void* sourceAddr, void* targetAddr, size_t replacedBytes)
@@ -147,4 +172,20 @@ T* Escort::JmpReplaceHook(void* sourceAddr, void* targetAddr, size_t replacedByt
 
 	// return address of old backup
 	return (T*)continueAlloc;
+}
+
+template<typename T>
+T* Escort::JmpReplaceHook(void* sourceAddr, void* targetAddr)
+{
+	// TODO this can be improved by iterating through unwind codes until you reach an offset 
+	// greater than the size of the hook
+	size_t prologueBytes = GetPrologueSize(sourceAddr);
+
+	if (prologueBytes < 5)
+	{
+		ErrorLog("Prologue shorter than 5 bytes!");
+		return nullptr;
+	}
+
+	return JmpReplaceHook<T>(sourceAddr, targetAddr, prologueBytes);
 }
