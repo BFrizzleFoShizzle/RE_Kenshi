@@ -177,6 +177,7 @@
     <ClCompile Include="HeightmapHook.cpp" />
     <ClCompile Include="MiscHooks.cpp" />
     <ClCompile Include="Settings.cpp" />
+    <ClCompile Include="Sound.cpp" />
     <ClCompile Include="Version.cpp" />
     <ClCompile Include="WinHttpClient.cpp" />
   </ItemGroup>
@@ -186,6 +187,7 @@
     <ClInclude Include="HeightmapHook.h" />
     <ClInclude Include="MiscHooks.h" />
     <ClInclude Include="Settings.h" />
+    <ClInclude Include="Sound.h" />
     <ClInclude Include="UnwindCode.h" />
     <ClInclude Include="Version.h" />
     <ClInclude Include="WinHttpClient.h" />

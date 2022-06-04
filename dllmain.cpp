@@ -21,6 +21,7 @@
 #include "FSHook.h"
 #include "HeightmapHook.h"
 #include "MiscHooks.h"
+#include "Sound.h"
 #include "Debug.h"
 #include "Settings.h"
 #include "Version.h"
@@ -918,6 +919,7 @@ void dllmain()
     {
         HeightmapHook::Preload();
         MiscHooks::Init();
+        Sound::Init();
     }
 
     WaitForMainMenu();
