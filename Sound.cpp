@@ -30,7 +30,7 @@ unsigned long int __cdecl AK_SoundEngine_GetIDFromStringHook(char const* __ptr64
 	std::stringstream out;
 	out << "Event: " << str << " ";
 	unsigned long int ret = AK_SoundEngine_GetIDFromString_orig(str);
-	out << std::hex << ret;
+	//out << std::hex << ret;
 	if (events.find(str) == events.end())
 	{
 		events.emplace(str);
@@ -41,10 +41,17 @@ unsigned long int __cdecl AK_SoundEngine_GetIDFromStringHook(char const* __ptr64
 
 unsigned long int __cdecl AK_SoundEngine_GetIDFromStringHook2(wchar_t const* __ptr64 str)
 {
+	std::wstring wstr = str;
+	std::string sstr = std::string(wstr.begin(), wstr.end());
 	std::stringstream out;
-	out << "Event (w): " << str << " ";
+	if (events.find(sstr) == events.end())
+	{
+		events.emplace(sstr);
+		out << "Event (w): " << str << " ";
+		DebugLog(out.str());
+	}
 	unsigned long int ret = AK_SoundEngine_GetIDFromString2_orig(str);
-	out << std::hex << ret;
+	//out << std::hex << ret;
 	//DebugLog(out.str());
 	return ret;
 }
