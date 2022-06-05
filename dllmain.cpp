@@ -732,7 +732,7 @@ void InjectSettings()
         return;
 
     MyGUI::TabItemPtr modsTab = optionsTabCtrl->getItemAt(optionsTabCtrl->getItemCount() - 1);
-    if (modsTab == nullptr || modsTab->getCaption() != "MODS")
+    if (modsTab == nullptr)
         return;
 
     // This causes crashes when the options menu is closed
