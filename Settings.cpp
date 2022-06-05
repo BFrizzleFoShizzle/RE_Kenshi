@@ -99,6 +99,7 @@ void Settings::Init()
 }
 
 std::unordered_map<std::string, std::string> fileOverrides;
+std::vector<std::string> soundbanks;
 
 // crappy system for inserting mod folder root dynamically
 std::string ParsePath(std::string path)
@@ -154,6 +155,7 @@ void Settings::LoadModOverrides()
             ErrorLog("Error parsing \"" + settingsPath + "\" : " + rapidjson::GetParseError_En(modDOM.GetParseError()));
 
         // parse output
+        // FILE REBINDS
         if (modDOM.HasMember("FileRebinds") && modDOM["FileRebinds"].IsObject())
         {
             const rapidjson::Value& itemn = modDOM["FileRebinds"];
@@ -171,12 +173,26 @@ void Settings::LoadModOverrides()
                 }
             }
         }
+        // SOUND BANKS
+        DebugLog("TEST");
+        if (modDOM.HasMember("SoundBanks") && modDOM["SoundBanks"].IsArray())
+        {
+            const rapidjson::Value& item = modDOM["SoundBanks"];
+            for (rapidjson::Value::ConstValueIterator itr = item.Begin(); itr != item.End(); ++itr)
+                soundbanks.push_back(ParsePath(itr->GetString()));
+            DebugLog("Queued soundbank: " + soundbanks.back());
+        }
     }
 }
 
 const std::unordered_map<std::string, std::string>* Settings::GetFileOverrides()
 {
     return &fileOverrides;
+}
+
+std::vector<std::string>* Settings::GetModSoundBanks()
+{
+    return &soundbanks;
 }
 
 std::string Settings::ResolvePath(std::string path)

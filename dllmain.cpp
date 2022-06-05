@@ -886,6 +886,7 @@ void LoadMods_hook(Kenshi::GameWorld* gameWorld)
         DebugLog("Load mod hook");
         // Must be called AFTER mod load
         Settings::LoadModOverrides();
+        Sound::LoadQueuedBanks();
         setupMods = true;
     }
 

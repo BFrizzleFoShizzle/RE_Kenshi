@@ -21,6 +21,7 @@ namespace Settings
 	void SetCheckUpdates(bool value);
 
 	const std::unordered_map<std::string, std::string> *GetFileOverrides();
+	std::vector<std::string> *GetModSoundBanks();
 	std::string ResolvePath(std::string path);
 
 	const std::vector<float> GetGameSpeeds();
