@@ -37,6 +37,7 @@ rapidjson::Document GenerateDefaultSettings()
     defaultSettings.AddMember("FixRNG", true, defaultSettings.GetAllocator());
     defaultSettings.AddMember("LogFileIO", false, defaultSettings.GetAllocator());
     defaultSettings.AddMember("CheckUpdates", true, defaultSettings.GetAllocator());
+    defaultSettings.AddMember("IncreaseMaxCameraDistance", false, defaultSettings.GetAllocator());
     rapidjson::Value gameSpeeds(rapidjson::kArrayType);
     std::vector<float> defaultGameSpeeds = GetDefaultGameSpeeds();
     for(int i=0;i<defaultGameSpeeds.size(); ++i)
@@ -174,7 +175,6 @@ void Settings::LoadModOverrides()
             }
         }
         // SOUND BANKS
-        DebugLog("TEST");
         if (modDOM.HasMember("SoundBanks") && modDOM["SoundBanks"].IsArray())
         {
             const rapidjson::Value& item = modDOM["SoundBanks"];
@@ -263,6 +263,30 @@ void Settings::SetAttackSlots(int num)
         settingsDOM.AddMember("AttackSlots", num, settingsDOM.GetAllocator());
     else
         settingsDOM["AttackSlots"] = num;
+
+    SaveSettings();
+}
+
+bool Settings::GetIncreaseMaxCameraDistance()
+{
+    rapidjson::Value& val = settingsDOM["IncreaseMaxCameraDistance"];
+    if (!val.IsBool())
+    {
+        SetIncreaseMaxCameraDistance(false);
+        return false;
+    }
+    else
+    {
+        return val.GetBool();
+    }
+}
+
+void Settings::SetIncreaseMaxCameraDistance(bool value)
+{
+    if (!settingsDOM.HasMember("IncreaseMaxCameraDistance"))
+        settingsDOM.AddMember("IncreaseMaxCameraDistance", value, settingsDOM.GetAllocator());
+    else
+        settingsDOM["IncreaseMaxCameraDistance"] = value;
 
     SaveSettings();
 }

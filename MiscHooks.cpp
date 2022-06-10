@@ -1,6 +1,8 @@
 
 #include "MiscHooks.h"
 
+#include "kenshi/Kenshi.h"
+
 #include "Escort.h"
 #include "Settings.h"
 
@@ -48,6 +50,11 @@ void MiscHooks::Init()
 	{
 		DisableFixRNG();
 	}
+
+	if (Settings::GetIncreaseMaxCameraDistance())
+	{
+		MiscHooks::SetMaxCameraDistance(4000.0f);
+	}
 }
 
 // bugfix for Kenshi's RNG initialization
@@ -67,4 +74,9 @@ void MiscHooks::SetFixRNG(bool value)
 	{
 		DisableFixRNG();
 	}
+}
+
+void MiscHooks::SetMaxCameraDistance(float value)
+{
+	Escort::WriteProtected(&Kenshi::GetMaxCameraDistance(), &value, sizeof(float));
 }

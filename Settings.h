@@ -19,6 +19,8 @@ namespace Settings
 	bool GetLogFileIO();
 	bool GetCheckUpdates();
 	void SetCheckUpdates(bool value);
+	bool GetIncreaseMaxCameraDistance();
+	void SetIncreaseMaxCameraDistance(bool value);
 
 	const std::unordered_map<std::string, std::string> *GetFileOverrides();
 	std::vector<std::string> *GetModSoundBanks();

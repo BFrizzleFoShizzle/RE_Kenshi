@@ -548,6 +548,19 @@ void ToggleFixRNG(MyGUI::WidgetPtr sender)
     MiscHooks::SetFixRNG(fixRNG);
 }
 
+void ToggleIncreaseMaxCameraDistance(MyGUI::WidgetPtr sender)
+{
+    MyGUI::ButtonPtr button = sender->castType<MyGUI::Button>();
+    bool increaseMaxCameraDistance = button->getStateSelected();
+
+    if (increaseMaxCameraDistance)
+        MiscHooks::SetMaxCameraDistance(4000.0f);
+    else
+        MiscHooks::SetMaxCameraDistance(2000.0f);
+
+    Settings::SetIncreaseMaxCameraDistance(increaseMaxCameraDistance);
+}
+
 void ToggleLogFileIO(MyGUI::WidgetPtr sender)
 {
     MyGUI::ButtonPtr button = sender->castType<MyGUI::Button>();
@@ -600,6 +613,13 @@ void InitGUI()
     fixRNGToggle->setCaption("Fix Kenshi's RNG bug");
     fixRNGToggle->eventMouseButtonClick += MyGUI::newDelegate(TickButtonBehaviourClick);
     fixRNGToggle->eventMouseButtonClick += MyGUI::newDelegate(ToggleFixRNG);
+    positionY += 30;
+
+    MyGUI::ButtonPtr increaseMaxCameraDistance = settingsView->createWidget<MyGUI::Button>("Kenshi_TickButton1", 2, positionY, 500, 26, MyGUI::Align::Top | MyGUI::Align::Left, "IncreaseMaxCameraDistance");
+    increaseMaxCameraDistance->setStateSelected(Settings::GetIncreaseMaxCameraDistance());
+    increaseMaxCameraDistance->setCaption("Increase max camera distance");
+    increaseMaxCameraDistance->eventMouseButtonClick += MyGUI::newDelegate(TickButtonBehaviourClick);
+    increaseMaxCameraDistance->eventMouseButtonClick += MyGUI::newDelegate(ToggleIncreaseMaxCameraDistance);
     positionY += 30;
 
     MyGUI::ButtonPtr logFileIO = settingsView->createWidget<MyGUI::Button>("Kenshi_TickButton1", 2, positionY, 500, 26, MyGUI::Align::Top | MyGUI::Align::Left, "LogFileIO");
