@@ -1,11 +1,10 @@
 
 #include "ShaderCache.h"
 #include "Escort.h"
+#include "Settings.h"
 
 #include <unordered_set>
-//#include <Windows.h>
 #include <D3Dcompiler.h>
-#include <ctime>
 #include <fstream>
 #include <boost/signals2/mutex.hpp>
 
@@ -39,11 +38,6 @@ public:
 		flags2 = Flags2;
 		while (pDefines != NULL && pDefines->Name != NULL && pDefines->Definition != NULL)
 		{
-			/*
-			DebugLog("DEFINES:");
-			DebugLog(pDefines->Name);
-			DebugLog(pDefines->Definition);
-			*/
 			defines.push_back(std::make_pair(pDefines->Name, pDefines->Definition));
 			++pDefines;
 		}
@@ -51,8 +45,7 @@ public:
 		compiledSize = 0;
 	}
 
-	bool operator==(const Shader& other) const;
-	/*
+	bool operator==(const Shader& other) const
 	{
 		return (source == other.source
 			&& std::equal(defines.begin(), defines.end(), other.defines.begin())
@@ -64,7 +57,7 @@ public:
 			&& flags1 == other.flags1
 			&& flags2 == other.flags2);
 	}
-	*/
+	
 
 	void SetBlob(ID3DBlob* blob)
 	{
@@ -143,16 +136,6 @@ namespace std {
 			hash_combine(hash, k.flags1);
 			hash_combine(hash, k.flags2);
 			return hash;
-			/*
-			return (hash<std::string>()(k.source)
-				 ^ (hash<std::vector<std::pair<std::string, std::string>>>()(k.defines))
-				 // this doesn't appear to differentiate shaders and would require taking into account ASLR
-				 // to properly get working (too much effort for as far as I can tell no gain)
-				 //^ (hash<void*>()(k.include))
-				 ^ (hash<std::string>()(k.entrypoint))
-				 ^ (hash<std::string>()(k.target))
-				 ^ (hash<UINT>()(k.flags1))
-				 ^ (hash<UINT>()(k.flags2)));*/
 		}
 	};
 
@@ -181,10 +164,8 @@ private:
 	void Serialize();
 
 	std::string filename;
-	// hash of the file
-	std::string hash;
 	std::unordered_set<Shader> cachedShaders;
-	// RAM cache of full file so we don't have to re-read every time we add another
+	// RAM cache of full file so we don't have to re-read every time we have to recalculate hash
 	std::vector<char> fileBytes;
 };
 
@@ -247,7 +228,6 @@ ShaderCacheFile::ShaderCacheFile(std::string filename)
 	// If we get to this point - there's a valid header + the last write succeeded completely, 
 	// so we should expect no errors/corruption
 
-	// TODO
 	for (size_t i = 0; i < header.numShaders; ++i)
 	{
 		Shader shader = Shader::Deserialize(fileBytes, readpos);
@@ -286,19 +266,6 @@ ID3DBlob* ShaderCacheFile::GetBlob(LPCVOID pSrcData,
 	
 	shader.SetBlob(*ppCode);
 
-	/*
-	std::vector<char> bytes;
-	shader.Serialize(bytes);
-	size_t offset = 0;
-	Shader shader2 = Shader::Deserialize(bytes, offset);
-	std::string streq = shader == shader2 ? "1" : "0";
-	DebugLog("Streq: " + streq);
-
-	std::stringstream str;
-	str << "TEST@ " << shader.compiledSize;
-	str << "TEST@ " << (*ppCode)->GetBufferSize();
-	DebugLog(str.str());
-	*/
 	cachedShaders.insert(shader);
 	*ppErrorMsgs = nullptr;
 	if (fileBytes.size() > 0)
@@ -340,11 +307,6 @@ void ShaderCacheFile::Serialize()
 	// Serialize cached shaders
 	for (std::unordered_set<Shader>::iterator shader = cachedShaders.begin(); shader != cachedShaders.end(); ++shader)
 	{
-		/*
-		std::stringstream str;
-		str << "TEST: " << shader->compiled->GetBufferSize();
-		DebugLog(str.str());
-		*/
 		shader->Serialize(fileBytes);
 	}
 
@@ -357,16 +319,6 @@ void ShaderCacheFile::Serialize()
 	file.write(&fileBytes[shadersStart], fileBytes.size() - shadersStart);
 	file.close();
 }
-
-/*
-	std::vector<std::pair<std::string, std::string>> defines;
-	ID3DInclude* include;
-	std::string entrypoint;
-	std::string target;
-	UINT flags1;
-	UINT flags2;
-	ID3DBlob* compiled = nullptr;
-*/
 
 static void WriteString(std::string str, std::vector<char>& bytes)
 {
@@ -465,16 +417,6 @@ Shader Shader::Deserialize(std::vector<char>& bytes, size_t& offset)
 	return shader;
 }
 
-bool Shader::operator==(const Shader& other) const
-{
-	return std::hash<Shader>()(*this) == std::hash<Shader>()(other);
-}
-
-int uniqueShaders = 0;
-int duplicateShaders = 0;
-clock_t timeCompiling = 0;
-clock_t timeReading = 0;
-// remove after debugging
 bool printed = false;
 ShaderCacheFile* shaderCache;
 boost::signals2::mutex mutex;
@@ -492,12 +434,16 @@ HRESULT D3DCompile_hook(LPCVOID pSrcData,
 	ID3DBlob** ppErrorMsgs
 )
 {
-	std::stringstream msg;
 	if (!printed)
 	{
 		DebugLog("First shader compile request");
 		printed = true;
 	}
+
+	if(!Settings::GetCacheShaders())
+		return D3DCompile_orig(pSrcData, SrcDataSize, pSourceName, pDefines, pInclude, pEntrypoint, pTarget, Flags1, Flags2, ppCode, ppErrorMsgs);
+
+	std::stringstream msg;
 	mutex.lock();
 	if (!shaderCache)
 	{
@@ -507,89 +453,7 @@ HRESULT D3DCompile_hook(LPCVOID pSrcData,
 	*ppCode = shaderCache->GetBlob(pSrcData, SrcDataSize, pSourceName, pDefines, pInclude, pEntrypoint, pTarget, Flags1, Flags2, ppCode, ppErrorMsgs);
 	mutex.unlock();
 
-	/*
-	Shader shader = Shader(pSrcData, SrcDataSize, pDefines, pInclude, pEntrypoint, pTarget, Flags1, Flags2);
-	HRESULT ret = D3DCompile_orig(pSrcData, SrcDataSize, pSourceName, pDefines, pInclude, pEntrypoint, pTarget, Flags1, Flags2, ppCode, ppErrorMsgs);
-	shader.SetBlob(*ppCode);
-	std::vector<char> bytes;
-	shader.Serialize(bytes);
-	size_t offset = 0;
-	Shader shader2 = Shader::Deserialize(bytes, offset);
-	std::string streq = shader == shader2 ? "1" : "0";
-	DebugLog("Shader equality: " + streq);
-	*ppCode = shader2.compiled;
-	*/
-
 	return S_OK;
-	/*
-	Shader shader = Shader(pSrcData, SrcDataSize, pDefines, pInclude, pEntrypoint, pTarget, Flags1, Flags2);
-	size_t shaderHash = std::hash<Shader>()(shader);
-	std::string shaderCacheName = std::string(pSourceName) + "_" + std::to_string(shaderHash);
-	if (cachedShaders.count(shader))
-	{
-		duplicateShaders += 1;
-		msg << "Duplicate shaders " << shaderCacheName << "\n";
-		clock_t start = clock();
-		HRESULT ret = D3DCompile_orig(pSrcData, SrcDataSize, pSourceName, pDefines, pInclude, pEntrypoint, pTarget, Flags1, Flags2, ppCode, ppErrorMsgs);
-		timeCompiling += clock() - start;
-		float totalCompileTime = (float)timeCompiling / CLOCKS_PER_SEC;
-		msg << "Time compiling shaders: " << totalCompileTime << " ";
-		//DebugLog(msg.str());
-		return ret;
-	}
-	else
-	{
-		uniqueShaders += 1;
-		// TODO
-		cachedShaders[shader] = 1;
-	}
-	clock_t start = clock();
-	std::ifstream cacheFile("./shader_cache/" + shaderCacheName, std::ifstream::binary | std::ifstream::ate);
-	ID3DBlob *oldBlob = nullptr;
-	if (cacheFile.is_open())
-	{
-		size_t bufferSize = cacheFile.tellg();
-		cacheFile.seekg(0, std::ifstream::beg);
-		D3DCreateBlob(bufferSize, &oldBlob);
-		cacheFile.read((char*)oldBlob->GetBufferPointer(), bufferSize);
-		cacheFile.close();
-		msg << "Created " << shaderCacheName << " from cache.";
-		*ppCode = oldBlob;
-		*ppErrorMsgs = nullptr;
-		timeReading += clock() - start;
-		float totalReadTime = (float)timeReading / CLOCKS_PER_SEC;
-		msg << "\nTime reading shaders: " << totalReadTime << " ";
-		//DebugLog(msg.str());
-		return S_OK;
-	}
-	timeReading += clock() - start;
-
-	//msg << "Unique shaders: " << uniqueShaders << " Duplicate shaders: " << duplicateShaders << "\n";
-
-	ID3DBlob** tempBlob;
-	start = clock();
-	HRESULT ret = D3DCompile_orig(pSrcData, SrcDataSize, pSourceName, pDefines, pInclude, pEntrypoint, pTarget, Flags1, Flags2, ppCode, ppErrorMsgs);
-	timeCompiling += clock() - start;
-	float totalCompileTime = (float)timeCompiling / CLOCKS_PER_SEC;
-	msg << "\nTime compiling shaders: " << totalCompileTime << " " << (uint64_t)*ppErrorMsgs;
-
-	// save compiled binary to disk
-
-	if (ppCode)
-	{
-		std::ofstream shaderCache("./shader_cache/" + shaderCacheName, std::ofstream::binary);
-		shaderCache.write((char*)(*ppCode)->GetBufferPointer(), (*ppCode)->GetBufferSize());
-		shaderCache.close();
-		
-	}
-	else
-	{
-		msg << "\nError compiling " << shaderCacheName;
-		//DebugLog(msg.str());
-	}
-	
-	return ret;
-	*/
 }
 
 

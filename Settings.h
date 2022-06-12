@@ -21,6 +21,8 @@ namespace Settings
 	void SetCheckUpdates(bool value);
 	bool GetIncreaseMaxCameraDistance();
 	void SetIncreaseMaxCameraDistance(bool value);
+	bool GetCacheShaders();
+	void SetCacheShaders(bool value);
 
 	const std::unordered_map<std::string, std::string> *GetFileOverrides();
 	std::vector<std::string> *GetModSoundBanks();

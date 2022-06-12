@@ -35,6 +35,7 @@ rapidjson::Document GenerateDefaultSettings()
     defaultSettings.AddMember("PreloadHeightmap", false, defaultSettings.GetAllocator());
     defaultSettings.AddMember("AttackSlots", -1, defaultSettings.GetAllocator());
     defaultSettings.AddMember("FixRNG", true, defaultSettings.GetAllocator());
+    defaultSettings.AddMember("CacheShaders", true, defaultSettings.GetAllocator());
     defaultSettings.AddMember("LogFileIO", false, defaultSettings.GetAllocator());
     defaultSettings.AddMember("CheckUpdates", true, defaultSettings.GetAllocator());
     defaultSettings.AddMember("IncreaseMaxCameraDistance", false, defaultSettings.GetAllocator());
@@ -324,6 +325,22 @@ void Settings::SetGameSpeeds(std::vector<float> speeds)
         settingsDOM["GameSpeeds"] = gameSpeeds;
     else
         settingsDOM.AddMember("GameSpeeds", gameSpeeds, settingsDOM.GetAllocator());
+
+    SaveSettings();
+}
+
+bool Settings::GetCacheShaders()
+{
+    rapidjson::Value& val = settingsDOM["CacheShaders"];
+    return val.GetBool();
+}
+
+void Settings::SetCacheShaders(bool value)
+{
+    if (!settingsDOM.HasMember("CacheShaders"))
+        settingsDOM.AddMember("CacheShaders", value, settingsDOM.GetAllocator());
+    else
+        settingsDOM["CacheShaders"] = value;
 
     SaveSettings();
 }

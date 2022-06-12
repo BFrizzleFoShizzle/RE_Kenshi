@@ -562,6 +562,15 @@ void ToggleIncreaseMaxCameraDistance(MyGUI::WidgetPtr sender)
     Settings::SetIncreaseMaxCameraDistance(increaseMaxCameraDistance);
 }
 
+void ToggleCacheShaders(MyGUI::WidgetPtr sender)
+{
+    MyGUI::ButtonPtr button = sender->castType<MyGUI::Button>();
+    bool cacheShaders = button->getStateSelected();
+
+    // Update settings + hooks
+    Settings::SetCacheShaders(cacheShaders);
+}
+
 void ToggleLogFileIO(MyGUI::WidgetPtr sender)
 {
     MyGUI::ButtonPtr button = sender->castType<MyGUI::Button>();
@@ -621,6 +630,13 @@ void InitGUI()
     increaseMaxCameraDistance->setCaption("Increase max camera distance");
     increaseMaxCameraDistance->eventMouseButtonClick += MyGUI::newDelegate(TickButtonBehaviourClick);
     increaseMaxCameraDistance->eventMouseButtonClick += MyGUI::newDelegate(ToggleIncreaseMaxCameraDistance);
+    positionY += 30;
+
+    MyGUI::ButtonPtr cacheShaders = settingsView->createWidget<MyGUI::Button>("Kenshi_TickButton1", 2, positionY, 500, 26, MyGUI::Align::Top | MyGUI::Align::Left, "CacheShadersToggle");
+    cacheShaders->setStateSelected(Settings::GetCacheShaders());
+    cacheShaders->setCaption("Cache shaders");
+    cacheShaders->eventMouseButtonClick += MyGUI::newDelegate(TickButtonBehaviourClick);
+    cacheShaders->eventMouseButtonClick += MyGUI::newDelegate(ToggleCacheShaders);
     positionY += 30;
 
     MyGUI::ButtonPtr logFileIO = settingsView->createWidget<MyGUI::Button>("Kenshi_TickButton1", 2, positionY, 500, 26, MyGUI::Align::Top | MyGUI::Align::Left, "LogFileIO");
