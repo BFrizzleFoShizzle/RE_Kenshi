@@ -26,6 +26,7 @@
 #include "Settings.h"
 #include "Version.h"
 #include "Escort.h"
+#include "ShaderCache.h"
 
 #include <ogre/OgrePrerequisites.h>
 #include "OISKeyboard.h"
@@ -935,6 +936,7 @@ void dllmain()
     
     Settings::Init();
     Version::Init();
+    ShaderCache::Init();
 
     if (gameVersion.GetPlatform() != Kenshi::BinaryVersion::UNKNOWN)
     {

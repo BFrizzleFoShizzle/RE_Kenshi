@@ -1,0 +1,7 @@
+
+namespace ShaderCache
+{
+	void Init();
+
+
+}
