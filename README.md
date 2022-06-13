@@ -5,6 +5,8 @@ git clone --recursive https://github.com/BFrizzleFoShizzle/RE_Kenshi.git
 # Compiling
 Install Visual Studio 2019  
 Install the Windows SDK v7.1  
+Install the DirectX June 2010 SDK https://www.microsoft.com/en-us/download/details.aspx?id=6812
+Install Boost 1.60.0 https://www.boost.org/users/history/version_1_60_0.html
 Clone the repo (make sure submodules are cloned too)  
 Open + compile with VC++  
 
