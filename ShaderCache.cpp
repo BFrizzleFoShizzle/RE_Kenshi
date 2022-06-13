@@ -448,7 +448,7 @@ HRESULT D3DCompile_hook(LPCVOID pSrcData,
 	if (!shaderCache)
 	{
 		ErrorLog("CRITICAL ERROR: ShaderCache not initialized!");
-		shaderCache = new ShaderCacheFile("./shader_cache/shader_cache.sc");
+		shaderCache = new ShaderCacheFile("./RE_Kenshi/shader_cache.sc");
 	}
 	*ppCode = shaderCache->GetBlob(pSrcData, SrcDataSize, pSourceName, pDefines, pInclude, pEntrypoint, pTarget, Flags1, Flags2, ppCode, ppErrorMsgs);
 	mutex.unlock();
@@ -461,11 +461,11 @@ HRESULT D3DCompile_hook(LPCVOID pSrcData,
 void ShaderCache::Init()
 {
 	// create folder if needed
-	_wmkdir(L"./shader_cache");
+	_wmkdir(L"./RE_Kenshi");
 
 	mutex.lock();
 	if (!shaderCache)
-		shaderCache = new ShaderCacheFile("./shader_cache/shader_cache.sc");
+		shaderCache = new ShaderCacheFile("./RE_Kenshi/shader_cache.sc");
 	mutex.unlock();
 
 	// enable hook

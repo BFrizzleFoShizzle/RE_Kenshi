@@ -952,10 +952,10 @@ void dllmain()
     
     Settings::Init();
     Version::Init();
-    ShaderCache::Init();
 
     if (gameVersion.GetPlatform() != Kenshi::BinaryVersion::UNKNOWN)
     {
+        ShaderCache::Init();
         HeightmapHook::Preload();
         MiscHooks::Init();
         Sound::Init();
