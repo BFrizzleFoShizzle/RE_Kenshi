@@ -580,6 +580,15 @@ void ToggleLogFileIO(MyGUI::WidgetPtr sender)
     Settings::SetLogFileIO(logFileIO);
 }
 
+void ToggleLogAudio(MyGUI::WidgetPtr sender)
+{
+    MyGUI::ButtonPtr button = sender->castType<MyGUI::Button>();
+    bool logAudio = button->getStateSelected();
+
+    // Update settings + hooks
+    Settings::SetLogAudio(logAudio);
+}
+
 void ToggleCheckUpdates(MyGUI::WidgetPtr sender)
 {
     MyGUI::ButtonPtr button = sender->castType<MyGUI::Button>();
@@ -644,6 +653,13 @@ void InitGUI()
     logFileIO->setCaption("Log file IO");
     logFileIO->eventMouseButtonClick += MyGUI::newDelegate(TickButtonBehaviourClick);
     logFileIO->eventMouseButtonClick += MyGUI::newDelegate(ToggleLogFileIO);
+    positionY += 30;
+
+    MyGUI::ButtonPtr logAudio = settingsView->createWidget<MyGUI::Button>("Kenshi_TickButton1", 2, positionY, 500, 26, MyGUI::Align::Top | MyGUI::Align::Left, "LogAudio");
+    logAudio->setStateSelected(Settings::GetLogAudio());
+    logAudio->setCaption("Log audio IDs/events/switches/states");
+    logAudio->eventMouseButtonClick += MyGUI::newDelegate(TickButtonBehaviourClick);
+    logAudio->eventMouseButtonClick += MyGUI::newDelegate(ToggleLogAudio);
     positionY += 30;
 
     if (!HeightmapHook::CompressedHeightmapFileExists())

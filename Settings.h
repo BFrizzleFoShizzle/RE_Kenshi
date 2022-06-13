@@ -23,6 +23,8 @@ namespace Settings
 	void SetIncreaseMaxCameraDistance(bool value);
 	bool GetCacheShaders();
 	void SetCacheShaders(bool value);
+	bool GetLogAudio();
+	void SetLogAudio(bool value);
 
 	const std::unordered_map<std::string, std::string> *GetFileOverrides();
 	std::vector<std::string> *GetModSoundBanks();

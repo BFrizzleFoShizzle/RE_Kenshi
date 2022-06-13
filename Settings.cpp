@@ -38,6 +38,7 @@ rapidjson::Document GenerateDefaultSettings()
     defaultSettings.AddMember("CacheShaders", true, defaultSettings.GetAllocator());
     defaultSettings.AddMember("LogFileIO", false, defaultSettings.GetAllocator());
     defaultSettings.AddMember("CheckUpdates", true, defaultSettings.GetAllocator());
+    defaultSettings.AddMember("LogAudio", false, defaultSettings.GetAllocator());
     defaultSettings.AddMember("IncreaseMaxCameraDistance", false, defaultSettings.GetAllocator());
     rapidjson::Value gameSpeeds(rapidjson::kArrayType);
     std::vector<float> defaultGameSpeeds = GetDefaultGameSpeeds();
@@ -358,6 +359,22 @@ void Settings::SetLogFileIO(bool value)
 bool Settings::GetLogFileIO()
 {
     rapidjson::Value& val = settingsDOM["LogFileIO"];
+    return val.GetBool();
+}
+
+void Settings::SetLogAudio(bool value)
+{
+    if (!settingsDOM.HasMember("LogAudio"))
+        settingsDOM.AddMember("LogAudio", value, settingsDOM.GetAllocator());
+    else
+        settingsDOM["LogAudio"] = value;
+
+    SaveSettings();
+}
+
+bool Settings::GetLogAudio()
+{
+    rapidjson::Value& val = settingsDOM["LogAudio"];
     return val.GetBool();
 }
 
