@@ -122,13 +122,16 @@ enum AKRESULT AK_SoundEngine_RegisterGameObj_hook(unsigned long long in_gameObje
 	return AK_SoundEngine_RegisterGameObj_orig(in_gameObjectID, in_pszObjName, in_uListenerMask);
 }
 
-bool loadedBank = false;
-
 // typical args: ("bank.bnk", -1, ID (out))
 AKRESULT __cdecl AK_SoundEngine_LoadBankHook(char const* __ptr64 bankName, long int unk1, unsigned long int& unk2)
 {
 	std::stringstream out;
-	
+
+	// TODO does this need locking to be thread-safe???
+
+	if (!soundInitialized && Settings::GetModOverridesLoaded())
+		Sound::TryLoadQueuedBanks();
+
 	if (!soundInitialized)
 	{
 		// as far as I can tell, the game doesn't actually use these IDs, so hopefully this is safe
@@ -140,16 +143,18 @@ AKRESULT __cdecl AK_SoundEngine_LoadBankHook(char const* __ptr64 bankName, long 
 
 		return AKRESULT::SUCCESS;
 	}
-	
-	AKRESULT ret = AK_SoundEngine_LoadBank_orig(bankName, unk1, unk2);
-	out << "Bank load: " << bankName << " " << unk1 << " " << unk2 << " ";
-	out << std::hex << ret;
-	DebugLog(out.str());
-	return ret;
+	else
+	{
+		AKRESULT ret = AK_SoundEngine_LoadBank_orig(bankName, unk1, unk2);
+		out << "Bank load: " << bankName << " " << unk1 << " " << unk2 << " ";
+		out << std::hex << ret;
+		DebugLog(out.str());
+		return ret;
+	}
 }
 
 
-void Sound::LoadQueuedBanks()
+void Sound::TryLoadQueuedBanks()
 {
 	// load init bank
 	std::stringstream out;
@@ -180,7 +185,7 @@ void Sound::LoadQueuedBanks()
 		DebugLog(out.str());
 	}
 	queuedBanks.clear();
-	loadedBank = true;
+	soundInitialized = true;
 }
 
 void Sound::Init()

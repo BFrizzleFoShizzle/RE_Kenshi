@@ -5,6 +5,8 @@ namespace Settings
 {
 	void Init();
 	void LoadModOverrides();
+	// whether mod overrides have been loaded
+	bool GetModOverridesLoaded();
 
 	void SetUseHeightmapCompression(bool value);
 	bool UseHeightmapCompression();

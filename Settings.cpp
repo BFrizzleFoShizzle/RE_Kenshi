@@ -137,6 +137,8 @@ std::string ParsePath(std::string path)
     return path;
 }
 
+static bool modOverridesLoaded = false;
+
 // Load settings from mods
 void Settings::LoadModOverrides()
 {
@@ -185,6 +187,12 @@ void Settings::LoadModOverrides()
             DebugLog("Queued soundbank: " + soundbanks.back());
         }
     }
+    modOverridesLoaded = true;
+}
+
+bool Settings::GetModOverridesLoaded()
+{
+    return modOverridesLoaded;
 }
 
 const std::unordered_map<std::string, std::string>* Settings::GetFileOverrides()

@@ -3,6 +3,7 @@
 namespace Sound
 {
 	void Init();
-	void LoadQueuedBanks();
+	// Will load queued banks if init soundbank + modbank is loaded
+	void TryLoadQueuedBanks();
 	void SetAlwaysLog(bool alwaysLog);
 }
