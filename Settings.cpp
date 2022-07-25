@@ -55,9 +55,19 @@ void AddDefaultSettings(rapidjson::Document &document)
     // add missing properties
     for (rapidjson::Document::MemberIterator srcIt = defaultSettings.MemberBegin(); srcIt != defaultSettings.MemberEnd(); ++srcIt)
     {
+        rapidjson::Type defaultType = srcIt->value.GetType();
         if (!document.HasMember(srcIt->name))
         {
-            document.AddMember(srcIt->name, srcIt->value, document.GetAllocator());
+            rapidjson::Value &val = document.AddMember(srcIt->name, srcIt->value, document.GetAllocator());
+        }
+        if (!document.HasMember(srcIt->name))
+        {
+            ErrorLog("Error adding settings var \"" + std::string(srcIt->name.GetString()) + "\"");
+        }
+        else if (defaultType != document[srcIt->name].GetType())
+        {
+            ErrorLog("Incorrect type for settings var \"" + std::string(srcIt->name.GetString()) + "\"");
+            document[srcIt->name] = defaultSettings[srcIt->name];
         }
     }
 }
@@ -92,9 +102,21 @@ void Settings::Init()
         DebugLog("Loading settings file...");
         rapidjson::IStreamWrapper isw(settingsFile);
         settingsDOM.ParseStream(isw);
-
-        // Add missing settings
-        AddDefaultSettings(settingsDOM);
+        if (settingsDOM.HasParseError())
+        {
+            ErrorLog("RE_Kenshi.ini has parsing error, replacing with default settings");
+            settingsDOM = GenerateDefaultSettings();
+        }
+        else if (!settingsDOM.IsObject())
+        {
+            ErrorLog("Parsed settings do not form a JSON object, replacing with default settings");
+            settingsDOM = GenerateDefaultSettings();
+        }
+        else
+        {
+            // Add missing settings
+            AddDefaultSettings(settingsDOM);
+        }
     }
 
     // TODO REMOVE AFTER TESTING
