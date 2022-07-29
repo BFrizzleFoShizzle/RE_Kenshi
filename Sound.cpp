@@ -5,6 +5,7 @@
 #include <strstream>
 #include <unordered_set>
 #include <stdint.h>
+#include <boost/signals2/mutex.hpp>
 
 enum AKRESULT
 {
@@ -25,6 +26,8 @@ std::unordered_set<std::string> events;
 std::unordered_set<std::string> switches;
 std::unordered_set<std::string> states;
 std::unordered_set<std::string> gameObjNames;
+
+boost::signals2::mutex soundLock;
 
 // The game loads banks before mods are loaded - we defer these till after our mod config is run
 // so we can load our banks before the games, allowing us to override sounds
@@ -123,11 +126,17 @@ enum AKRESULT AK_SoundEngine_RegisterGameObj_hook(unsigned long long in_gameObje
 }
 
 // typical args: ("bank.bnk", -1, ID (out))
+// Threading notes:
+// The "Init.bnk" is guaranteed to happen before mod init
+// Mod init happens in parallel with other soundbank loads
+// Thus, locking is needed after 1st soundbank load finishes
+// as soundInitialized may be read/written by different threads
 AKRESULT __cdecl AK_SoundEngine_LoadBankHook(char const* __ptr64 bankName, long int unk1, unsigned long int& unk2)
 {
 	std::stringstream out;
 
-	// TODO does this need locking to be thread-safe???
+	// technically only need to do this after 1st soundbank loade but w/e
+	soundLock.lock();
 
 	if (!soundInitialized && Settings::GetModOverridesLoaded())
 		Sound::TryLoadQueuedBanks();
@@ -141,10 +150,13 @@ AKRESULT __cdecl AK_SoundEngine_LoadBankHook(char const* __ptr64 bankName, long 
 		DebugLog(out.str());
 		queuedBanks.push_back(bankName);
 
+		soundLock.unlock();
 		return AKRESULT::SUCCESS;
 	}
 	else
 	{
+		soundLock.unlock();
+
 		AKRESULT ret = AK_SoundEngine_LoadBank_orig(bankName, unk1, unk2);
 		out << "Bank load: " << bankName << " " << unk1 << " " << unk2 << " ";
 		out << std::hex << ret;
@@ -153,9 +165,17 @@ AKRESULT __cdecl AK_SoundEngine_LoadBankHook(char const* __ptr64 bankName, long 
 	}
 }
 
-
+// MAKE SURE YOU HAVE LOCKED THE SOUND LOCK BEFORE CALLING
 void Sound::TryLoadQueuedBanks()
 {
+	// if init soundbank is loaded, mod soundbanks cannot be loaded
+	if (queuedBanks.size() == 0)
+		return;
+
+	// if mod overrides aren't loaded, we don't know which banks need injecting
+	if (!Settings::GetModOverridesLoaded())
+		return;
+
 	// load init bank
 	std::stringstream out;
 	unsigned long ID;
