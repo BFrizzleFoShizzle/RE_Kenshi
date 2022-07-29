@@ -125,48 +125,8 @@ enum AKRESULT AK_SoundEngine_RegisterGameObj_hook(unsigned long long in_gameObje
 	return AK_SoundEngine_RegisterGameObj_orig(in_gameObjectID, in_pszObjName, in_uListenerMask);
 }
 
-// typical args: ("bank.bnk", -1, ID (out))
-// Threading notes:
-// The "Init.bnk" is guaranteed to happen before mod init
-// Mod init happens in parallel with other soundbank loads
-// Thus, locking is needed after 1st soundbank load finishes
-// as soundInitialized may be read/written by different threads
-AKRESULT __cdecl AK_SoundEngine_LoadBankHook(char const* __ptr64 bankName, long int unk1, unsigned long int& unk2)
-{
-	std::stringstream out;
-
-	// technically only need to do this after 1st soundbank loade but w/e
-	soundLock.lock();
-
-	if (!soundInitialized && Settings::GetModOverridesLoaded())
-		Sound::TryLoadQueuedBanks();
-
-	if (!soundInitialized)
-	{
-		// as far as I can tell, the game doesn't actually use these IDs, so hopefully this is safe
-		unk2 = fakeBankID;
-		++fakeBankID;
-		out << "Deferred load: " << bankName << " " << unk1 << " " << unk2;
-		DebugLog(out.str());
-		queuedBanks.push_back(bankName);
-
-		soundLock.unlock();
-		return AKRESULT::SUCCESS;
-	}
-	else
-	{
-		soundLock.unlock();
-
-		AKRESULT ret = AK_SoundEngine_LoadBank_orig(bankName, unk1, unk2);
-		out << "Bank load: " << bankName << " " << unk1 << " " << unk2 << " ";
-		out << std::hex << ret;
-		DebugLog(out.str());
-		return ret;
-	}
-}
-
 // MAKE SURE YOU HAVE LOCKED THE SOUND LOCK BEFORE CALLING
-void Sound::TryLoadQueuedBanks()
+static void LoadQueuedBanks()
 {
 	// if init soundbank is loaded, mod soundbanks cannot be loaded
 	if (queuedBanks.size() == 0)
@@ -206,6 +166,56 @@ void Sound::TryLoadQueuedBanks()
 	}
 	queuedBanks.clear();
 	soundInitialized = true;
+}
+
+// typical args: ("bank.bnk", -1, ID (out))
+// Threading notes:
+// The "Init.bnk" is guaranteed to happen before mod init
+// Mod init happens in parallel with other soundbank loads
+// Thus, locking is needed after 1st soundbank load finishes
+// as soundInitialized may be read/written by different threads
+AKRESULT __cdecl AK_SoundEngine_LoadBankHook(char const* __ptr64 bankName, long int unk1, unsigned long int& unk2)
+{
+	std::stringstream out;
+
+	// technically only need to do this after 1st soundbank loade but w/e
+	soundLock.lock();
+
+	if (!soundInitialized && Settings::GetModOverridesLoaded())
+		LoadQueuedBanks();
+
+	if (!soundInitialized)
+	{
+		// as far as I can tell, the game doesn't actually use these IDs, so hopefully this is safe
+		unk2 = fakeBankID;
+		++fakeBankID;
+		out << "Deferred load: " << bankName << " " << unk1 << " " << unk2;
+		DebugLog(out.str());
+		queuedBanks.push_back(bankName);
+
+		soundLock.unlock();
+		return AKRESULT::SUCCESS;
+	}
+	else
+	{
+		soundLock.unlock();
+
+		AKRESULT ret = AK_SoundEngine_LoadBank_orig(bankName, unk1, unk2);
+		out << "Bank load: " << bankName << " " << unk1 << " " << unk2 << " ";
+		out << std::hex << ret;
+		DebugLog(out.str());
+		return ret;
+	}
+}
+
+void Sound::TryLoadQueuedBanks()
+{
+	// technically only need to do this after 1st soundbank loade but w/e
+	soundLock.lock();
+	
+	LoadQueuedBanks();
+
+	soundLock.unlock();
 }
 
 void Sound::Init()
