@@ -398,8 +398,8 @@ MyGUI::WidgetPtr CreateSlider(MyGUI::WidgetPtr parent, int x, int y, int w, int 
     MyGUI::ButtonPtr deleteButton = sliderRoot->createWidget<MyGUI::Button>("Kenshi_CloseButtonSkin", w - deleteSize, (h - deleteSize) / 2, deleteSize, deleteSize, MyGUI::Align::Right | MyGUI::Align::Top, namePrefix + "DeleteButton");
     MyGUI::TextBox* sliderLabel = sliderRoot->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 0, 0, w * 0.2f, h, MyGUI::Align::Left | MyGUI::Align::VStretch, namePrefix + "ElementText");
     sliderLabel->setTextAlign(MyGUI::Align::Left);
-    MyGUI::ScrollBar* scrollBar = sliderRoot->createWidget<MyGUI::ScrollBar>("Kenshi_ScrollBar", w * 0.2f, 0, w * 0.65f, h, MyGUI::Align::Stretch, namePrefix + "Slider");
-    MyGUI::EditBox* valueText = sliderRoot->createWidget<MyGUI::EditBox>("Kenshi_EditBox", w * 0.87f, 0, w * 0.07f, h, MyGUI::Align::Right | MyGUI::Align::VStretch, namePrefix + "NumberText");
+    MyGUI::ScrollBar* scrollBar = sliderRoot->createWidget<MyGUI::ScrollBar>("Kenshi_ScrollBar", w * 0.22f, 0, w * 0.58f, h, MyGUI::Align::Stretch, namePrefix + "Slider");
+    MyGUI::EditBox* valueText = sliderRoot->createWidget<MyGUI::EditBox>("Kenshi_EditBox", w * 0.82f, 0, w * 0.12f, h, MyGUI::Align::Right | MyGUI::Align::VStretch, namePrefix + "NumberText");
     valueText->eventEditTextChange += MyGUI::newDelegate(SliderTextChange);
 
     return sliderRoot;
@@ -613,7 +613,10 @@ void InitGUI()
     // Create mod menu
     float windowWidth = DEBUG_WINDOW_WIDTH / 1920.0f;
     float windowHeight = DEBUG_WINDOW_HEIGHT / 1080.0f;
-    modMenuWindow = gui->createWidgetReal<MyGUI::Window>("Kenshi_WindowCX", 0.0f, 0.0f, windowWidth, windowHeight, MyGUI::Align::Center, "Window", "DebugWindow");
+    modMenuWindow = gui->createWidgetReal<MyGUI::Window>("Kenshi_WindowCX", 0.1f, 0.1f, windowWidth, windowHeight, MyGUI::Align::Center, "Window", "DebugWindow");
+    // fix aspect ratio
+    float initScale = float(modMenuWindow->getCoord().height) / DEBUG_WINDOW_HEIGHT;
+    modMenuWindow->setCoord(100, 100, DEBUG_WINDOW_WIDTH * initScale, modMenuWindow->getCoord().height);
     float scale = float(modMenuWindow->getClientCoord().height) / DEBUG_WINDOW_HEIGHT;
     modMenuWindow->setCaption("RE_Kenshi Menu");
     modMenuWindow->eventKeyButtonReleased += MyGUI::newDelegate(debugMenuKeyRelease);
