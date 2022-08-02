@@ -392,13 +392,14 @@ MyGUI::WidgetPtr CreateSlider(MyGUI::WidgetPtr parent, int x, int y, int w, int 
     */
     // Kenshi doesn't use "Kenshi_Slider" for float sliders, they seem to use custom C++ interface, so I roll my own to match
     // Naming convention matches "Kenshi_Slider"
+
     MyGUI::WidgetPtr sliderRoot = parent->createWidget<MyGUI::Widget>("PanelEmpty", x, y, w, h, MyGUI::Align::Top | MyGUI::Align::Left, namePrefix + "SliderRoot");
     int deleteSize = h - 10;
     MyGUI::ButtonPtr deleteButton = sliderRoot->createWidget<MyGUI::Button>("Kenshi_CloseButtonSkin", w - deleteSize, (h - deleteSize) / 2, deleteSize, deleteSize, MyGUI::Align::Right | MyGUI::Align::Top, namePrefix + "DeleteButton");
-    MyGUI::TextBox *sliderLabel = sliderRoot->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 0, 0, 80, h, MyGUI::Align::Left | MyGUI::Align::VStretch, namePrefix + "ElementText");
+    MyGUI::TextBox* sliderLabel = sliderRoot->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 0, 0, w * 0.2f, h, MyGUI::Align::Left | MyGUI::Align::VStretch, namePrefix + "ElementText");
     sliderLabel->setTextAlign(MyGUI::Align::Left);
-    MyGUI::ScrollBar *scrollBar = sliderRoot->createWidget<MyGUI::ScrollBar>("Kenshi_ScrollBar", 80, 0, w - 175, h, MyGUI::Align::Stretch, namePrefix + "Slider");
-    MyGUI::EditBox* valueText = sliderRoot->createWidget<MyGUI::EditBox>("Kenshi_EditBox", w - 90, 0, 60, h, MyGUI::Align::Right | MyGUI::Align::VStretch, namePrefix + "NumberText");
+    MyGUI::ScrollBar* scrollBar = sliderRoot->createWidget<MyGUI::ScrollBar>("Kenshi_ScrollBar", w * 0.2f, 0, w * 0.65f, h, MyGUI::Align::Stretch, namePrefix + "Slider");
+    MyGUI::EditBox* valueText = sliderRoot->createWidget<MyGUI::EditBox>("Kenshi_EditBox", w * 0.87f, 0, w * 0.07f, h, MyGUI::Align::Right | MyGUI::Align::VStretch, namePrefix + "NumberText");
     valueText->eventEditTextChange += MyGUI::newDelegate(SliderTextChange);
 
     return sliderRoot;
