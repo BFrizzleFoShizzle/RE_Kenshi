@@ -418,7 +418,11 @@ void GameSpeedScroll(MyGUI::ScrollBar *scrollBar, size_t newPos)
     if (!numberText)
         ErrorLog("Number text not found on scrollbar!");
     std::stringstream str;
-    str << std::setprecision(3) << scaled;
+    if (scaled < 1000.0)
+        str << std::setprecision(3);
+    else
+        str << std::setprecision(4);
+    str << scaled;
     numberText->setCaption(str.str());
     float finalSpeedVal = 0.0f;
     str >> finalSpeedVal;
