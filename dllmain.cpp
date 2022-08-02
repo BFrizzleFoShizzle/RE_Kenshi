@@ -283,6 +283,7 @@ MyGUI::ScrollViewPtr debugLogScrollView = nullptr;
 
 const uint32_t DEBUG_WINDOW_WIDTH = 600;
 const uint32_t DEBUG_WINDOW_HEIGHT = 600;
+const uint32_t DEBUG_WINDOW_RIGHT = DEBUG_WINDOW_WIDTH - 30; // technically correct value would have VScrollBar width subtracted
 
 void TickButtonBehaviourClick(MyGUI::WidgetPtr sender)
 {
@@ -392,7 +393,8 @@ MyGUI::WidgetPtr CreateSlider(MyGUI::WidgetPtr parent, int x, int y, int w, int 
     // Kenshi doesn't use "Kenshi_Slider" for float sliders, they seem to use custom C++ interface, so I roll my own to match
     // Naming convention matches "Kenshi_Slider"
     MyGUI::WidgetPtr sliderRoot = parent->createWidget<MyGUI::Widget>("PanelEmpty", x, y, w, h, MyGUI::Align::Top | MyGUI::Align::Left, namePrefix + "SliderRoot");
-    MyGUI::ButtonPtr deleteButton = sliderRoot->createWidget<MyGUI::Button>("Kenshi_CloseButtonSkin", w - 30, (h - 30) / 2, 30, 30, MyGUI::Align::Right | MyGUI::Align::Top, namePrefix + "DeleteButton");
+    int deleteSize = h - 10;
+    MyGUI::ButtonPtr deleteButton = sliderRoot->createWidget<MyGUI::Button>("Kenshi_CloseButtonSkin", w - deleteSize, (h - deleteSize) / 2, deleteSize, deleteSize, MyGUI::Align::Right | MyGUI::Align::Top, namePrefix + "DeleteButton");
     MyGUI::TextBox *sliderLabel = sliderRoot->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 0, 0, 80, h, MyGUI::Align::Left | MyGUI::Align::VStretch, namePrefix + "ElementText");
     sliderLabel->setTextAlign(MyGUI::Align::Left);
     MyGUI::ScrollBar *scrollBar = sliderRoot->createWidget<MyGUI::ScrollBar>("Kenshi_ScrollBar", 80, 0, w - 175, h, MyGUI::Align::Stretch, namePrefix + "Slider");
@@ -454,6 +456,8 @@ void RedrawGameSpeedSettings()
 {
     MyGUI::Gui* gui = MyGUI::Gui::getInstancePtr();
 
+    float scale = float(modMenuWindow->getClientCoord().height) / DEBUG_WINDOW_HEIGHT;
+
     // Clear old scroll bars
     int scrollBarIndex = 0;
     std::stringstream nameStr;
@@ -473,7 +477,7 @@ void RedrawGameSpeedSettings()
     {
         std::stringstream nameStr;
         nameStr << "SpeedSlider" << i << "_";
-        MyGUI::WidgetPtr slider = CreateSlider(settingsView, 2, positionY, 500, 40, nameStr.str());
+        MyGUI::WidgetPtr slider = CreateSlider(settingsView, 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 40 * scale, nameStr.str());
 
         MyGUI::TextBox* elementText = slider->findWidget(nameStr.str() + "ElementText")->castType<MyGUI::TextBox>();
         if (!elementText)
@@ -497,7 +501,7 @@ void RedrawGameSpeedSettings()
 
     // resize settings
     MyGUI::IntSize canvasSize = settingsView->getCanvasSize();
-    settingsView->setCanvasSize(canvasSize.width, std::max(positionY, canvasSize.height));
+    settingsView->setCanvasSize(canvasSize.width, std::max(int(positionY * scale), canvasSize.height));
 }
 
 void AddGameSpeed(MyGUI::WidgetPtr button)
@@ -606,7 +610,10 @@ void InitGUI()
     MyGUI::Gui* gui = MyGUI::Gui::getInstancePtr();
 
     // Create mod menu
-    modMenuWindow = gui->createWidget<MyGUI::Window>("Kenshi_WindowCX", 100, 100, DEBUG_WINDOW_WIDTH, DEBUG_WINDOW_HEIGHT, MyGUI::Align::Center, "Window", "DebugWindow");
+    float windowWidth = DEBUG_WINDOW_WIDTH / 1920.0f;
+    float windowHeight = DEBUG_WINDOW_HEIGHT / 1080.0f;
+    modMenuWindow = gui->createWidgetReal<MyGUI::Window>("Kenshi_WindowCX", 0.0f, 0.0f, windowWidth, windowHeight, MyGUI::Align::Center, "Window", "DebugWindow");
+    float scale = float(modMenuWindow->getClientCoord().height) / DEBUG_WINDOW_HEIGHT;
     modMenuWindow->setCaption("RE_Kenshi Menu");
     modMenuWindow->eventKeyButtonReleased += MyGUI::newDelegate(debugMenuKeyRelease);
     modMenuWindow->eventWindowButtonPressed += MyGUI::newDelegate(debugMenuButtonPress);
@@ -620,42 +627,42 @@ void InitGUI()
     int positionY = 2;
     settingsView->setCanvasSize(settingsView->getWidth(), settingsView->getHeight());
 
-    MyGUI::ButtonPtr checkUpdatesToggle = settingsView->createWidget<MyGUI::Button>("Kenshi_TickButton1", 2, positionY, 500, 26, MyGUI::Align::Top | MyGUI::Align::Left, "CheckUpdates");
+    MyGUI::ButtonPtr checkUpdatesToggle = settingsView->createWidget<MyGUI::Button>("Kenshi_TickButton1", 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 26 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "CheckUpdates");
     checkUpdatesToggle->setStateSelected(Settings::GetCheckUpdates());
     checkUpdatesToggle->setCaption("Automatically check for updates");
     checkUpdatesToggle->eventMouseButtonClick += MyGUI::newDelegate(TickButtonBehaviourClick);
     checkUpdatesToggle->eventMouseButtonClick += MyGUI::newDelegate(ToggleCheckUpdates);
     positionY += 30;
 
-    MyGUI::ButtonPtr fixRNGToggle = settingsView->createWidget<MyGUI::Button>("Kenshi_TickButton1", 2, positionY, 500, 26, MyGUI::Align::Top | MyGUI::Align::Left, "FixRNGToggle");
+    MyGUI::ButtonPtr fixRNGToggle = settingsView->createWidget<MyGUI::Button>("Kenshi_TickButton1", 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 26 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "FixRNGToggle");
     fixRNGToggle->setStateSelected(Settings::GetFixRNG());
     fixRNGToggle->setCaption("Fix Kenshi's RNG bug");
     fixRNGToggle->eventMouseButtonClick += MyGUI::newDelegate(TickButtonBehaviourClick);
     fixRNGToggle->eventMouseButtonClick += MyGUI::newDelegate(ToggleFixRNG);
     positionY += 30;
 
-    MyGUI::ButtonPtr increaseMaxCameraDistance = settingsView->createWidget<MyGUI::Button>("Kenshi_TickButton1", 2, positionY, 500, 26, MyGUI::Align::Top | MyGUI::Align::Left, "IncreaseMaxCameraDistance");
+    MyGUI::ButtonPtr increaseMaxCameraDistance = settingsView->createWidget<MyGUI::Button>("Kenshi_TickButton1", 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 26 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "IncreaseMaxCameraDistance");
     increaseMaxCameraDistance->setStateSelected(Settings::GetIncreaseMaxCameraDistance());
     increaseMaxCameraDistance->setCaption("Increase max camera distance");
     increaseMaxCameraDistance->eventMouseButtonClick += MyGUI::newDelegate(TickButtonBehaviourClick);
     increaseMaxCameraDistance->eventMouseButtonClick += MyGUI::newDelegate(ToggleIncreaseMaxCameraDistance);
     positionY += 30;
 
-    MyGUI::ButtonPtr cacheShaders = settingsView->createWidget<MyGUI::Button>("Kenshi_TickButton1", 2, positionY, 500, 26, MyGUI::Align::Top | MyGUI::Align::Left, "CacheShadersToggle");
+    MyGUI::ButtonPtr cacheShaders = settingsView->createWidget<MyGUI::Button>("Kenshi_TickButton1", 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 26 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "CacheShadersToggle");
     cacheShaders->setStateSelected(Settings::GetCacheShaders());
     cacheShaders->setCaption("Cache shaders");
     cacheShaders->eventMouseButtonClick += MyGUI::newDelegate(TickButtonBehaviourClick);
     cacheShaders->eventMouseButtonClick += MyGUI::newDelegate(ToggleCacheShaders);
     positionY += 30;
 
-    MyGUI::ButtonPtr logFileIO = settingsView->createWidget<MyGUI::Button>("Kenshi_TickButton1", 2, positionY, 500, 26, MyGUI::Align::Top | MyGUI::Align::Left, "LogFileIO");
+    MyGUI::ButtonPtr logFileIO = settingsView->createWidget<MyGUI::Button>("Kenshi_TickButton1", 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 26 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "LogFileIO");
     logFileIO->setStateSelected(Settings::GetLogFileIO());
     logFileIO->setCaption("Log file IO");
     logFileIO->eventMouseButtonClick += MyGUI::newDelegate(TickButtonBehaviourClick);
     logFileIO->eventMouseButtonClick += MyGUI::newDelegate(ToggleLogFileIO);
     positionY += 30;
 
-    MyGUI::ButtonPtr logAudio = settingsView->createWidget<MyGUI::Button>("Kenshi_TickButton1", 2, positionY, 500, 26, MyGUI::Align::Top | MyGUI::Align::Left, "LogAudio");
+    MyGUI::ButtonPtr logAudio = settingsView->createWidget<MyGUI::Button>("Kenshi_TickButton1", 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 26 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "LogAudio");
     logAudio->setStateSelected(Settings::GetLogAudio());
     logAudio->setCaption("Log audio IDs/events/switches/states");
     logAudio->eventMouseButtonClick += MyGUI::newDelegate(TickButtonBehaviourClick);
@@ -664,11 +671,11 @@ void InitGUI()
 
     if (!HeightmapHook::CompressedHeightmapFileExists())
     {
-        MyGUI::TextBox* noCompressedHeightmapLabel = settingsView->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 2, positionY, 500, 30, MyGUI::Align::Top | MyGUI::Align::Left, "NoCompressedHeightmapLabel");
+        MyGUI::TextBox* noCompressedHeightmapLabel = settingsView->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 30 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "NoCompressedHeightmapLabel");
         noCompressedHeightmapLabel->setCaption("To enable, reinstall RE_Kenshi and check \"Compress Heightmap\"");
         positionY += 30;
     }
-    MyGUI::ButtonPtr useCompressedHeightmap = settingsView->createWidget<MyGUI::Button>("Kenshi_TickButton1", 2, positionY, 500, 26, MyGUI::Align::Top | MyGUI::Align::Left, "UseCompressedHeightmapToggle");
+    MyGUI::ButtonPtr useCompressedHeightmap = settingsView->createWidget<MyGUI::Button>("Kenshi_TickButton1", 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 26 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "UseCompressedHeightmapToggle");
     useCompressedHeightmap->setStateSelected(Settings::UseHeightmapCompression());
     useCompressedHeightmap->setCaption("[TOGGLE MAY CRASH] Use compressed heightmap");
     useCompressedHeightmap->eventMouseButtonClick += MyGUI::newDelegate(TickButtonBehaviourClick);
@@ -685,7 +692,7 @@ void InitGUI()
     // Apply settings
     if (numAttackSlots > 0)
         Kenshi::GetNumAttackSlots() = numAttackSlots;
-    MyGUI::WidgetPtr attackSlotsSlider = CreateSlider(settingsView, 2, positionY, 500, 40, "AttackSlotsSlider_");
+    MyGUI::WidgetPtr attackSlotsSlider = CreateSlider(settingsView, 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 40 * scale, "AttackSlotsSlider_");
     MyGUI::TextBox* elementText = attackSlotsSlider->findWidget("AttackSlotsSlider_ElementText")->castType<MyGUI::TextBox>();
     std::stringstream attackSlotsLabel;
     attackSlotsLabel << "Attack slots (" << defaultAttackSlots << "):";
@@ -706,9 +713,9 @@ void InitGUI()
         attackSlotsScrollBar->setScrollPosition(0);
     attackSlotsScrollBar->eventScrollChangePosition += MyGUI::newDelegate(AttackSlotScroll);
     positionY += 45;
-    MyGUI::TextBox* gameSpeedsLabel = settingsView->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 2, positionY, 500, 30, MyGUI::Align::Top | MyGUI::Align::Center, "GameSpeedsLabel");
+    MyGUI::TextBox* gameSpeedsLabel = settingsView->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 30 * scale, MyGUI::Align::Top | MyGUI::Align::Center, "GameSpeedsLabel");
     gameSpeedsLabel->setCaption("Game speeds");
-    MyGUI::ButtonPtr addGameSpeed = settingsView->createWidget<MyGUI::Button>("Kenshi_Button1", 300, positionY, 200, 30, MyGUI::Align::Top | MyGUI::Align::Right, "AddGameSpeedBtn");
+    MyGUI::ButtonPtr addGameSpeed = settingsView->createWidget<MyGUI::Button>("Kenshi_Button1", 300 * scale, positionY * scale, 200 * scale, 30 * scale, MyGUI::Align::Top | MyGUI::Align::Right, "AddGameSpeedBtn");
     addGameSpeed->setCaption("Add game speed");
     addGameSpeed->eventMouseButtonClick += MyGUI::newDelegate(AddGameSpeed);
     positionY += 35;
