@@ -42,9 +42,14 @@ void Sound::SetAlwaysLog(bool log)
 	alwaysLog = log;
 }
 
+const char* NULLPTR_ID = "[NULLPTR/EMPTY]";
+const wchar_t* NULLPTR_ID_W = L"[NULLPTR/EMPTY]";
+
 unsigned long int __cdecl AK_SoundEngine_GetIDFromStringHook(char const* __ptr64 str)
 {
 	unsigned long int ret = AK_SoundEngine_GetIDFromString_orig(str);
+	if (str == nullptr)
+		str = NULLPTR_ID;
 	if (Settings::GetLogAudio() && (alwaysLog || IDs.find(str) == IDs.end()))
 	{
 		std::stringstream out;
@@ -57,6 +62,11 @@ unsigned long int __cdecl AK_SoundEngine_GetIDFromStringHook(char const* __ptr64
 
 unsigned long int __cdecl AK_SoundEngine_GetIDFromStringHook2(wchar_t const* __ptr64 str)
 {
+	unsigned long int ret = AK_SoundEngine_GetIDFromString2_orig(str);
+
+	if (str == nullptr)
+		str = NULLPTR_ID_W;
+
 	std::wstring wstr = str;
 	std::string sstr = std::string(wstr.begin(), wstr.end());
 	if (Settings::GetLogAudio() && (alwaysLog || IDs.find(sstr) == IDs.end()))
@@ -66,16 +76,21 @@ unsigned long int __cdecl AK_SoundEngine_GetIDFromStringHook2(wchar_t const* __p
 		out << "ID (w): " << str << " ";
 		DebugLog(out.str());
 	}
-	unsigned long int ret = AK_SoundEngine_GetIDFromString2_orig(str);
 	return ret;
 }
 
 
 enum AKRESULT AK_SoundEngine_SetState_hook(char const* __ptr64 unk1, char const* __ptr64 unk2)
 {
+	AKRESULT ret = AK_SoundEngine_SetState_orig(unk1, unk2);
+
+	if (unk1 == nullptr)
+		unk1 = NULLPTR_ID;
+	if (unk2 == nullptr)
+		unk2 = NULLPTR_ID;
+
 	std::string combinedID = unk1;
 	combinedID += " " + std::string(unk2);
-	AKRESULT ret = AK_SoundEngine_SetState_orig(unk1, unk2);
 	if (Settings::GetLogAudio() && (alwaysLog || states.find(combinedID) == states.end()))
 	{
 		std::stringstream out;
@@ -88,9 +103,15 @@ enum AKRESULT AK_SoundEngine_SetState_hook(char const* __ptr64 unk1, char const*
 
 enum AKRESULT AK_SoundEngine_SetSwitch_hook(char const* __ptr64 unk1, char const* __ptr64 unk2, unsigned long long unk3(unsigned __int64))
 {
-	std::string combinedID = unk1;
-	combinedID += " " + std::string(unk2);
 	AKRESULT ret = AK_SoundEngine_SetSwitch_orig(unk1, unk2, unk3);
+
+	if (unk1 == nullptr)
+		unk1 = NULLPTR_ID;
+	if (unk2 == nullptr)
+		unk2 = NULLPTR_ID;
+
+	std::string combinedID = "";
+	combinedID += " " + std::string(unk2);
 	if (Settings::GetLogAudio() && (alwaysLog || switches.find(combinedID) == switches.end()))
 	{
 		std::stringstream out;
