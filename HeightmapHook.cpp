@@ -168,7 +168,7 @@ void HeightmapHook::WriteBlockLODsToCanvas(MyGUI::Canvas* canvas)
 	// multiply values to useful range
 	for (int y = 0; y < height; ++y)
 		for (int x = 0; x < width; ++x)
-			pixels[y * textureWidth + x] = 220 - max(blockLODs[y * width + x] * 40, 0);
+			pixels[y * textureWidth + x] = 220 - std::max(blockLODs[y * width + x] * 40, 0);
 
 	canvas->unlock();
 	canvas->updateTexture();
