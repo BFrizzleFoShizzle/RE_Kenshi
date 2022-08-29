@@ -157,7 +157,8 @@ public:
 		UINT                   Flags1,
 		UINT                   Flags2,
 		ID3DBlob** ppCode,
-		ID3DBlob** ppErrorMsgs);
+		ID3DBlob** ppErrorMsgs,
+		HRESULT* result);
 
 private:
 
@@ -248,7 +249,8 @@ ID3DBlob* ShaderCacheFile::GetBlob(LPCVOID pSrcData,
 	UINT                   Flags1,
 	UINT                   Flags2,
 	ID3DBlob** ppCode,
-	ID3DBlob** ppErrorMsgs)
+	ID3DBlob** ppErrorMsgs,
+	HRESULT *result)
 {
 	Shader shader = Shader(pSrcData, SrcDataSize, pDefines, pInclude, pEntrypoint, pTarget, Flags1, Flags2);
 	std::unordered_set<Shader>::iterator cachedShader = cachedShaders.find(shader);
@@ -257,13 +259,24 @@ ID3DBlob* ShaderCacheFile::GetBlob(LPCVOID pSrcData,
 		//DebugLog("Shader is cached");
 		D3DCreateBlob(cachedShader->compiledSize, ppCode);
 		memcpy((*ppCode)->GetBufferPointer(), cachedShader->compiled, cachedShader->compiledSize);
+		*result = S_OK;
 		return *ppCode;
 	}
 
 	//DebugLog("Shader is uncached");
 	// if the shader isn't cached, compile it and re-serialize
-	HRESULT ret = D3DCompile_orig(pSrcData, SrcDataSize, pSourceName, pDefines, pInclude, pEntrypoint, pTarget, Flags1, Flags2, ppCode, ppErrorMsgs);
+	*result = D3DCompile_orig(pSrcData, SrcDataSize, pSourceName, pDefines, pInclude, pEntrypoint, pTarget, Flags1, Flags2, ppCode, ppErrorMsgs);
 	
+	// this SOMETIMES happens?!?
+	if (ppCode == nullptr || *ppCode == nullptr)
+	{
+		std::stringstream err;
+		err << "D3DCompile error: " << *result;
+		ErrorLog(err.str());
+		ErrorLog(std::string(pSourceName));
+		return nullptr;
+	}
+
 	shader.SetBlob(*ppCode);
 
 	cachedShaders.insert(shader);
@@ -450,10 +463,11 @@ HRESULT D3DCompile_hook(LPCVOID pSrcData,
 		ErrorLog("CRITICAL ERROR: ShaderCache not initialized!");
 		shaderCache = new ShaderCacheFile("./RE_Kenshi/shader_cache.sc");
 	}
-	*ppCode = shaderCache->GetBlob(pSrcData, SrcDataSize, pSourceName, pDefines, pInclude, pEntrypoint, pTarget, Flags1, Flags2, ppCode, ppErrorMsgs);
+	HRESULT ret;
+	*ppCode = shaderCache->GetBlob(pSrcData, SrcDataSize, pSourceName, pDefines, pInclude, pEntrypoint, pTarget, Flags1, Flags2, ppCode, ppErrorMsgs, &ret);
 	mutex.unlock();
 
-	return S_OK;
+	return ret;
 }
 
 
