@@ -48,6 +48,16 @@ rapidjson::Document GenerateDefaultSettings()
     return defaultSettings;
 }
 
+static bool IsSameType(rapidjson::Type t1, rapidjson::Type t2)
+{
+    // bools are the same type
+    if (t1 == rapidjson::Type::kFalseType || t1 == rapidjson::Type::kTrueType)
+        return t2 == rapidjson::Type::kFalseType || t2 == rapidjson::Type::kTrueType;
+
+    // other
+    return t1 == t2;
+}
+
 void AddDefaultSettings(rapidjson::Document &document)
 {
     rapidjson::Document defaultSettings = GenerateDefaultSettings();
@@ -58,15 +68,20 @@ void AddDefaultSettings(rapidjson::Document &document)
         rapidjson::Type defaultType = srcIt->value.GetType();
         if (!document.HasMember(srcIt->name))
         {
+            DebugLog("Adding default setting...");
+            DebugLog(srcIt->name.GetString());
             rapidjson::Value &val = document.AddMember(srcIt->name, srcIt->value, document.GetAllocator());
         }
         if (!document.HasMember(srcIt->name))
         {
             ErrorLog("Error adding settings var \"" + std::string(srcIt->name.GetString()) + "\"");
         }
-        else if (defaultType != document[srcIt->name].GetType())
+        else if (!IsSameType(defaultType, document[srcIt->name].GetType()))
         {
             ErrorLog("Incorrect type for settings var \"" + std::string(srcIt->name.GetString()) + "\"");
+            std::stringstream str;
+            str << defaultType << " " << document[srcIt->name].GetType();
+            DebugLog(str.str());
             document[srcIt->name] = defaultSettings[srcIt->name];
         }
     }
