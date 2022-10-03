@@ -792,7 +792,12 @@ void InjectSettings()
     MyGUI::Gui* gui = MyGUI::Gui::getInstancePtr();
 
     //  inject mod menu into Kenshi's settings menu "MODS" tab
-    MyGUI::TabControl* optionsTabCtrl = Kenshi::FindWidget(gui->getEnumerator(), "OptionsTab")->castType<MyGUI::TabControl>();
+    // this call can return nullptr so need an explicit check before the cast
+    MyGUI::Widget* optionsTabWidget = Kenshi::FindWidget(gui->getEnumerator(), "OptionsTab");
+    if (optionsTabWidget == nullptr)
+        return;
+
+    MyGUI::TabControl* optionsTabCtrl = optionsTabWidget->castType<MyGUI::TabControl>(false);
     if (optionsTabCtrl == nullptr)
         return;
 
