@@ -37,48 +37,133 @@ MyGUI::TextBox* gameSpeedText = nullptr;
 
 int gameSpeedIdx = 0;
 
+// used to set highlighted game speed button
+// IDX 1-4
+void HighlightSpeedButton(int buttonIdx)
+{
+    // BUTTON HIGHLIGHT
+    MyGUI::Gui* gui = MyGUI::Gui::getInstancePtr();
+    MyGUI::ButtonPtr speedButton = nullptr;
+    // button 1 (pause)
+    MyGUI::WidgetPtr widget = Kenshi::FindWidget(gui->getEnumerator(), "TimeSpeedButton1");
+    if (widget)
+        speedButton = widget->castType<MyGUI::Button>(false);
+    if (speedButton)
+        speedButton->setStateSelected(buttonIdx == 1);
+
+    // button 2 (play)
+    speedButton = nullptr;
+    widget = Kenshi::FindWidget(gui->getEnumerator(), "TimeSpeedButton2");
+    if (widget)
+        speedButton = widget->castType<MyGUI::Button>(false);
+    if (speedButton)
+        speedButton->setStateSelected(buttonIdx == 2);
+
+    // button 3 (2x)
+    speedButton = nullptr;
+    widget = Kenshi::FindWidget(gui->getEnumerator(), "TimeSpeedButton3");
+    if (widget)
+        speedButton = widget->castType<MyGUI::Button>(false);
+    if (speedButton)
+        speedButton->setStateSelected(buttonIdx == 3);
+
+    // button 4 (5x)
+    speedButton = nullptr;
+    widget = Kenshi::FindWidget(gui->getEnumerator(), "TimeSpeedButton4");
+    if (widget)
+        speedButton = widget->castType<MyGUI::Button>(false);
+    if (speedButton)
+        speedButton->setStateSelected(buttonIdx == 4);
+}
 
 // Game speed functions
 // "play"
 void SetSpeed1()
 {
-    std::vector<float> gameSpeedValues = Settings::GetGameSpeeds();
-    // Clamp
-    gameSpeedIdx = std::min(gameSpeedIdx, (int)gameSpeedValues.size() - 1);
-    gameSpeedIdx = std::max(gameSpeedIdx, 0);
+    if (!Settings::GetUseCustomGameSpeeds())
+    {
+        // vanilla - we use old functionality
 
-    // Kenshi will probably set game speed to 1, next time speed3 or speed4 buttons are clicked, will revert to modified game speed...
-    // TODO how to handle this better?
-    Kenshi::GameWorld& gameWorld = Kenshi::GetGameWorld();
-    std::string gameSpeedMessage = std::to_string((long double)gameWorld.gameSpeed);
-    if (gameWorld.gameSpeed != gameSpeedValues[gameSpeedIdx])
-        gameSpeedMessage += " (" + std::to_string((long double)gameSpeedValues[gameSpeedIdx]) + ")";
-    //gameSpeedMessage += " (" + std::to_string((unsigned long long)fileCount) + ")";
-    gameSpeedText->setCaption(gameSpeedMessage);
+        // TODO test keyboard bindings
+
+        Kenshi::GameWorld& gameWorld = Kenshi::GetGameWorld();
+        if(gameSpeedText)
+            gameSpeedText->setCaption(std::to_string((long double)gameWorld.gameSpeed));
+    }
+    else
+    {
+        std::vector<float> gameSpeedValues = Settings::GetGameSpeeds();
+        // Clamp
+        gameSpeedIdx = std::min(gameSpeedIdx, (int)gameSpeedValues.size() - 1);
+        gameSpeedIdx = std::max(gameSpeedIdx, 0);
+
+        // Kenshi will probably set game speed to 1, next time speed3 or speed4 buttons are clicked, will revert to modified game speed...
+        // TODO how to handle this better?
+        Kenshi::GameWorld& gameWorld = Kenshi::GetGameWorld();
+        std::string gameSpeedMessage = std::to_string((long double)gameWorld.gameSpeed);
+        if (gameWorld.gameSpeed != gameSpeedValues[gameSpeedIdx])
+            gameSpeedMessage += " (" + std::to_string((long double)gameSpeedValues[gameSpeedIdx]) + ")";
+        //gameSpeedMessage += " (" + std::to_string((unsigned long long)fileCount) + ")";
+
+        if (gameSpeedText)
+            gameSpeedText->setCaption(gameSpeedMessage);
+    }
 }
 // "2x speed" - decreases speed
 void SetSpeed2()
 {
-    std::vector<float> gameSpeedValues = Settings::GetGameSpeeds();
-    gameSpeedIdx -= 1;
-    // Clamp
-    gameSpeedIdx = std::min(gameSpeedIdx, (int)gameSpeedValues.size() - 1);
-    gameSpeedIdx = std::max(gameSpeedIdx, 0);
-    Kenshi::GameWorld& gameWorld = Kenshi::GetGameWorld();
-    gameWorld.gameSpeed = gameSpeedValues[gameSpeedIdx];
-    gameSpeedText->setCaption(std::to_string((long double)gameWorld.gameSpeed));
+    if (!Settings::GetUseCustomGameSpeeds())
+    {
+        // vanilla - reimplement
+        Kenshi::GameWorld& gameWorld = Kenshi::GetGameWorld();
+        gameWorld.gameSpeed = 2;
+
+        HighlightSpeedButton(3);
+
+        if (gameSpeedText)
+            gameSpeedText->setCaption(std::to_string((long double)gameWorld.gameSpeed));
+    }
+    else
+    {
+        std::vector<float> gameSpeedValues = Settings::GetGameSpeeds();
+        gameSpeedIdx -= 1;
+        // Clamp
+        gameSpeedIdx = std::min(gameSpeedIdx, (int)gameSpeedValues.size() - 1);
+        gameSpeedIdx = std::max(gameSpeedIdx, 0);
+        Kenshi::GameWorld& gameWorld = Kenshi::GetGameWorld();
+        gameWorld.gameSpeed = gameSpeedValues[gameSpeedIdx];
+        if (gameSpeedText)
+            gameSpeedText->setCaption(std::to_string((long double)gameWorld.gameSpeed));
+    }
+    
 }
 // "5x speed" - increases speed
 void SetSpeed3()
 {
-    std::vector<float> gameSpeedValues = Settings::GetGameSpeeds();
-    gameSpeedIdx += 1;
-    // Clamp
-    gameSpeedIdx = std::min(gameSpeedIdx, (int)gameSpeedValues.size() - 1);
-    gameSpeedIdx = std::max(gameSpeedIdx, 0);
-    Kenshi::GameWorld& gameWorld = Kenshi::GetGameWorld();
-    gameWorld.gameSpeed = gameSpeedValues[gameSpeedIdx];
-    gameSpeedText->setCaption(std::to_string((long double)gameWorld.gameSpeed));
+    if (!Settings::GetUseCustomGameSpeeds())
+    {
+        // vanilla - reimplement
+        Kenshi::GameWorld& gameWorld = Kenshi::GetGameWorld();
+        gameWorld.gameSpeed = 5;
+
+        HighlightSpeedButton(4);
+
+        if (gameSpeedText)
+            gameSpeedText->setCaption(std::to_string((long double)gameWorld.gameSpeed));
+    }
+    else
+    {
+        std::vector<float> gameSpeedValues = Settings::GetGameSpeeds();
+        gameSpeedIdx += 1;
+        // Clamp
+        gameSpeedIdx = std::min(gameSpeedIdx, (int)gameSpeedValues.size() - 1);
+        gameSpeedIdx = std::max(gameSpeedIdx, 0);
+        Kenshi::GameWorld& gameWorld = Kenshi::GetGameWorld();
+        gameWorld.gameSpeed = gameSpeedValues[gameSpeedIdx];
+
+        if (gameSpeedText)
+            gameSpeedText->setCaption(std::to_string((long double)gameWorld.gameSpeed));
+    }
 }
 // Used to re-overwrite Kenshi's value when required
 void ForceWriteSpeed()
@@ -89,7 +174,9 @@ void ForceWriteSpeed()
     gameSpeedIdx = std::max(gameSpeedIdx, 0);
     Kenshi::GameWorld& gameWorld = Kenshi::GetGameWorld();
     gameWorld.gameSpeed = gameSpeedValues[gameSpeedIdx];
-    gameSpeedText->setCaption(std::to_string((long double)gameWorld.gameSpeed));
+
+    if (gameSpeedText)
+        gameSpeedText->setCaption(std::to_string((long double)gameWorld.gameSpeed));
 }
 
 // reversed from game
@@ -280,6 +367,7 @@ std::string kenshiVersionStr = "UNKNOWN";
 std::string kenshiPlatformStr = "UNKNOWN";
 MyGUI::CanvasPtr debugImgCanvas = nullptr;
 MyGUI::ScrollViewPtr debugLogScrollView = nullptr;
+MyGUI::WidgetPtr gameSpeedPanel = nullptr;
 
 const uint32_t DEBUG_WINDOW_WIDTH = 600;
 const uint32_t DEBUG_WINDOW_HEIGHT = 600;
@@ -477,12 +565,12 @@ void RedrawGameSpeedSettings()
 
     // Create new scroll bars
     std::vector<float> gameSpeeds = Settings::GetGameSpeeds();
-    int positionY = gameSpeedScrollBarsStart;
+    int positionY = 35;
     for (int i = 0; i < gameSpeeds.size(); ++i)
     {
         std::stringstream nameStr;
         nameStr << "SpeedSlider" << i << "_";
-        MyGUI::WidgetPtr slider = CreateSlider(settingsView, 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 40 * scale, nameStr.str());
+        MyGUI::WidgetPtr slider = CreateSlider(gameSpeedPanel, 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 40 * scale, nameStr.str());
 
         MyGUI::TextBox* elementText = slider->findWidget(nameStr.str() + "ElementText")->castType<MyGUI::TextBox>();
         if (!elementText)
@@ -506,7 +594,8 @@ void RedrawGameSpeedSettings()
 
     // resize settings
     MyGUI::IntSize canvasSize = settingsView->getCanvasSize();
-    settingsView->setCanvasSize(canvasSize.width, std::max(int(positionY * scale), canvasSize.height));
+    gameSpeedPanel->setSize(gameSpeedPanel->getWidth(), positionY * scale);
+    settingsView->setCanvasSize(canvasSize.width, std::max(int((gameSpeedScrollBarsStart + positionY) * scale), canvasSize.height));
 }
 
 void AddGameSpeed(MyGUI::WidgetPtr button)
@@ -605,6 +694,17 @@ void ToggleCheckUpdates(MyGUI::WidgetPtr sender)
 
     // Update settings + hooks
     Settings::SetCheckUpdates(checkUpdates);
+}
+
+void ToggleUseCustomGameSpeeds(MyGUI::WidgetPtr sender)
+{
+    MyGUI::ButtonPtr button = sender->castType<MyGUI::Button>();
+    bool useCustomGameSpeeds = button->getStateSelected();
+
+    gameSpeedPanel->setVisible(useCustomGameSpeeds);
+
+    // Update settings + hooks
+    Settings::SetUseCustomGameSpeeds(useCustomGameSpeeds);
 }
 
 void InitGUI()
@@ -721,12 +821,22 @@ void InitGUI()
         attackSlotsScrollBar->setScrollPosition(0);
     attackSlotsScrollBar->eventScrollChangePosition += MyGUI::newDelegate(AttackSlotScroll);
     positionY += 45;
-    MyGUI::TextBox* gameSpeedsLabel = settingsView->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 30 * scale, MyGUI::Align::Top | MyGUI::Align::Center, "GameSpeedsLabel");
+
+    MyGUI::ButtonPtr useCustomGameSpeeds = settingsView->createWidget<MyGUI::Button>("Kenshi_TickButton1", 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 26 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "UseCustomGameSpeeds");
+    useCustomGameSpeeds->setStateSelected(Settings::GetUseCustomGameSpeeds());
+    useCustomGameSpeeds->setCaption("Use custom game speed controls");
+    useCustomGameSpeeds->eventMouseButtonClick += MyGUI::newDelegate(TickButtonBehaviourClick);
+    useCustomGameSpeeds->eventMouseButtonClick += MyGUI::newDelegate(ToggleUseCustomGameSpeeds);
+    positionY += 30;
+    
+    gameSpeedPanel = settingsView->createWidget<MyGUI::Widget>("", 0, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 100, MyGUI::Align::Top | MyGUI::Align::Center, "GameSpeedPanel");
+    gameSpeedPanel->setVisible(Settings::GetUseCustomGameSpeeds());
+    
+    MyGUI::TextBox* gameSpeedsLabel = gameSpeedPanel->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 2, 0, DEBUG_WINDOW_RIGHT * scale, 30 * scale, MyGUI::Align::Top | MyGUI::Align::Center, "GameSpeedsLabel");
     gameSpeedsLabel->setCaption("Game speeds");
-    MyGUI::ButtonPtr addGameSpeed = settingsView->createWidget<MyGUI::Button>("Kenshi_Button1", 300 * scale, positionY * scale, 200 * scale, 30 * scale, MyGUI::Align::Top | MyGUI::Align::Right, "AddGameSpeedBtn");
+    MyGUI::ButtonPtr addGameSpeed = gameSpeedPanel->createWidget<MyGUI::Button>("Kenshi_Button1", 300 * scale, 0, 200 * scale, 30 * scale, MyGUI::Align::Top | MyGUI::Align::Right, "AddGameSpeedBtn");
     addGameSpeed->setCaption("Add game speed");
     addGameSpeed->eventMouseButtonClick += MyGUI::newDelegate(AddGameSpeed);
-    positionY += 35;
     gameSpeedScrollBarsStart = positionY;
     RedrawGameSpeedSettings();
     

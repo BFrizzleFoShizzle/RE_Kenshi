@@ -32,6 +32,8 @@ namespace Settings
 	std::vector<std::string> *GetModSoundBanks();
 	std::string ResolvePath(std::string path);
 
+	bool GetUseCustomGameSpeeds();
+	void SetUseCustomGameSpeeds(bool value);
 	const std::vector<float> GetGameSpeeds();
 	void SetGameSpeeds(std::vector<float> gameSpeeds);
 }

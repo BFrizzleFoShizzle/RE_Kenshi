@@ -44,6 +44,7 @@ rapidjson::Document GenerateDefaultSettings()
     std::vector<float> defaultGameSpeeds = GetDefaultGameSpeeds();
     for(int i=0;i<defaultGameSpeeds.size(); ++i)
         gameSpeeds.PushBack(rapidjson::Value(defaultGameSpeeds[i]), defaultSettings.GetAllocator());
+    defaultSettings.AddMember("UseCustomGameSpeeds", false, defaultSettings.GetAllocator());
     defaultSettings.AddMember("GameSpeeds", gameSpeeds, defaultSettings.GetAllocator());
     return defaultSettings;
 }
@@ -334,6 +335,31 @@ void Settings::SetIncreaseMaxCameraDistance(bool value)
         settingsDOM.AddMember("IncreaseMaxCameraDistance", value, settingsDOM.GetAllocator());
     else
         settingsDOM["IncreaseMaxCameraDistance"] = value;
+
+    SaveSettings();
+}
+
+
+bool Settings::GetUseCustomGameSpeeds()
+{
+    rapidjson::Value& val = settingsDOM["UseCustomGameSpeeds"];
+    if (!val.IsBool())
+    {
+        SetUseCustomGameSpeeds(false);
+        return false;
+    }
+    else
+    {
+        return val.GetBool();
+    }
+}
+
+void Settings::SetUseCustomGameSpeeds(bool value)
+{ 
+    if (!settingsDOM.HasMember("UseCustomGameSpeeds"))
+        settingsDOM.AddMember("UseCustomGameSpeeds", value, settingsDOM.GetAllocator());
+    else
+        settingsDOM["UseCustomGameSpeeds"] = value;
 
     SaveSettings();
 }
