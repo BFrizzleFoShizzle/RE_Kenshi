@@ -32,8 +32,14 @@ public:
 	{
 		source = std::string((const char*)pSrcData, SrcDataSize);
 		include = pInclude;
-		entrypoint = pEntrypoint;
-		target = pTarget;
+		// Bugfix - LPCSTR can be null, but std::string can't be initialized from nullptr
+		entrypoint = "";
+		if(pEntrypoint != nullptr)
+			entrypoint = pEntrypoint;
+		target = "";
+		// this should never happen - error is printed elsewhere
+		if (pTarget != nullptr)
+			target = pTarget;
 		flags1 = Flags1;
 		flags2 = Flags2;
 		while (pDefines != NULL && pDefines->Name != NULL && pDefines->Definition != NULL)
@@ -252,6 +258,21 @@ ID3DBlob* ShaderCacheFile::GetBlob(LPCVOID pSrcData,
 	ID3DBlob** ppErrorMsgs,
 	HRESULT *result)
 {
+	// The bug in 0.2.5 was due to improperly handled optional inputs
+	// pSourceName - not used internally, so not really an issue (docs say used for error messages)
+	// pDefines - already has nullptr check
+	// pInclude - NOT IMPLEMENTED - this is implemented by the user...
+	// pEntryPoint - this needs nullptr check in Shader() (done)
+	// ppErrorMsgs - nullptr check (done)
+
+	// sanity check
+	if (pTarget == nullptr)
+	{
+		ErrorLog("Shader missing target!");
+		if(pSourceName != nullptr)
+			ErrorLog(pSourceName);
+	}
+
 	Shader shader = Shader(pSrcData, SrcDataSize, pDefines, pInclude, pEntrypoint, pTarget, Flags1, Flags2);
 	std::unordered_set<Shader>::iterator cachedShader = cachedShaders.find(shader);
 	if (cachedShader != cachedShaders.end())
@@ -260,6 +281,9 @@ ID3DBlob* ShaderCacheFile::GetBlob(LPCVOID pSrcData,
 		D3DCreateBlob(cachedShader->compiledSize, ppCode);
 		memcpy((*ppCode)->GetBufferPointer(), cachedShader->compiled, cachedShader->compiledSize);
 		*result = S_OK;
+		// Bugfix for 0.2.5 - this is sometimes null? Possibly from ReShade?
+		if (ppErrorMsgs)
+			*ppErrorMsgs = nullptr;
 		return *ppCode;
 	}
 
@@ -268,7 +292,7 @@ ID3DBlob* ShaderCacheFile::GetBlob(LPCVOID pSrcData,
 	*result = D3DCompile_orig(pSrcData, SrcDataSize, pSourceName, pDefines, pInclude, pEntrypoint, pTarget, Flags1, Flags2, ppCode, ppErrorMsgs);
 	
 	// this SOMETIMES happens?!?
-	if (ppCode == nullptr || *ppCode == nullptr)
+	if (ppCode == nullptr || *ppCode == nullptr || *result != S_OK)
 	{
 		std::stringstream err;
 		err << "D3DCompile error: " << *result;
@@ -280,7 +304,7 @@ ID3DBlob* ShaderCacheFile::GetBlob(LPCVOID pSrcData,
 	shader.SetBlob(*ppCode);
 
 	cachedShaders.insert(shader);
-	*ppErrorMsgs = nullptr;
+
 	if (fileBytes.size() > 0)
 	{
 		// concat onto file and update header
