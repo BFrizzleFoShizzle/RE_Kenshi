@@ -21,6 +21,8 @@ namespace Settings
 	bool GetLogFileIO();
 	bool GetCheckUpdates();
 	void SetCheckUpdates(bool value);
+	bool GetOpenSettingsOnStart();
+	void SetOpenSettingsOnStart(bool value);
 	bool GetIncreaseMaxCameraDistance();
 	void SetIncreaseMaxCameraDistance(bool value);
 	bool GetCacheShaders();

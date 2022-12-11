@@ -696,6 +696,15 @@ void ToggleCheckUpdates(MyGUI::WidgetPtr sender)
     Settings::SetCheckUpdates(checkUpdates);
 }
 
+void ToggleOpenSettingsOnStart(MyGUI::WidgetPtr sender)
+{
+    MyGUI::ButtonPtr button = sender->castType<MyGUI::Button>();
+    bool openSettingsOnStart = button->getStateSelected();
+
+    // Update settings + hooks
+    Settings::SetOpenSettingsOnStart(openSettingsOnStart);
+}
+
 void ToggleUseCustomGameSpeeds(MyGUI::WidgetPtr sender)
 {
     MyGUI::ButtonPtr button = sender->castType<MyGUI::Button>();
@@ -725,6 +734,8 @@ void InitGUI()
     modMenuWindow->setCaption("RE_Kenshi Menu");
     modMenuWindow->eventKeyButtonReleased += MyGUI::newDelegate(debugMenuKeyRelease);
     modMenuWindow->eventWindowButtonPressed += MyGUI::newDelegate(debugMenuButtonPress);
+    if (!Settings::GetOpenSettingsOnStart())
+        modMenuWindow->setVisible(false);
     MyGUI::Widget* client = modMenuWindow->findWidget("Client");
     MyGUI::TabControl *tabControl = client->createWidget<MyGUI::TabControl>("Kenshi_TabControl", MyGUI::IntCoord(2, 2, modMenuWindow->getClientCoord().width - 4, modMenuWindow->getClientCoord().height - 4), MyGUI::Align::Stretch);
     
@@ -740,6 +751,13 @@ void InitGUI()
     checkUpdatesToggle->setCaption("Automatically check for updates");
     checkUpdatesToggle->eventMouseButtonClick += MyGUI::newDelegate(TickButtonBehaviourClick);
     checkUpdatesToggle->eventMouseButtonClick += MyGUI::newDelegate(ToggleCheckUpdates);
+    positionY += 30;
+
+    MyGUI::ButtonPtr openSettingsOnStartToggle = settingsView->createWidget<MyGUI::Button>("Kenshi_TickButton1", 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 26 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "OpenSettingsOnStart");
+    openSettingsOnStartToggle->setStateSelected(Settings::GetOpenSettingsOnStart());
+    openSettingsOnStartToggle->setCaption("Open RE_Kenshi settings on startup");
+    openSettingsOnStartToggle->eventMouseButtonClick += MyGUI::newDelegate(TickButtonBehaviourClick);
+    openSettingsOnStartToggle->eventMouseButtonClick += MyGUI::newDelegate(ToggleOpenSettingsOnStart);
     positionY += 30;
 
     MyGUI::ButtonPtr fixRNGToggle = settingsView->createWidget<MyGUI::Button>("Kenshi_TickButton1", 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 26 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "FixRNGToggle");

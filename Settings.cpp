@@ -38,6 +38,7 @@ rapidjson::Document GenerateDefaultSettings()
     defaultSettings.AddMember("CacheShaders", true, defaultSettings.GetAllocator());
     defaultSettings.AddMember("LogFileIO", false, defaultSettings.GetAllocator());
     defaultSettings.AddMember("CheckUpdates", true, defaultSettings.GetAllocator());
+    defaultSettings.AddMember("OpenSettingOnStart", true, defaultSettings.GetAllocator());
     defaultSettings.AddMember("LogAudio", false, defaultSettings.GetAllocator());
     defaultSettings.AddMember("IncreaseMaxCameraDistance", false, defaultSettings.GetAllocator());
     rapidjson::Value gameSpeeds(rapidjson::kArrayType);
@@ -339,6 +340,29 @@ void Settings::SetIncreaseMaxCameraDistance(bool value)
     SaveSettings();
 }
 
+bool Settings::GetOpenSettingsOnStart()
+{
+    rapidjson::Value& val = settingsDOM["OpenSettingOnStart"];
+    if (!val.IsBool())
+    {
+        SetOpenSettingsOnStart(true);
+        return true;
+    }
+    else
+    {
+        return val.GetBool();
+    }
+}
+
+void Settings::SetOpenSettingsOnStart(bool value)
+{
+    if (!settingsDOM.HasMember("OpenSettingOnStart"))
+        settingsDOM.AddMember("OpenSettingOnStart", value, settingsDOM.GetAllocator());
+    else
+        settingsDOM["OpenSettingOnStart"] = value;
+
+    SaveSettings();
+}
 
 bool Settings::GetUseCustomGameSpeeds()
 {
