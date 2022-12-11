@@ -21,6 +21,8 @@ namespace Settings
 	bool GetLogFileIO();
 	bool GetCheckUpdates();
 	void SetCheckUpdates(bool value);
+	std::string GetSkippedVersion();
+	void SetSkippedVersion(std::string version);
 	bool GetOpenSettingsOnStart();
 	void SetOpenSettingsOnStart(bool value);
 	bool GetIncreaseMaxCameraDistance();

@@ -89,7 +89,11 @@ void Version::Init()
             // "vx.x.x"
             latestVersionCache = document["tag_name"].GetString();
             DebugLog("Latest public release: " + latestVersionCache);
-
+            if (Settings::GetSkippedVersion() == latestVersionCache)
+            {
+                DebugLog("Version " + latestVersionCache  + " skipped.");
+                return;
+            }
             // parse + compare version number strings
             bool isRemoteNewer = IsVersionNewer(latestVersionCache, GetCurrentVersion());
             if (!isRemoteNewer)
@@ -100,11 +104,22 @@ void Version::Init()
             // Ask if user wants to update if needed
             if (!IsCurrentVersion())
             {
-                int result = MessageBoxA(NULL, "A new version of  RE_Kenshi has been released.\nDo you want to update?", "RE_Kenshi update", MB_YESNO | MB_TOPMOST);
+                std::string msg = "A new version of RE_Kenshi (" + latestVersionCache + ") has been released.\nDo you want to update?";
+                int result = MessageBoxA(NULL, msg.c_str(), "RE_Kenshi update", MB_YESNO | MB_TOPMOST);
                 if (result == IDYES)
                 {
                     DebugLog("Opening browser...");
                     system("start https://www.nexusmods.com/kenshi/mods/847?tab=files");
+                }
+                if (result == IDNO)
+                {
+                    std::string msg = "Do you want to skip RE_Kenshi release " + latestVersionCache + "?\n(disables notifications for this release)";
+                    result = MessageBoxA(NULL, msg.c_str(), "RE_Kenshi update", MB_YESNO | MB_TOPMOST);
+                    if (result == IDYES)
+                    {
+                        Settings::SetSkippedVersion(latestVersionCache);
+                        MessageBoxA(NULL, "Version skipped!", "RE_Kenshi update", MB_OK |  MB_TOPMOST);
+                    }
                 }
             }
         }

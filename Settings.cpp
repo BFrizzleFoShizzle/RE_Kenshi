@@ -38,6 +38,7 @@ rapidjson::Document GenerateDefaultSettings()
     defaultSettings.AddMember("CacheShaders", true, defaultSettings.GetAllocator());
     defaultSettings.AddMember("LogFileIO", false, defaultSettings.GetAllocator());
     defaultSettings.AddMember("CheckUpdates", true, defaultSettings.GetAllocator());
+    defaultSettings.AddMember("SkippedVersion", "", defaultSettings.GetAllocator());
     defaultSettings.AddMember("OpenSettingOnStart", true, defaultSettings.GetAllocator());
     defaultSettings.AddMember("LogAudio", false, defaultSettings.GetAllocator());
     defaultSettings.AddMember("IncreaseMaxCameraDistance", false, defaultSettings.GetAllocator());
@@ -487,4 +488,30 @@ bool Settings::GetCheckUpdates()
 {
     rapidjson::Value& val = settingsDOM["CheckUpdates"];
     return val.GetBool();
+}
+
+std::string Settings::GetSkippedVersion()
+{
+    rapidjson::Value& val = settingsDOM["SkippedVersion"];
+    if (!val.IsString())
+    {
+        SetSkippedVersion("");
+        return "";
+    }
+    else
+    {
+        return val.GetString();
+    }
+}
+
+void Settings::SetSkippedVersion(std::string version)
+{
+    rapidjson::Value value;
+    value.SetString(version.c_str(), settingsDOM.GetAllocator());
+    if (!settingsDOM.HasMember("SkippedVersion"))
+        settingsDOM.AddMember("SkippedVersion", value, settingsDOM.GetAllocator());
+    else
+        settingsDOM["SkippedVersion"] = value;
+
+    SaveSettings();
 }
