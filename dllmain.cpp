@@ -88,7 +88,7 @@ void SetSpeed1()
 
         Kenshi::GameWorld& gameWorld = Kenshi::GetGameWorld();
         if(gameSpeedText)
-            gameSpeedText->setCaption(std::to_string((long double)gameWorld.gameSpeed));
+            gameSpeedText->setCaption(std::to_string((long double)gameWorld.gameSpeed) + "x");
     }
     else
     {
@@ -100,9 +100,9 @@ void SetSpeed1()
         // Kenshi will probably set game speed to 1, next time speed3 or speed4 buttons are clicked, will revert to modified game speed...
         // TODO how to handle this better?
         Kenshi::GameWorld& gameWorld = Kenshi::GetGameWorld();
-        std::string gameSpeedMessage = std::to_string((long double)gameWorld.gameSpeed);
+        std::string gameSpeedMessage = std::to_string((long double)gameWorld.gameSpeed) + "x";
         if (gameWorld.gameSpeed != gameSpeedValues[gameSpeedIdx])
-            gameSpeedMessage += " (" + std::to_string((long double)gameSpeedValues[gameSpeedIdx]) + ")";
+            gameSpeedMessage += " (" + std::to_string((long double)gameSpeedValues[gameSpeedIdx]) + "x)";
         //gameSpeedMessage += " (" + std::to_string((unsigned long long)fileCount) + ")";
 
         if (gameSpeedText)
@@ -121,7 +121,7 @@ void SetSpeed2()
         HighlightSpeedButton(3);
 
         if (gameSpeedText)
-            gameSpeedText->setCaption(std::to_string((long double)gameWorld.gameSpeed));
+            gameSpeedText->setCaption(std::to_string((long double)gameWorld.gameSpeed) + "x");
     }
     else
     {
@@ -133,7 +133,7 @@ void SetSpeed2()
         Kenshi::GameWorld& gameWorld = Kenshi::GetGameWorld();
         gameWorld.gameSpeed = gameSpeedValues[gameSpeedIdx];
         if (gameSpeedText)
-            gameSpeedText->setCaption(std::to_string((long double)gameWorld.gameSpeed));
+            gameSpeedText->setCaption(std::to_string((long double)gameWorld.gameSpeed) + "x");
     }
     
 }
@@ -149,7 +149,7 @@ void SetSpeed3()
         HighlightSpeedButton(4);
 
         if (gameSpeedText)
-            gameSpeedText->setCaption(std::to_string((long double)gameWorld.gameSpeed));
+            gameSpeedText->setCaption(std::to_string((long double)gameWorld.gameSpeed) + "x");
     }
     else
     {
@@ -162,21 +162,24 @@ void SetSpeed3()
         gameWorld.gameSpeed = gameSpeedValues[gameSpeedIdx];
 
         if (gameSpeedText)
-            gameSpeedText->setCaption(std::to_string((long double)gameWorld.gameSpeed));
+            gameSpeedText->setCaption(std::to_string((long double)gameWorld.gameSpeed) + "x");
     }
 }
 // Used to re-overwrite Kenshi's value when required
 void ForceWriteSpeed()
 {
-    std::vector<float> gameSpeedValues = Settings::GetGameSpeeds();
-    // Clamp
-    gameSpeedIdx = std::min(gameSpeedIdx, (int)gameSpeedValues.size() - 1);
-    gameSpeedIdx = std::max(gameSpeedIdx, 0);
     Kenshi::GameWorld& gameWorld = Kenshi::GetGameWorld();
-    gameWorld.gameSpeed = gameSpeedValues[gameSpeedIdx];
+    if (Settings::GetUseCustomGameSpeeds())
+    {
+        std::vector<float> gameSpeedValues = Settings::GetGameSpeeds();
+        // Clamp
+        gameSpeedIdx = std::min(gameSpeedIdx, (int)gameSpeedValues.size() - 1);
+        gameSpeedIdx = std::max(gameSpeedIdx, 0);
+        gameWorld.gameSpeed = gameSpeedValues[gameSpeedIdx];
+    }
 
     if (gameSpeedText)
-        gameSpeedText->setCaption(std::to_string((long double)gameWorld.gameSpeed));
+        gameSpeedText->setCaption(std::to_string((long double)gameWorld.gameSpeed) + "x");
 }
 
 // reversed from game
@@ -714,6 +717,14 @@ void ToggleUseCustomGameSpeeds(MyGUI::WidgetPtr sender)
 
     // Update settings + hooks
     Settings::SetUseCustomGameSpeeds(useCustomGameSpeeds);
+
+    // hit play to switch to 1x speed
+    MyGUI::Gui* gui = MyGUI::Gui::getInstancePtr();
+    MyGUI::WidgetPtr speedButton2 = Kenshi::FindWidget(gui->getEnumerator(), "TimeSpeedButton2");// ->castType<MyGUI::Button>();
+    if (speedButton2) 
+    {
+        speedButton2->eventMouseButtonClick(speedButton2);
+    }
 }
 
 void InitGUI()
