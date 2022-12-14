@@ -321,13 +321,13 @@ void WaitForInGame()
     while (gui == nullptr)
     {
         gui = MyGUI::Gui::getInstancePtr();
-        Sleep(100);
+        Sleep(10);
     }
     MyGUI::WidgetPtr speedButtonsPanel = nullptr;
     while (speedButtonsPanel == nullptr)
     {
         speedButtonsPanel = Kenshi::FindWidget(gui->getEnumerator(), "SpeedButtonsPanel");
-        Sleep(100);
+        Sleep(10);
     }
 }
 
@@ -337,13 +337,13 @@ void WaitForMainMenu()
     while (gui == nullptr)
     {
         gui = MyGUI::Gui::getInstancePtr();
-        Sleep(100);
+        Sleep(10);
     }
     MyGUI::WidgetPtr versionText = nullptr;
     while (versionText == nullptr)
     {
         versionText = Kenshi::FindWidget(gui->getEnumerator(), "VersionText");
-        Sleep(100);
+        Sleep(10);
     }
 }
 
