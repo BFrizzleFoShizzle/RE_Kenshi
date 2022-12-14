@@ -7,6 +7,7 @@
 #include "mygui/MyGUI_Window.h"
 #include "mygui/MyGUI_TextBox.h"
 #include "mygui/MyGUI_EditBox.h"
+#include "mygui/MyGUI_ImageBox.h"
 #include "mygui/MyGUI_ScrollView.h"
 #include "mygui/MyGUI_TabControl.h"
 #include "mygui/MyGUI_TabItem.h"
@@ -29,6 +30,7 @@
 #include "ShaderCache.h"
 
 #include <ogre/OgrePrerequisites.h>
+#include <ogre/OgreResourceGroupManager.h>
 #include "OISKeyboard.h"
 #include "win32/Win32KeyBoard.h"
 
@@ -347,6 +349,7 @@ void WaitForMainMenu()
 
 // TODO make nicer
 MyGUI::Window* modMenuWindow = nullptr;
+MyGUI::Window* gameSpeedTutorialWindow = nullptr;
 
 void openSettingsMenu(MyGUI::WidgetPtr button)
 {
@@ -714,6 +717,7 @@ void ToggleUseCustomGameSpeeds(MyGUI::WidgetPtr sender)
     bool useCustomGameSpeeds = button->getStateSelected();
 
     gameSpeedPanel->setVisible(useCustomGameSpeeds);
+    gameSpeedTutorialWindow->setVisible(useCustomGameSpeeds);
 
     // Update settings + hooks
     Settings::SetUseCustomGameSpeeds(useCustomGameSpeeds);
@@ -734,6 +738,10 @@ void InitGUI()
     MyGUI::RenderManager* renderManager = MyGUI::RenderManager::getInstancePtr();
     MyGUI::Gui* gui = MyGUI::Gui::getInstancePtr();
 
+    Ogre::ResourceGroupManager* resMan = Ogre::ResourceGroupManager::getSingletonPtr();
+    if (resMan)
+        resMan->addResourceLocation("./RE_Kenshi", "FileSystem", "GUI");
+
     // Create mod menu
     float windowWidth = DEBUG_WINDOW_WIDTH / 1920.0f;
     float windowHeight = DEBUG_WINDOW_HEIGHT / 1080.0f;
@@ -750,6 +758,14 @@ void InitGUI()
     MyGUI::Widget* client = modMenuWindow->findWidget("Client");
     MyGUI::TabControl *tabControl = client->createWidget<MyGUI::TabControl>("Kenshi_TabControl", MyGUI::IntCoord(2, 2, modMenuWindow->getClientCoord().width - 4, modMenuWindow->getClientCoord().height - 4), MyGUI::Align::Stretch);
     
+    // Create game speed tutorial window
+    gameSpeedTutorialWindow = gui->createWidget<MyGUI::Window>("Kenshi_WindowCX", 100, 100, 620 * scale, 460 * scale, MyGUI::Align::Center, "Window", "GameSpeedTutorialWindow");
+    gameSpeedTutorialWindow->eventWindowButtonPressed += MyGUI::newDelegate(debugMenuButtonPress);
+    // don't know why this isn't centering properly...
+    MyGUI::ImageBox* gameSpeedTutImage = gameSpeedTutorialWindow->getClientWidget()->createWidget<MyGUI::ImageBox>("ImageBox", 10 * scale, 10 * scale, 600 * scale, 400 * scale, MyGUI::Align::Center, "GameSpeedTutorialImage");
+    gameSpeedTutImage->setImageTexture("game_speed_tutorial.png");
+    gameSpeedTutorialWindow->setVisible(false);
+
     // Mod settings
     MyGUI::TabItemPtr settingsTab = tabControl->addItem("Settings");
     settingsView = settingsTab->createWidget<MyGUI::ScrollView>("Kenshi_ScrollView", MyGUI::IntCoord(2, 2, settingsTab->getClientCoord().width - 4, settingsTab->getClientCoord().height - 4), MyGUI::Align::Stretch);
@@ -858,7 +874,7 @@ void InitGUI()
     useCustomGameSpeeds->eventMouseButtonClick += MyGUI::newDelegate(ToggleUseCustomGameSpeeds);
     positionY += 30;
     
-    gameSpeedPanel = settingsView->createWidget<MyGUI::Widget>("", 0, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 100, MyGUI::Align::Top | MyGUI::Align::Center, "GameSpeedPanel");
+    gameSpeedPanel = settingsView->createWidget<MyGUI::Widget>("", 0, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 100, MyGUI::Align::Top | MyGUI::Align::Left, "GameSpeedPanel");
     gameSpeedPanel->setVisible(Settings::GetUseCustomGameSpeeds());
     
     MyGUI::TextBox* gameSpeedsLabel = gameSpeedPanel->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 2, 0, DEBUG_WINDOW_RIGHT * scale, 30 * scale, MyGUI::Align::Top | MyGUI::Align::Center, "GameSpeedsLabel");
@@ -1136,6 +1152,7 @@ void dllmain()
         Sound::Init();
     }
 
+    DebugLog("Waiting for main menu.");
     WaitForMainMenu();
 
     MyGUI::Gui* gui = MyGUI::Gui::getInstancePtr();
