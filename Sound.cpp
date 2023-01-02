@@ -19,6 +19,7 @@ enum AKRESULT (*AK_SoundEngine_LoadBank_orig)(char const* __ptr64, long int, uns
 enum AKRESULT (*AK_SoundEngine_SetState_orig)(char const* __ptr64, char const* __ptr64);
 enum AKRESULT (*AK_SoundEngine_SetSwitch_orig)(char const* __ptr64, char const* __ptr64, unsigned long long(unsigned __int64));
 long int (*AK_SoundEngine_PostEvent_orig)(char const* __ptr64, unsigned long long, unsigned long int, void(__cdecl*)(enum AkCallbackType, struct AkCallbackInfo* __ptr64), void* __ptr64, unsigned long int, struct AkExternalSourceInfo* __ptr64, unsigned long int);
+long int (*AK_SoundEngine_PostEvent_orig2)(wchar_t const* __ptr64, unsigned long long, unsigned long int, void(__cdecl*)(enum AkCallbackType, struct AkCallbackInfo* __ptr64), void* __ptr64, unsigned long int, struct AkExternalSourceInfo* __ptr64, unsigned long int);
 enum AKRESULT(*AK_SoundEngine_RegisterGameObj_orig)(unsigned long long, char const* __ptr64, unsigned long int);
 
 std::unordered_set<std::string> IDs;
@@ -36,6 +37,7 @@ bool soundInitialized = false;
 unsigned long int fakeBankID = 1;
 
 bool alwaysLog = false;
+bool queuedBootUpGame = false;
 
 void Sound::SetAlwaysLog(bool log)
 {
@@ -69,11 +71,12 @@ unsigned long int __cdecl AK_SoundEngine_GetIDFromStringHook2(wchar_t const* __p
 
 	std::wstring wstr = str;
 	std::string sstr = std::string(wstr.begin(), wstr.end());
+
 	if (Settings::GetLogAudio() && (alwaysLog || IDs.find(sstr) == IDs.end()))
 	{
 		std::stringstream out;
 		IDs.emplace(sstr);
-		out << "ID (w): " << str << " ";
+		out << "ID (w): " << sstr << " ";
 		DebugLog(out.str());
 	}
 	return ret;
@@ -134,6 +137,32 @@ long int __cdecl AK_SoundEngine_PostEvent_hook(char const* __ptr64 in_pszEventNa
 	return AK_SoundEngine_PostEvent_orig(in_pszEventName, in_gameObjectID, in_uFlags, in_pfnCallback, in_pCookie, in_cExternals, in_pExternalSources, in_PlayingID);
 }
 
+long int __cdecl AK_SoundEngine_PostEvent_hook2(wchar_t const* __ptr64 in_pszEventName, unsigned long long in_gameObjectID, unsigned long int in_uFlags, void(__cdecl* in_pfnCallback)(enum AkCallbackType, struct AkCallbackInfo* __ptr64), void* __ptr64 in_pCookie, unsigned long int in_cExternals, struct AkExternalSourceInfo* __ptr64 in_pExternalSources, unsigned long int in_PlayingID)
+{
+	if (in_pszEventName == nullptr)
+		in_pszEventName = NULLPTR_ID_W;
+
+	std::wstring wstr = in_pszEventName;
+	std::string sstr = std::string(wstr.begin(), wstr.end());
+
+	if ((!soundInitialized) && wstr == L"Boot_Up_Game")
+	{
+		queuedBootUpGame = true;
+		DebugLog("Queueing Boot_Up_Game event");
+		if (in_gameObjectID != 100)
+			ErrorLog("Error: unexpected gameObjectID for Boot_Up_Game event");
+	}
+
+	if (Settings::GetLogAudio() && (alwaysLog || events.find(sstr) == events.end()))
+	{
+		std::stringstream out;
+		out << "Event (W): " << sstr;
+		events.emplace(sstr);
+		DebugLog(out.str());
+	}
+	return AK_SoundEngine_PostEvent_orig2(in_pszEventName, in_gameObjectID, in_uFlags, in_pfnCallback, in_pCookie, in_cExternals, in_pExternalSources, in_PlayingID);
+}
+
 enum AKRESULT AK_SoundEngine_RegisterGameObj_hook(unsigned long long in_gameObjectID, char const* __ptr64 in_pszObjName, unsigned long int in_uListenerMask)
 {
 	if (Settings::GetLogAudio() && (alwaysLog || gameObjNames.find(in_pszObjName) == gameObjNames.end()))
@@ -186,6 +215,15 @@ static void LoadQueuedBanks()
 		DebugLog(out.str());
 	}
 	queuedBanks.clear();
+
+	// retrigger Boot_Up_Game event after banks are loaded if needed
+	if (queuedBootUpGame)
+	{
+		DebugLog("Force triggering Boot_Up_Game");
+		AK_SoundEngine_PostEvent_hook("Boot_Up_Game", 100, 0, 0, 0, 0, 0, 0);
+		queuedBootUpGame = false;
+	}
+
 	soundInitialized = true;
 }
 
@@ -242,10 +280,15 @@ void Sound::TryLoadQueuedBanks()
 void Sound::Init()
 {
 	AK_SoundEngine_GetIDFromString_orig = Escort::JmpReplaceHook<unsigned long int(char const* __ptr64)>(Kenshi::GetSoundEngineGetIDFromString(), AK_SoundEngine_GetIDFromStringHook);
+	// ?GetIDFromString@SoundEngine@AK@@YAKPEB_W@Z
 	AK_SoundEngine_GetIDFromString2_orig = Escort::JmpReplaceHook<unsigned long int(wchar_t const* __ptr64)>(Kenshi::GetSoundEngineGetIDFromString2(), AK_SoundEngine_GetIDFromStringHook2);
 	AK_SoundEngine_LoadBank_orig = Escort::JmpReplaceHook<AKRESULT(char const* __ptr64, long int, unsigned long int&)>(Kenshi::GetSoundEngineLoadBank(), AK_SoundEngine_LoadBankHook);
 	AK_SoundEngine_SetState_orig = Escort::JmpReplaceHook<enum AKRESULT(char const* __ptr64, char const* __ptr64)>(Kenshi::GetSoundEngineSetState(), AK_SoundEngine_SetState_hook);
 	AK_SoundEngine_SetSwitch_orig = Escort::JmpReplaceHook<enum AKRESULT(char const* __ptr64, char const* __ptr64, unsigned long long (unsigned __int64))>(Kenshi::GetSoundEngineSetSwitch(), AK_SoundEngine_SetSwitch_hook);
 	AK_SoundEngine_PostEvent_orig = Escort::JmpReplaceHook<long int (char const* __ptr64, unsigned long long, unsigned long int, void(__cdecl*)(enum AkCallbackType, struct AkCallbackInfo* __ptr64), void* __ptr64, unsigned long int, struct AkExternalSourceInfo* __ptr64, unsigned long int)>(Kenshi::GetSoundEnginePostEvent(), AK_SoundEngine_PostEvent_hook);
+	void* AK_SoundEngine_PostEvent_addr2 = Escort::GetFuncAddress("kenshi_GOG_x64.exe", "?PostEvent@SoundEngine@AK@@YAKPEB_W_KKP6AXW4AkCallbackType@@PEAUAkCallbackInfo@@@ZPEAXKPEAUAkExternalSourceInfo@@K@Z");
+	if (AK_SoundEngine_PostEvent_addr2 == nullptr)
+		ErrorLog("Error getting address of GetIDFromString (W)");
+	AK_SoundEngine_PostEvent_orig2 = Escort::JmpReplaceHook<long int(wchar_t const* __ptr64, unsigned long long, unsigned long int, void(__cdecl*)(enum AkCallbackType, struct AkCallbackInfo* __ptr64), void* __ptr64, unsigned long int, struct AkExternalSourceInfo* __ptr64, unsigned long int)>(AK_SoundEngine_PostEvent_addr2, AK_SoundEngine_PostEvent_hook2);
 	//AK_SoundEngine_RegisterGameObj_orig = Escort::JmpReplaceHook< enum AKRESULT(unsigned long long, char const* __ptr64, unsigned long int)>(Kenshi::GetSoundEngineRegisterGameObj(), AK_SoundEngine_RegisterGameObj_hook);
 }
