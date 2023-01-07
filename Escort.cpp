@@ -207,88 +207,96 @@ inline bool Escort::IsNear(void* ptr1, void* ptr2)
 // Internal function for 
 void* Escort::AllocateRWXPageNear(void* targetAddr, size_t allocSize)
 {
-	// scan up to 2GB before giving up
-	uint8_t* allocAddr = (uint8_t*)targetAddr;
-	for (int i = 0; IsNear(allocAddr, targetAddr); ++i)
+	// HACK there's a race condition with this - I think if the game allocates a block 
+	// of memory while this is running, it breaks
+	for (int attempts = 0; attempts < 10; ++attempts)
 	{
-		MEMORY_BASIC_INFORMATION output;
-		size_t written = VirtualQuery(allocAddr, &output, sizeof(MEMORY_BASIC_INFORMATION));
-
-		// Let me tell you the tale of my people
-		// So, windows allows you to query memory as 4KB pages
-		// However, under the hood, memory is reserved/allocated in 64KB chunks
-		// In this code block, we have scanned memory for a 4KB page that is marked as "free"
-		// to quote their docs: 
-		// "Indicates free pages not accessible to the calling process and available to be allocated"
-		// So, you'd think you'd be able to call VirtualAlloc and allocate that page, as it's marked
-		// as free, and the docs say pages marked as free can be allocated.
-		// You'd be WRONG. Why, you ask?
-		// Depending on how the 64KB block is set up, you may have regions marked as free that cannot be allocated.
-		// Now, you'd think there'd be an easy solution to this. Surely if we keep scanning for free pages,
-		// we should find a 4KB page in a 64KB block that we can allocate in?
-		// Oh, how naive. 
-		// I, too, was once a sweet summer child.
-		// Microsoft, in all there wisdom, decided that VirtualQuery should report any continuous blocks
-		// of 4KB pages with identical attribures as a single item.
-		// Did you catch the issue?
-		// Let's say there's a page with 60KB allocated, so there's a single 4KB page at the end of it
-		// marked as free. That last page cannot be allocated because god knows why.
-		// The entire next 64KB of pages after that free page CAN be allocated as it's in a different
-		// 64KB block.
-		// But VirtualQuery WON'T give you a pointer to the 64KB of ACTUALLY ALLOCATEABLE MEMORY.
-		// It'll ONLY give you the pointer to the start of the free block, the 4KB of memory YOU ARE NOT ABLE TO ALLOCATE.
-		// WHAT IN THE HOLY FUCK.
-		// So, we have to take the pointer we get out of VirtualQuery and round up to the next 64KB
-		// WHY IN GODS NAME IS NONE OF THIS IN THE DOCS FOR VirutalAlloc AND VirtualQuery?!?
-
-		uint8_t* allocateTargetAddress = (uint8_t*)output.BaseAddress;
-		size_t remainder = (intptr_t)output.BaseAddress % 0x10000;
-
-		if (remainder != 0)
-			allocateTargetAddress += 0x10000 - remainder;
-
-		if (written == 0)
+		// scan up to 2GB before giving up
+		uint8_t* allocAddr = (uint8_t*)targetAddr;
+		for (int i = 0; IsNear(allocAddr, targetAddr); ++i)
 		{
-			DebugLog("AllocateRWXNear: 0 written");
-			return nullptr;
-		}
-		else if (output.RegionSize == 0)
-		{
-			DebugLog("AllocateRWXNear: size 0");
-			return nullptr;
-		}
-		else if (output.State == MEM_FREE
-			&& allocateTargetAddress + allocSize < (uint8_t*)output.BaseAddress + output.RegionSize
-			&& IsNear(allocateTargetAddress, targetAddr))
-		{
-			// Edge case - if we're already in an allocable block, closest address is the target address
-			/*
-			if (allocLocation < targetAddr)
-				allocLocation = targetAddr;
-			*/
-			// found free page, try and alloc
-			void* alloc = (uint8_t*)VirtualAlloc(allocateTargetAddress, allocSize, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE);
-			if (alloc == NULL)
+			MEMORY_BASIC_INFORMATION output;
+			size_t written = VirtualQuery(allocAddr, &output, sizeof(MEMORY_BASIC_INFORMATION));
+
+			// Let me tell you the tale of my people
+			// So, windows allows you to query memory as 4KB pages
+			// However, under the hood, memory is reserved/allocated in 64KB chunks
+			// In this code block, we have scanned memory for a 4KB page that is marked as "free"
+			// to quote their docs: 
+			// "Indicates free pages not accessible to the calling process and available to be allocated"
+			// So, you'd think you'd be able to call VirtualAlloc and allocate that page, as it's marked
+			// as free, and the docs say pages marked as free can be allocated.
+			// You'd be WRONG. Why, you ask?
+			// Depending on how the 64KB block is set up, you may have regions marked as free that cannot be allocated.
+			// Now, you'd think there'd be an easy solution to this. Surely if we keep scanning for free pages,
+			// we should find a 4KB page in a 64KB block that we can allocate in?
+			// Oh, how naive. 
+			// I, too, was once a sweet summer child.
+			// Microsoft, in all their wisdom, decided that VirtualQuery should report any continuous blocks
+			// of 4KB pages with identical attribures as a single item.
+			// Did you catch the issue?
+			// Let's say there's a chunk with 60KB allocated, so there's a single 4KB page at the end of it
+			// marked as free. That last 4KB page cannot be allocated because god knows why.
+			// The entire next 64KB of pages after that free page CAN be allocated as it's in a different
+			// 64KB block.
+			// But VirtualQuery WON'T give you a pointer to the 64KB of ACTUALLY ALLOCATEABLE MEMORY.
+			// It'll ONLY give you the pointer to the start of the free block, the 4KB of memory YOU ARE NOT ABLE TO ALLOCATE.
+			// WHAT IN THE HOLY FUCK.
+			// So, we have to take the pointer we get out of VirtualQuery and round up to the next 64KB
+			// WHY IN GODS NAME IS NONE OF THIS IN THE DOCS FOR VirutalAlloc AND VirtualQuery?!?
+
+			uint8_t* allocateTargetAddress = (uint8_t*)output.BaseAddress;
+			size_t remainder = (intptr_t)output.BaseAddress % 0x10000;
+
+			if (remainder != 0)
+				allocateTargetAddress += 0x10000 - remainder;
+
+			if (written == 0)
 			{
-				std::stringstream str;
-				str << std::hex << "Failed RWX alloc at: " << allocateTargetAddress << ", continuing...";
-				DebugLog(str.str());
+				DebugLog("AllocateRWXNear: 0 written");
+				return nullptr;
 			}
-			else
+			else if (output.RegionSize == 0)
 			{
-				// success
-				return alloc;
+				DebugLog("AllocateRWXNear: size 0");
+				return nullptr;
 			}
+			else if (output.State == MEM_FREE
+				&& allocateTargetAddress + allocSize < (uint8_t*)output.BaseAddress + output.RegionSize
+				&& IsNear(allocateTargetAddress, targetAddr))
+			{
+				// Edge case - if we're already in an allocable block, closest address is the target address
+				/*
+				if (allocLocation < targetAddr)
+					allocLocation = targetAddr;
+				*/
+				// found free page, try and alloc
+				void* alloc = (uint8_t*)VirtualAlloc(allocateTargetAddress, allocSize, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+				if (alloc == NULL)
+				{
+					std::stringstream str;
+					str << std::hex << "Failed RWX alloc at: " << allocateTargetAddress << ", continuing...";
+					DebugLog(str.str());
+				}
+				else
+				{
+					// success
+					return alloc;
+				}
+			}
+
+			// HACK
+			if (i > 100)
+				break;
+
+			if ((uint8_t*)output.BaseAddress + output.RegionSize == 0)
+				break;
+
+			allocAddr = (uint8_t*)output.BaseAddress + output.RegionSize;
 		}
-
-		// HACK
-		if (i > 100)
-			break;
-		
-		if ((uint8_t*)output.BaseAddress + output.RegionSize == 0)
-			break;
-
-		allocAddr = (uint8_t*)output.BaseAddress + output.RegionSize;
+		DebugLog("RWX alloc failed, backing off and trying again...");
+		// wait 10ms before retrying
+		Sleep(10);
 	}
 
 	ErrorLog("Near RWX alloc failed!");
