@@ -15,6 +15,12 @@ namespace Settings
 	bool PreloadHeightmap();
 	int GetAttackSlots();
 	void SetAttackSlots(int num);
+	int GetMaxFactionSize();
+	void SetMaxFactionSize(int num);
+	int GetMaxSquadSize();
+	void SetMaxSquadSize(int num);
+	int GetMaxSquads();
+	void SetMaxSquads(int num);
 	bool GetFixRNG();
 	void SetFixRNG(bool value);
 	void SetLogFileIO(bool value);

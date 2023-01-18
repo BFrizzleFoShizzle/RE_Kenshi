@@ -377,7 +377,7 @@ MyGUI::CanvasPtr debugImgCanvas = nullptr;
 MyGUI::ScrollViewPtr debugLogScrollView = nullptr;
 MyGUI::WidgetPtr gameSpeedPanel = nullptr;
 
-const uint32_t DEBUG_WINDOW_WIDTH = 600;
+const uint32_t DEBUG_WINDOW_WIDTH = 700;
 const uint32_t DEBUG_WINDOW_HEIGHT = 600;
 const uint32_t DEBUG_WINDOW_RIGHT = DEBUG_WINDOW_WIDTH - 30; // technically correct value would have VScrollBar width subtracted
 
@@ -660,6 +660,132 @@ void AttackSlotScroll(MyGUI::ScrollBar* scrollBar, size_t newPos)
     }
 }
 
+// Takes into account mods
+int defaultMaxFactionSize = -1;
+
+void MaxFactionSizeScroll(MyGUI::ScrollBar* scrollBar, size_t newPos)
+{
+    // Update number text
+    MyGUI::EditBox* numberText = scrollBar->getParent()->findWidget("MaxFactionSizeSlider_NumberText")->castType<MyGUI::EditBox>();
+
+    if (newPos > 0)
+    {
+        std::stringstream str;
+        str << newPos;
+        numberText->setCaption(str.str());
+        Settings::SetMaxFactionSize(newPos);
+        // TODO this sometimes causes a crash if Kenshi is unpaused
+        Kenshi::GetMaxFactionSize() = newPos;
+    }
+    else
+    {
+        std::stringstream str;
+        str << "(" << defaultMaxFactionSize << ")";
+        numberText->setCaption(str.str());
+        Settings::SetMaxFactionSize(-1);
+        Kenshi::GetMaxFactionSize() = defaultMaxFactionSize;
+    }
+}
+
+void MaxFactionSizeSliderTextChange(MyGUI::EditBox* editBox)
+{
+    MyGUI::ScrollBar* scrollBar = editBox->getParent()->findWidget("MaxFactionSizeSlider_Slider")->castType<MyGUI::ScrollBar>();
+    std::string valueStr = editBox->getCaption();
+    int value = -1;
+    // parse float
+    std::stringstream str(valueStr);
+    str >> value;
+    // bounds check - ignore if invalid
+    if (value < 0)
+        return;
+    scrollBar->setScrollPosition(value + 1);
+    MaxFactionSizeScroll(scrollBar, value + 1);
+}
+
+// Takes into account mods
+int defaultMaxSquadSize = -1;
+
+void MaxSquadSizeScroll(MyGUI::ScrollBar* scrollBar, size_t newPos)
+{
+    // Update number text
+    MyGUI::EditBox* numberText = scrollBar->getParent()->findWidget("MaxSquadSizeSlider_NumberText")->castType<MyGUI::EditBox>();
+
+    if (newPos > 0)
+    {
+        std::stringstream str;
+        str << newPos;
+        numberText->setCaption(str.str());
+        Settings::SetMaxSquadSize(newPos);
+        // TODO this sometimes causes a crash if Kenshi is unpaused
+        Kenshi::GetMaxSquadSize() = newPos;
+    }
+    else
+    {
+        std::stringstream str;
+        str << "(" << defaultMaxSquadSize << ")";
+        numberText->setCaption(str.str());
+        Settings::SetMaxSquadSize(-1);
+        Kenshi::GetMaxSquadSize() = defaultMaxSquadSize;
+    }
+}
+
+void MaxSquadSizeSliderTextChange(MyGUI::EditBox* editBox)
+{
+    MyGUI::ScrollBar* scrollBar = editBox->getParent()->findWidget("MaxSquadSizeSlider_Slider")->castType<MyGUI::ScrollBar>();
+    std::string valueStr = editBox->getCaption();
+    int value = -1;
+    // parse float
+    std::stringstream str(valueStr);
+    str >> value;
+    // bounds check - ignore if invalid
+    if (value < 0)
+        return;
+    scrollBar->setScrollPosition(value + 1);
+    MaxSquadSizeScroll(scrollBar, value + 1);
+}
+
+// Takes into account mods
+int defaultMaxSquads = -1;
+
+void MaxSquadsScroll(MyGUI::ScrollBar* scrollBar, size_t newPos)
+{
+    // Update number text
+    MyGUI::EditBox* numberText = scrollBar->getParent()->findWidget("MaxSquadsSlider_NumberText")->castType<MyGUI::EditBox>();
+
+    if (newPos > 0)
+    {
+        std::stringstream str;
+        str << newPos;
+        numberText->setCaption(str.str());
+        Settings::SetMaxSquads(newPos);
+        // TODO this sometimes causes a crash if Kenshi is unpaused
+        Kenshi::GetMaxSquads() = newPos;
+    }
+    else
+    {
+        std::stringstream str;
+        str << "(" << defaultMaxSquads << ")";
+        numberText->setCaption(str.str());
+        Settings::SetMaxSquads(-1);
+        Kenshi::GetMaxSquads() = defaultMaxSquads;
+    }
+}
+
+void MaxSquadsSliderTextChange(MyGUI::EditBox* editBox)
+{
+    MyGUI::ScrollBar* scrollBar = editBox->getParent()->findWidget("MaxSquadsSlider_Slider")->castType<MyGUI::ScrollBar>();
+    std::string valueStr = editBox->getCaption();
+    int value = -1;
+    // parse float
+    std::stringstream str(valueStr);
+    str >> value;
+    // bounds check - ignore if invalid
+    if (value < 0)
+        return;
+    scrollBar->setScrollPosition(value + 1);
+    MaxSquadsScroll(scrollBar, value + 1);
+}
+
 void ToggleFixRNG(MyGUI::WidgetPtr sender)
 {
     MyGUI::ButtonPtr button = sender->castType<MyGUI::Button>();
@@ -894,6 +1020,81 @@ void InitGUI()
     attackSlotsScrollBar->eventScrollChangePosition += MyGUI::newDelegate(AttackSlotScroll);
     positionY += 45;
 
+    // max faction size
+    defaultMaxFactionSize = Kenshi::GetMaxFactionSize();
+    int maxFactionSize = Settings::GetMaxFactionSize();
+    // Apply settings
+    if (maxFactionSize > 0)
+        Kenshi::GetMaxFactionSize() = maxFactionSize;
+    std::stringstream maxFactionSizeValue;
+    if (maxFactionSize > 0)
+    {
+        maxFactionSizeValue << maxFactionSize;
+    }
+    else
+    {
+        maxFactionSizeValue << "(" << defaultMaxFactionSize << ")";
+        maxFactionSize = 0;
+    }
+    std::string maxFactionSizeLabel = boost::locale::gettext("Max. faction size (") + std::to_string((long long)defaultMaxFactionSize) + "):";
+    MyGUI::WidgetPtr maxFactionSizeSlider = CreateSlider(settingsView, 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 40 * scale, "MaxFactionSizeSlider_", false,
+        maxFactionSizeLabel, false, maxFactionSizeValue.str(), maxFactionSize, 1001);
+    MyGUI::ScrollBar* maxFactionSizeScrollBar = maxFactionSizeSlider->findWidget("MaxFactionSizeSlider_Slider")->castType<MyGUI::ScrollBar>();
+    maxFactionSizeScrollBar->eventScrollChangePosition += MyGUI::newDelegate(MaxFactionSizeScroll);
+    MyGUI::EditBox* valueText = maxFactionSizeSlider->findWidget("MaxFactionSizeSlider_NumberText")->castType<MyGUI::EditBox>();
+    valueText->eventEditTextChange += MyGUI::newDelegate(MaxFactionSizeSliderTextChange);
+    positionY += 45;
+
+    // max squad size
+    defaultMaxSquadSize = Kenshi::GetMaxSquadSize();
+    int maxSquadSize = Settings::GetMaxSquadSize();
+    // Apply settings
+    if (maxSquadSize > 0)
+        Kenshi::GetMaxSquadSize() = maxSquadSize;
+    std::stringstream maxSquadSizeValue;
+    if (maxSquadSize > 0)
+    {
+        maxSquadSizeValue << maxSquadSize;
+    }
+    else
+    {
+        maxSquadSizeValue << "(" << defaultMaxSquadSize << ")";
+        maxSquadSize = 0;
+    }
+    std::string maxSquadSizeLabel = boost::locale::gettext("Max. squad size (") + std::to_string((long long)defaultMaxSquadSize) + "):";
+    MyGUI::WidgetPtr maxSquadSizeSlider = CreateSlider(settingsView, 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 40 * scale, "MaxSquadSizeSlider_", false,
+        maxSquadSizeLabel, false, maxSquadSizeValue.str(), maxSquadSize, 1001);
+    MyGUI::ScrollBar* maxSquadSizeScrollBar = maxSquadSizeSlider->findWidget("MaxSquadSizeSlider_Slider")->castType<MyGUI::ScrollBar>();
+    maxSquadSizeScrollBar->eventScrollChangePosition += MyGUI::newDelegate(MaxSquadSizeScroll);
+    valueText = maxSquadSizeSlider->findWidget("MaxSquadSizeSlider_NumberText")->castType<MyGUI::EditBox>();
+    valueText->eventEditTextChange += MyGUI::newDelegate(MaxSquadSizeSliderTextChange);
+    positionY += 45;
+
+    // max squads
+    defaultMaxSquads= Kenshi::GetMaxSquads();
+    int maxSquads = Settings::GetMaxSquads();
+    // Apply settings
+    if (maxSquads > 0)
+        Kenshi::GetMaxSquads() = maxSquads;
+    std::stringstream maxSquadsValue;
+    if (maxSquads > 0)
+    {
+        maxSquadsValue << maxSquads;
+    }
+    else
+    {
+        maxSquadsValue << "(" << defaultMaxSquads << ")";
+        maxSquads = 0;
+    }
+    std::string maxSquadsLabel = boost::locale::gettext("Max. squads (") + std::to_string((long long)defaultMaxSquads) + "):";
+    MyGUI::WidgetPtr maxSquadsSlider = CreateSlider(settingsView, 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 40 * scale, "MaxSquadsSlider_", false,
+        maxSquadsLabel, false, maxSquadsValue.str(), maxSquads, 1001);
+    MyGUI::ScrollBar* maxSquadsScrollBar = maxSquadsSlider->findWidget("MaxSquadsSlider_Slider")->castType<MyGUI::ScrollBar>();
+    maxSquadsScrollBar->eventScrollChangePosition += MyGUI::newDelegate(MaxSquadsScroll);
+    valueText = maxSquadsSlider->findWidget("MaxSquadsSlider_NumberText")->castType<MyGUI::EditBox>();
+    valueText->eventEditTextChange += MyGUI::newDelegate(MaxSquadsSliderTextChange);
+    positionY += 45;
+
     MyGUI::ButtonPtr useCustomGameSpeeds = settingsView->createWidget<MyGUI::Button>("Kenshi_TickButton1", 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 26 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "UseCustomGameSpeeds");
     useCustomGameSpeeds->setStateSelected(Settings::GetUseCustomGameSpeeds());
     useCustomGameSpeeds->setCaption(boost::locale::gettext("Use custom game speed controls"));
@@ -906,7 +1107,7 @@ void InitGUI()
     
     MyGUI::TextBox* gameSpeedsLabel = gameSpeedPanel->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 2, 0, DEBUG_WINDOW_RIGHT * scale, 30 * scale, MyGUI::Align::Top | MyGUI::Align::Center, "GameSpeedsLabel");
     gameSpeedsLabel->setCaption(boost::locale::gettext("Game speeds"));
-    MyGUI::ButtonPtr addGameSpeed = gameSpeedPanel->createWidget<MyGUI::Button>("Kenshi_Button1", 300 * scale, 0, 200 * scale, 30 * scale, MyGUI::Align::Top | MyGUI::Align::Right, "AddGameSpeedBtn");
+    MyGUI::ButtonPtr addGameSpeed = gameSpeedPanel->createWidget<MyGUI::Button>("Kenshi_Button1", 250 * scale, 0, 300 * scale, 30 * scale, MyGUI::Align::Top | MyGUI::Align::Right, "AddGameSpeedBtn");
     addGameSpeed->setCaption(boost::locale::gettext("Add game speed"));
     addGameSpeed->eventMouseButtonClick += MyGUI::newDelegate(AddGameSpeed);
     gameSpeedScrollBarsStart = positionY;

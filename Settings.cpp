@@ -34,6 +34,9 @@ rapidjson::Document GenerateDefaultSettings()
     defaultSettings.AddMember("UseCompressedHeightmap", true, defaultSettings.GetAllocator());
     defaultSettings.AddMember("PreloadHeightmap", false, defaultSettings.GetAllocator());
     defaultSettings.AddMember("AttackSlots", -1, defaultSettings.GetAllocator());
+    defaultSettings.AddMember("MaxFactionSize", -1, defaultSettings.GetAllocator());
+    defaultSettings.AddMember("MaxSquadSize", -1, defaultSettings.GetAllocator());
+    defaultSettings.AddMember("MaxSquads", -1, defaultSettings.GetAllocator());
     defaultSettings.AddMember("FixRNG", true, defaultSettings.GetAllocator());
     defaultSettings.AddMember("CacheShaders", true, defaultSettings.GetAllocator());
     defaultSettings.AddMember("LogFileIO", false, defaultSettings.GetAllocator());
@@ -313,6 +316,81 @@ void Settings::SetAttackSlots(int num)
         settingsDOM.AddMember("AttackSlots", num, settingsDOM.GetAllocator());
     else
         settingsDOM["AttackSlots"] = num;
+
+    SaveSettings();
+}
+
+// -1 = use mod value
+int Settings::GetMaxFactionSize()
+{
+    rapidjson::Value& val = settingsDOM["MaxFactionSize"];
+    if (!val.IsInt())
+    {
+        SetMaxFactionSize(-1);
+        return -1;
+    }
+    else
+    {
+        return val.GetInt();
+    }
+}
+
+void Settings::SetMaxFactionSize(int num)
+{
+    if (!settingsDOM.HasMember("MaxFactionSize"))
+        settingsDOM.AddMember("MaxFactionSize", num, settingsDOM.GetAllocator());
+    else
+        settingsDOM["MaxFactionSize"] = num;
+
+    SaveSettings();
+}
+
+// -1 = use mod value
+int Settings::GetMaxSquadSize()
+{
+    rapidjson::Value& val = settingsDOM["MaxSquadSize"];
+    if (!val.IsInt())
+    {
+        SetMaxSquadSize(-1);
+        return -1;
+    }
+    else
+    {
+        return val.GetInt();
+    }
+}
+
+void Settings::SetMaxSquadSize(int num)
+{
+    if (!settingsDOM.HasMember("MaxSquadSize"))
+        settingsDOM.AddMember("MaxSquadSize", num, settingsDOM.GetAllocator());
+    else
+        settingsDOM["MaxSquadSize"] = num;
+
+    SaveSettings();
+}
+
+// -1 = use mod value
+int Settings::GetMaxSquads()
+{
+    rapidjson::Value& val = settingsDOM["MaxSquads"];
+    if (!val.IsInt())
+    {
+        SetMaxSquads(-1);
+        return -1;
+    }
+    else
+    {
+        return val.GetInt();
+    }
+}
+
+void Settings::SetMaxSquads(int num)
+{
+    if (!settingsDOM.HasMember("MaxSquads"))
+        settingsDOM.AddMember("MaxSquads", num, settingsDOM.GetAllocator());
+    else
+        settingsDOM["MaxSquads"] = num;
 
     SaveSettings();
 }
