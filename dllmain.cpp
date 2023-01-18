@@ -442,7 +442,7 @@ size_t UnscaleGameSpeed(float speed)
     return std::min(1000, (int)scaled);
 }
 
-void SliderTextChange(MyGUI::EditBox* editBox)
+void SpeedSliderTextChange(MyGUI::EditBox* editBox)
 {
     std::string valueStr = editBox->getCaption();
     float value = -1;
@@ -469,7 +469,7 @@ void SliderTextChange(MyGUI::EditBox* editBox)
 }
 
 // Root widget name will be "[namePrefix]SliderRoot"
-MyGUI::WidgetPtr CreateSlider(MyGUI::WidgetPtr parent, int x, int y, int w, int h, std::string namePrefix)
+MyGUI::WidgetPtr CreateSlider(MyGUI::WidgetPtr parent, int x, int y, int w, int h, std::string namePrefix, bool deleteButton)
 {
     /* THIS TEMPLATE USES A READ-ONLY TEXTBOX SO ISN'T USEFUL
     MyGUI::IResourcePtr sliderRes = MyGUI::ResourceManager::getInstancePtr()->findByName("Kenshi_Slider");
@@ -491,14 +491,31 @@ MyGUI::WidgetPtr CreateSlider(MyGUI::WidgetPtr parent, int x, int y, int w, int 
 
     MyGUI::WidgetPtr sliderRoot = parent->createWidget<MyGUI::Widget>("PanelEmpty", x, y, w, h, MyGUI::Align::Top | MyGUI::Align::Left, namePrefix + "SliderRoot");
     int deleteSize = h - 10;
-    MyGUI::ButtonPtr deleteButton = sliderRoot->createWidget<MyGUI::Button>("Kenshi_CloseButtonSkin", w - deleteSize, (h - deleteSize) / 2, deleteSize, deleteSize, MyGUI::Align::Right | MyGUI::Align::Top, namePrefix + "DeleteButton");
-    MyGUI::TextBox* sliderLabel = sliderRoot->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 0, 0, w * 0.2f, h, MyGUI::Align::Left | MyGUI::Align::VStretch, namePrefix + "ElementText");
+    if(deleteButton)
+        MyGUI::ButtonPtr deleteButton = sliderRoot->createWidget<MyGUI::Button>("Kenshi_CloseButtonSkin", w - deleteSize, (h - deleteSize) / 2, deleteSize, deleteSize, MyGUI::Align::Right | MyGUI::Align::Top, namePrefix + "DeleteButton");
+    MyGUI::TextBox* sliderLabel = sliderRoot->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 0, 0, w * 0.3f, h, MyGUI::Align::Left | MyGUI::Align::VStretch, namePrefix + "ElementText");
     sliderLabel->setTextAlign(MyGUI::Align::Left);
-    MyGUI::ScrollBar* scrollBar = sliderRoot->createWidget<MyGUI::ScrollBar>("Kenshi_ScrollBar", w * 0.22f, 0, w * 0.58f, h, MyGUI::Align::Stretch, namePrefix + "Slider");
-    MyGUI::EditBox* valueText = sliderRoot->createWidget<MyGUI::EditBox>("Kenshi_EditBox", w * 0.82f, 0, w * 0.12f, h, MyGUI::Align::Right | MyGUI::Align::VStretch, namePrefix + "NumberText");
-    valueText->eventEditTextChange += MyGUI::newDelegate(SliderTextChange);
+    MyGUI::ScrollBar* scrollBar = sliderRoot->createWidget<MyGUI::ScrollBar>("Kenshi_ScrollBar", w * 0.32f, 0, w * 0.48f, h, MyGUI::Align::Stretch, namePrefix + "Slider");
+    MyGUI::EditBox* valueText = sliderRoot->createWidget<MyGUI::EditBox>("Kenshi_EditBox", w * 0.82f, 0, w * 0.10f, h, MyGUI::Align::Right | MyGUI::Align::VStretch, namePrefix + "NumberText");
 
     return sliderRoot;
+}
+
+MyGUI::WidgetPtr CreateSlider(MyGUI::WidgetPtr parent, int x, int y, int w, int h, std::string namePrefix, bool deleteButton, std::string label, bool readOnlyText, std::string defaultValue, int defaultPosition, int scrollRange)
+{
+    MyGUI::WidgetPtr slider = CreateSlider(parent, x, y, w, h, namePrefix, deleteButton);
+    MyGUI::TextBox* elementText = slider->findWidget(namePrefix + "ElementText")->castType<MyGUI::TextBox>();
+
+    elementText->setCaption(label);
+    MyGUI::EditBox* numberText = slider->findWidget(namePrefix + "NumberText")->castType<MyGUI::EditBox>();
+    numberText->setEditStatic(readOnlyText);
+
+    numberText->setCaption(defaultValue);
+    MyGUI::ScrollBar* scrollBar = slider->findWidget(namePrefix + "Slider")->castType<MyGUI::ScrollBar>();
+    scrollBar->setScrollRange(scrollRange);
+    scrollBar->setScrollPosition(defaultPosition);
+    
+    return slider;
 }
 
 void GameSpeedScroll(MyGUI::ScrollBar *scrollBar, size_t newPos)
@@ -578,23 +595,20 @@ void RedrawGameSpeedSettings()
     {
         std::stringstream nameStr;
         nameStr << "SpeedSlider" << i << "_";
-        MyGUI::WidgetPtr slider = CreateSlider(gameSpeedPanel, 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 40 * scale, nameStr.str());
-
-        MyGUI::TextBox* elementText = slider->findWidget(nameStr.str() + "ElementText")->castType<MyGUI::TextBox>();
-        if (!elementText)
-            DebugLog("ElementText not found!");
         std::stringstream label;
         label << boost::locale::gettext("Speed ") << (i + 1) << ":";
-        elementText->setCaption(label.str());
-        MyGUI::ScrollBar* scrollBar = slider->findWidget(nameStr.str() + "Slider")->castType<MyGUI::ScrollBar>();
-        // 0...range-1 = 0...1000
-        scrollBar->setScrollRange(1001);
-        scrollBar->setScrollPosition(UnscaleGameSpeed(gameSpeeds[i]));
-        scrollBar->eventScrollChangePosition += MyGUI::newDelegate(GameSpeedScroll);
-        MyGUI::TextBox* numberText = slider->findWidget(nameStr.str() + "NumberText")->castType<MyGUI::TextBox>();
         std::stringstream value;
         value << gameSpeeds[i];
-        numberText->setCaption(value.str());
+        // 0...range-1 = 0...1000
+        MyGUI::WidgetPtr slider = CreateSlider(gameSpeedPanel, 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 40 * scale, nameStr.str(), true, label.str(),
+            false, value.str(), UnscaleGameSpeed(gameSpeeds[i]), 1001);
+        MyGUI::ScrollBar* scrollBar = slider->findWidget(nameStr.str() + "Slider")->castType<MyGUI::ScrollBar>();
+        if (!scrollBar)
+            ErrorLog("ScrollBar not found!");
+        // add event listeners
+        scrollBar->eventScrollChangePosition += MyGUI::newDelegate(GameSpeedScroll);
+        MyGUI::EditBox* valueText = slider->findWidget(nameStr.str() + "NumberText")->castType<MyGUI::EditBox>();
+        valueText->eventEditTextChange += MyGUI::newDelegate(SpeedSliderTextChange);
         MyGUI::ButtonPtr deleteButton = slider->findWidget(nameStr.str() + "DeleteButton")->castType<MyGUI::Button>();
         deleteButton->eventMouseButtonClick += MyGUI::newDelegate(DeleteGameSpeedScroll);
         positionY += 45;
@@ -863,25 +877,20 @@ void InitGUI()
     // Apply settings
     if (numAttackSlots > 0)
         Kenshi::GetNumAttackSlots() = numAttackSlots;
-    MyGUI::WidgetPtr attackSlotsSlider = CreateSlider(settingsView, 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 40 * scale, "AttackSlotsSlider_");
-    MyGUI::TextBox* elementText = attackSlotsSlider->findWidget("AttackSlotsSlider_ElementText")->castType<MyGUI::TextBox>();
-    std::stringstream attackSlotsLabel;
-    attackSlotsLabel << boost::locale::gettext("Attack slots (") << defaultAttackSlots << "):";
-    elementText->setCaption(attackSlotsLabel.str());
-    MyGUI::EditBox* numberText = attackSlotsSlider->findWidget("AttackSlotsSlider_NumberText")->castType<MyGUI::EditBox>();
-    numberText->setEditStatic(true);
-    std::stringstream attackSlotsStr;
+    std::stringstream attackSlotsValue;
     if (numAttackSlots > 0)
-        attackSlotsStr << numAttackSlots;
+    {
+        attackSlotsValue << numAttackSlots;
+    }
     else
-        attackSlotsStr << "(" << defaultAttackSlots << ")";
-    numberText->setCaption(attackSlotsStr.str());
+    {
+        attackSlotsValue << "(" << defaultAttackSlots << ")";
+        numAttackSlots = 0;
+    }
+    std::string attackSlotsLabel = boost::locale::gettext("Attack slots (") + std::to_string((long long)defaultAttackSlots) + "):";
+    MyGUI::WidgetPtr attackSlotsSlider = CreateSlider(settingsView, 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 40 * scale, "AttackSlotsSlider_", false,
+        attackSlotsLabel, true, attackSlotsValue.str(), numAttackSlots, 6);
     MyGUI::ScrollBar* attackSlotsScrollBar = attackSlotsSlider->findWidget("AttackSlotsSlider_Slider")->castType<MyGUI::ScrollBar>();
-    attackSlotsScrollBar->setScrollRange(6);
-    if(numAttackSlots > 0)
-        attackSlotsScrollBar->setScrollPosition(Settings::GetAttackSlots());
-    else
-        attackSlotsScrollBar->setScrollPosition(0);
     attackSlotsScrollBar->eventScrollChangePosition += MyGUI::newDelegate(AttackSlotScroll);
     positionY += 45;
 
