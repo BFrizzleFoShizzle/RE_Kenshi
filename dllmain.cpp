@@ -1021,6 +1021,8 @@ void InitGUI()
     attackSlotsScrollBar->eventScrollChangePosition += MyGUI::newDelegate(AttackSlotScroll);
     positionY += 45;
 
+    // TODO temporarily disabled for 0.2.7
+    /*
     // max faction size
     defaultMaxFactionSize = Kenshi::GetMaxFactionSize();
     int maxFactionSize = Settings::GetMaxFactionSize();
@@ -1095,7 +1097,7 @@ void InitGUI()
     valueText = maxSquadsSlider->findWidget("MaxSquadsSlider_NumberText")->castType<MyGUI::EditBox>();
     valueText->eventEditTextChange += MyGUI::newDelegate(MaxSquadsSliderTextChange);
     positionY += 45;
-
+    */
     MyGUI::ButtonPtr useCustomGameSpeeds = settingsView->createWidget<MyGUI::Button>("Kenshi_TickButton1", 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 26 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "UseCustomGameSpeeds");
     useCustomGameSpeeds->setStateSelected(Settings::GetUseCustomGameSpeeds());
     useCustomGameSpeeds->setCaption(boost::locale::gettext("Use custom game speed controls"));
