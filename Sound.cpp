@@ -279,16 +279,22 @@ void Sound::TryLoadQueuedBanks()
 
 void Sound::Init()
 {
-	AK_SoundEngine_GetIDFromString_orig = Escort::JmpReplaceHook<unsigned long int(char const* __ptr64)>(Kenshi::GetSoundEngineGetIDFromString(), AK_SoundEngine_GetIDFromStringHook);
-	// ?GetIDFromString@SoundEngine@AK@@YAKPEB_W@Z
-	AK_SoundEngine_GetIDFromString2_orig = Escort::JmpReplaceHook<unsigned long int(wchar_t const* __ptr64)>(Kenshi::GetSoundEngineGetIDFromString2(), AK_SoundEngine_GetIDFromStringHook2);
-	AK_SoundEngine_LoadBank_orig = Escort::JmpReplaceHook<AKRESULT(char const* __ptr64, long int, unsigned long int&)>(Kenshi::GetSoundEngineLoadBank(), AK_SoundEngine_LoadBankHook);
-	AK_SoundEngine_SetState_orig = Escort::JmpReplaceHook<enum AKRESULT(char const* __ptr64, char const* __ptr64)>(Kenshi::GetSoundEngineSetState(), AK_SoundEngine_SetState_hook);
-	AK_SoundEngine_SetSwitch_orig = Escort::JmpReplaceHook<enum AKRESULT(char const* __ptr64, char const* __ptr64, unsigned long long (unsigned __int64))>(Kenshi::GetSoundEngineSetSwitch(), AK_SoundEngine_SetSwitch_hook);
-	AK_SoundEngine_PostEvent_orig = Escort::JmpReplaceHook<long int (char const* __ptr64, unsigned long long, unsigned long int, void(__cdecl*)(enum AkCallbackType, struct AkCallbackInfo* __ptr64), void* __ptr64, unsigned long int, struct AkExternalSourceInfo* __ptr64, unsigned long int)>(Kenshi::GetSoundEnginePostEvent(), AK_SoundEngine_PostEvent_hook);
-	void* AK_SoundEngine_PostEvent_addr2 = Escort::GetFuncAddress("kenshi_GOG_x64.exe", "?PostEvent@SoundEngine@AK@@YAKPEB_W_KKP6AXW4AkCallbackType@@PEAUAkCallbackInfo@@@ZPEAXKPEAUAkExternalSourceInfo@@K@Z");
-	if (AK_SoundEngine_PostEvent_addr2 == nullptr)
-		ErrorLog("Error getting address of GetIDFromString (W)");
-	AK_SoundEngine_PostEvent_orig2 = Escort::JmpReplaceHook<long int(wchar_t const* __ptr64, unsigned long long, unsigned long int, void(__cdecl*)(enum AkCallbackType, struct AkCallbackInfo* __ptr64), void* __ptr64, unsigned long int, struct AkExternalSourceInfo* __ptr64, unsigned long int)>(AK_SoundEngine_PostEvent_addr2, AK_SoundEngine_PostEvent_hook2);
+	// find function addresses
+	void* AK_SoundEngine_GetIDFromString_ptr = Escort::GetFuncAddress(Kenshi::GetKenshiVersion().GetBinaryName(), "?GetIDFromString@SoundEngine@AK@@YAKPEBD@Z");
+	void* AK_SoundEngine_GetIDFromString2_ptr = Escort::GetFuncAddress(Kenshi::GetKenshiVersion().GetBinaryName(), "?GetIDFromString@SoundEngine@AK@@YAKPEB_W@Z");
+	void* AK_SoundEngine_LoadBank_ptr = Escort::GetFuncAddress(Kenshi::GetKenshiVersion().GetBinaryName(), "?LoadBank@SoundEngine@AK@@YA?AW4AKRESULT@@PEBDJAEAK@Z");
+	void* AK_SoundEngine_SetState_ptr = Escort::GetFuncAddress(Kenshi::GetKenshiVersion().GetBinaryName(), "?SetState@SoundEngine@AK@@YA?AW4AKRESULT@@PEBD0@Z");
+	void* AK_SoundEngine_SetSwitch_ptr = Escort::GetFuncAddress(Kenshi::GetKenshiVersion().GetBinaryName(), "?SetSwitch@SoundEngine@AK@@YA?AW4AKRESULT@@PEBD0_K@Z");
+	void* AK_SoundEngine_PostEvent_ptr = Escort::GetFuncAddress(Kenshi::GetKenshiVersion().GetBinaryName(), "?PostEvent@SoundEngine@AK@@YAKPEBD_KKP6AXW4AkCallbackType@@PEAUAkCallbackInfo@@@ZPEAXKPEAUAkExternalSourceInfo@@K@Z");
+	void* AK_SoundEngine_PostEvent2_ptr = Escort::GetFuncAddress(Kenshi::GetKenshiVersion().GetBinaryName(), "?PostEvent@SoundEngine@AK@@YAKPEB_W_KKP6AXW4AkCallbackType@@PEAUAkCallbackInfo@@@ZPEAXKPEAUAkExternalSourceInfo@@K@Z");
+	
+	// add hooks
+	AK_SoundEngine_GetIDFromString_orig = Escort::JmpReplaceHook<unsigned long int(char const* __ptr64)>(AK_SoundEngine_GetIDFromString_ptr, AK_SoundEngine_GetIDFromStringHook);
+	AK_SoundEngine_GetIDFromString2_orig = Escort::JmpReplaceHook<unsigned long int(wchar_t const* __ptr64)>(AK_SoundEngine_GetIDFromString2_ptr, AK_SoundEngine_GetIDFromStringHook2);
+	AK_SoundEngine_LoadBank_orig = Escort::JmpReplaceHook<AKRESULT(char const* __ptr64, long int, unsigned long int&)>(AK_SoundEngine_LoadBank_ptr, AK_SoundEngine_LoadBankHook);
+	AK_SoundEngine_SetState_orig = Escort::JmpReplaceHook<enum AKRESULT(char const* __ptr64, char const* __ptr64)>(AK_SoundEngine_SetState_ptr, AK_SoundEngine_SetState_hook);
+	AK_SoundEngine_SetSwitch_orig = Escort::JmpReplaceHook<enum AKRESULT(char const* __ptr64, char const* __ptr64, unsigned long long (unsigned __int64))>(AK_SoundEngine_SetSwitch_ptr, AK_SoundEngine_SetSwitch_hook);
+	AK_SoundEngine_PostEvent_orig = Escort::JmpReplaceHook<long int (char const* __ptr64, unsigned long long, unsigned long int, void(__cdecl*)(enum AkCallbackType, struct AkCallbackInfo* __ptr64), void* __ptr64, unsigned long int, struct AkExternalSourceInfo* __ptr64, unsigned long int)>(AK_SoundEngine_PostEvent_ptr, AK_SoundEngine_PostEvent_hook);
+	AK_SoundEngine_PostEvent_orig2 = Escort::JmpReplaceHook<long int(wchar_t const* __ptr64, unsigned long long, unsigned long int, void(__cdecl*)(enum AkCallbackType, struct AkCallbackInfo* __ptr64), void* __ptr64, unsigned long int, struct AkExternalSourceInfo* __ptr64, unsigned long int)>(AK_SoundEngine_PostEvent2_ptr, AK_SoundEngine_PostEvent_hook2);
 	//AK_SoundEngine_RegisterGameObj_orig = Escort::JmpReplaceHook< enum AKRESULT(unsigned long long, char const* __ptr64, unsigned long int)>(Kenshi::GetSoundEngineRegisterGameObj(), AK_SoundEngine_RegisterGameObj_hook);
 }
