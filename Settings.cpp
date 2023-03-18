@@ -38,6 +38,8 @@ rapidjson::Document GenerateDefaultSettings()
     defaultSettings.AddMember("MaxSquadSize", -1, defaultSettings.GetAllocator());
     defaultSettings.AddMember("MaxSquads", -1, defaultSettings.GetAllocator());
     defaultSettings.AddMember("FixRNG", true, defaultSettings.GetAllocator());
+    // TODO remove after dropping support for old versions
+    defaultSettings.AddMember("FixFontSize", true, defaultSettings.GetAllocator());
     defaultSettings.AddMember("CacheShaders", true, defaultSettings.GetAllocator());
     defaultSettings.AddMember("LogFileIO", false, defaultSettings.GetAllocator());
     defaultSettings.AddMember("CheckUpdates", true, defaultSettings.GetAllocator());
@@ -291,6 +293,23 @@ void Settings::SetFixRNG(bool value)
         settingsDOM.AddMember("FixRNG", value, settingsDOM.GetAllocator());
     else
         settingsDOM["FixRNG"] = value;
+
+    SaveSettings();
+}
+
+// TODO remove after dropping support for old versions
+bool Settings::GetFixFontSize()
+{
+    rapidjson::Value& val = settingsDOM["FixFontSize"];
+    return val.GetBool();
+}
+
+void Settings::SetFixFontSize(bool value)
+{
+    if (!settingsDOM.HasMember("FixFontSize"))
+        settingsDOM.AddMember("FixFontSize", value, settingsDOM.GetAllocator());
+    else
+        settingsDOM["FixFontSize"] = value;
 
     SaveSettings();
 }

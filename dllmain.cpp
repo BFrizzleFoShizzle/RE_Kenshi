@@ -21,6 +21,7 @@
 #include "FSHook.h"
 #include "HeightmapHook.h"
 #include "MiscHooks.h"
+#include "MyGUIHooks.h"
 #include "Sound.h"
 #include "Debug.h"
 #include "Settings.h"
@@ -1146,6 +1147,10 @@ void InitGUI()
     {
         DebugLog("Version supported.");
         versionText->setCaption("RE_Kenshi " + Version::GetDisplayVersion() + " - " + version);
+
+        // Fixes fonts
+        // TODO remove after dropping support for old versions
+        MyGUIHooks::InitMainMenu();
     }
     else
     {

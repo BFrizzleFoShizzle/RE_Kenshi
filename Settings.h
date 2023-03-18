@@ -23,6 +23,9 @@ namespace Settings
 	void SetMaxSquads(int num);
 	bool GetFixRNG();
 	void SetFixRNG(bool value);
+	// TODO remove after dropping support for old versions
+	bool GetFixFontSize();
+	void SetFixFontSize(bool value);
 	void SetLogFileIO(bool value);
 	bool GetLogFileIO();
 	bool GetCheckUpdates();

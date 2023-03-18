@@ -176,6 +176,7 @@
     <ClCompile Include="FSHook.cpp" />
     <ClCompile Include="HeightmapHook.cpp" />
     <ClCompile Include="MiscHooks.cpp" />
+    <ClCompile Include="MyGUIHooks.cpp" />
     <ClCompile Include="Settings.cpp" />
     <ClCompile Include="ShaderCache.cpp" />
     <ClCompile Include="Sound.cpp" />
@@ -187,6 +188,7 @@
     <ClInclude Include="FSHook.h" />
     <ClInclude Include="HeightmapHook.h" />
     <ClInclude Include="MiscHooks.h" />
+    <ClInclude Include="MyGUIHooks.h" />
     <ClInclude Include="Settings.h" />
     <ClInclude Include="ShaderCache.h" />
     <ClInclude Include="Sound.h" />
