@@ -929,7 +929,8 @@ void InitGUI()
     modMenuWindow = gui->createWidgetReal<MyGUI::Window>("Kenshi_WindowCX", 0.1f, 0.1f, windowWidth, windowHeight, MyGUI::Align::Center, "Window", "DebugWindow");
     // fix aspect ratio
     float initScale = float(modMenuWindow->getCoord().height) / DEBUG_WINDOW_HEIGHT;
-    modMenuWindow->setCoord(((1920 * initScale) - (DEBUG_WINDOW_WIDTH * initScale)) - 100, 100, DEBUG_WINDOW_WIDTH * initScale, modMenuWindow->getCoord().height);
+    float horizontalScale = float(modMenuWindow->getCoord().width) / DEBUG_WINDOW_WIDTH;
+    modMenuWindow->setCoord(((1920 * horizontalScale) - (DEBUG_WINDOW_WIDTH * initScale)) - 100, 100, DEBUG_WINDOW_WIDTH * initScale, modMenuWindow->getCoord().height);
     float scale = float(modMenuWindow->getClientCoord().height) / DEBUG_WINDOW_HEIGHT;
     modMenuWindow->setCaption(boost::locale::gettext("RE_Kenshi Menu"));
     modMenuWindow->eventKeyButtonReleased += MyGUI::newDelegate(debugMenuKeyRelease);
@@ -1071,8 +1072,6 @@ void InitGUI()
     attackSlotsScrollBar->eventScrollChangePosition += MyGUI::newDelegate(AttackSlotScroll);
     positionY += 45;
 
-    // TODO temporarily disabled for 0.2.7
-    /*
     // max faction size
     defaultMaxFactionSize = Kenshi::GetMaxFactionSize();
     int maxFactionSize = Settings::GetMaxFactionSize();
@@ -1147,7 +1146,7 @@ void InitGUI()
     valueText = maxSquadsSlider->findWidget("MaxSquadsSlider_NumberText")->castType<MyGUI::EditBox>();
     valueText->eventEditTextChange += MyGUI::newDelegate(MaxSquadsSliderTextChange);
     positionY += 45;
-    */
+
     MyGUI::ButtonPtr useCustomGameSpeeds = settingsView->createWidget<MyGUI::Button>("Kenshi_TickButton1", 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 26 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "UseCustomGameSpeeds");
     useCustomGameSpeeds->setStateSelected(Settings::GetUseCustomGameSpeeds());
     useCustomGameSpeeds->setCaption(boost::locale::gettext("Use custom game speed controls"));
