@@ -26,6 +26,7 @@
 #include "Debug.h"
 #include "Settings.h"
 #include "Version.h"
+#include "Bugs.h"
 #include "Escort.h"
 #include "ShaderCache.h"
 
@@ -352,6 +353,7 @@ void WaitForMainMenu()
 
 // TODO make nicer
 MyGUI::Window* modMenuWindow = nullptr;
+MyGUI::Window* bugReportWindow = nullptr;
 MyGUI::Window* gameSpeedTutorialWindow = nullptr;
 
 void openSettingsMenu(MyGUI::WidgetPtr button)
@@ -925,12 +927,40 @@ void InitGUI()
     gameSpeedTutImage->setImageTexture("game_speed_tutorial.png");
     gameSpeedTutorialWindow->setVisible(false);
 
+    // Create bug report window
+    bugReportWindow = gui->createWidget<MyGUI::Window>("Kenshi_WindowCX", 100, 100, 500 * scale, 500 * scale, MyGUI::Align::Center, "Window", "BugReportWindow");
+    bugReportWindow->setCaption(boost::locale::gettext("RE_Kenshi Bug Report"));
+    bugReportWindow->eventWindowButtonPressed += MyGUI::newDelegate(debugMenuButtonPress); 
+    MyGUI::WidgetPtr bugReportPanel = bugReportWindow->getClientWidget()->createWidgetReal<MyGUI::Widget>("Kenshi_FloatingPanelLight", 0.0f, 0.0f, 1.0f, 1.0f, MyGUI::Align::Stretch, "BugReportPanel");
+    // Only edit boxes support word wrap?
+    MyGUI::EditBox* infoText = bugReportPanel->createWidgetReal<MyGUI::EditBox>("Kenshi_TextboxStandardText", 0.05f, 0.05f, 0.90f, 0.48f, MyGUI::Align::Top | MyGUI::Align::Left, "BugReportInfo");
+    infoText->setEditMultiLine(true);
+    infoText->setEditWordWrap(true);
+    infoText->setEditStatic(true);
+    infoText->setCaption(MyGUI::UString(boost::locale::gettext("Your report will be sent to RE_Kenshi's developer (BFrizzleFoShizzle) with the following information:"))
+        + boost::locale::gettext("\nRE_Kenshi version: ") + Version::GetDisplayVersion()
+        + boost::locale::gettext("\nKenshi version: ") + Kenshi::GetKenshiVersion().ToString()
+        + boost::locale::gettext("\nYour bug description")
+        + boost::locale::gettext("\n\nPlease describe the bug:"));
+    
+    MyGUI::EditBox* bugDescription = bugReportPanel->createWidgetReal<MyGUI::EditBox>("Kenshi_WordWrap", 0.05f, 0.50f, 0.90f, 0.33f, MyGUI::Align::Top | MyGUI::Align::Left, "BugDescription");
+    bugDescription->setEditStatic(false);
+    MyGUI::ButtonPtr sendBugButton = bugReportPanel->createWidgetReal<MyGUI::Button>("Kenshi_Button1", 0.05f, 0.85f, 0.90f, 0.10f, MyGUI::Align::Top | MyGUI::Align::Left, "SendReportButton");
+    sendBugButton->setCaption(boost::locale::gettext("Send report"));
+    sendBugButton->eventMouseButtonClick += MyGUI::newDelegate(SendBugPress);
+    bugReportWindow->setVisible(false);
+
     // Mod settings
     MyGUI::TabItemPtr settingsTab = tabControl->addItem(boost::locale::gettext("Settings"));
     settingsView = settingsTab->createWidget<MyGUI::ScrollView>("Kenshi_ScrollView", MyGUI::IntCoord(2, 2, settingsTab->getClientCoord().width - 4, settingsTab->getClientCoord().height - 4), MyGUI::Align::Stretch);
     settingsView->setVisibleHScroll(false);
     int positionY = 2;
     settingsView->setCanvasSize(settingsView->getWidth(), settingsView->getHeight());
+
+    MyGUI::ButtonPtr reportBugButton = settingsView->createWidget<MyGUI::Button>("Kenshi_Button1", 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 26 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "ReportBugButton");
+    reportBugButton->setCaption(boost::locale::gettext("Report bug"));
+    reportBugButton->eventMouseButtonClick += MyGUI::newDelegate(ReportBugPress);
+    positionY += 40;
 
     MyGUI::ButtonPtr checkUpdatesToggle = settingsView->createWidget<MyGUI::Button>("Kenshi_TickButton1", 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 26 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "CheckUpdates");
     checkUpdatesToggle->setStateSelected(Settings::GetCheckUpdates());
@@ -1381,6 +1411,7 @@ void dllmain()
 
     if (gameVersion.GetPlatform() != Kenshi::BinaryVersion::UNKNOWN)
     {
+        Bugs::Init();
         ShaderCache::Init();
         HeightmapHook::Preload();
         MiscHooks::Init();

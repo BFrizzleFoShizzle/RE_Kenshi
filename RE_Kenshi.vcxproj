@@ -171,6 +171,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Bugs.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="Escort.cpp" />
     <ClCompile Include="FSHook.cpp" />
@@ -184,6 +185,8 @@
     <ClCompile Include="WinHttpClient.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Bugs.h" />
+    <ClInclude Include="Discord.h" />
     <ClInclude Include="Escort.h" />
     <ClInclude Include="FSHook.h" />
     <ClInclude Include="HeightmapHook.h" />

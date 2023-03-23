@@ -5,8 +5,10 @@
 // From https://www.codeproject.com/Articles/28275/A-Simple-Windows-HTTP-Wrapper-Using-C
 // Originally LGPLv3
 
-#include <comutil.h>
 #include "WinHttpClient.h"
+#include <comutil.h>
+#include <sstream>
+#include <iomanip>
 
 WinHttpClient::WinHttpClient(const wstring &URL)
     : m_URL(URL),
@@ -17,7 +19,32 @@ WinHttpClient::WinHttpClient(const wstring &URL)
 {
 }
 
-bool WinHttpClient::SendHttpRequest(const wstring &httpVerb)
+// from https://stackoverflow.com/questions/154536/encode-decode-urls-in-c
+std::string WinHttpClient::UrlEncode(std::string str)
+{
+    ostringstream escaped;
+    escaped.fill('0');
+    escaped << hex;
+
+    for (string::const_iterator i = str.begin(), n = str.end(); i != n; ++i) {
+        string::value_type c = (*i);
+
+        // Keep alphanumeric and other accepted characters intact
+        if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~') {
+            escaped << c;
+            continue;
+        }
+
+        // Any other characters are percent-encoded
+        escaped << uppercase;
+        escaped << '%' << std::setw(2) << int((unsigned char)c);
+        escaped << nouppercase;
+    }
+
+    return escaped.str();
+}
+
+bool WinHttpClient::SendHttpRequest(const wstring &httpVerb, const wstring& httpRequestHeader, const string& httpRequestData)
 {
     // Make verb uppercase.
     wstring verb = httpVerb;
@@ -81,25 +108,56 @@ bool WinHttpClient::SendHttpRequest(const wstring &httpVerb)
                 while (!bGetReponseSucceed && iRetryTimes++ < INT_RETRYTIMES)
                 {
                     // Send HTTP requeest.
+                    LPVOID requestData = WINHTTP_NO_REQUEST_DATA;
+                    size_t requestDataLength = 0;
+                    if (httpRequestData != "")
+                    {
+                        requestData = (LPVOID)httpRequestData.c_str();
+                        requestDataLength = httpRequestData.size();
+                    }
+                    LPWSTR requestHeaders = WINHTTP_NO_ADDITIONAL_HEADERS;
+                    size_t requestHeadersLength = 0;
+                    if (httpRequestHeader != L"")
+                    {
+                        requestHeaders = (LPWSTR)httpRequestHeader.c_str();
+                        requestHeadersLength = -1;
+                    }
                     if (::WinHttpSendRequest(hRequest,
-                                             WINHTTP_NO_ADDITIONAL_HEADERS,
-                                             0,
-                                             WINHTTP_NO_REQUEST_DATA,
-                                             0,
-                                             0,
+                                             requestHeaders,
+                                             requestHeadersLength,
+                                             requestData,
+                                             requestDataLength,
+                                             requestDataLength,
                                              NULL))
                     {
                         if (::WinHttpReceiveResponse(hRequest, NULL))
                         {
-                            DWORD dwSize = 0;
+                            DWORD dwStatusCode = 0;
+                            DWORD dwSize = sizeof(DWORD);
+
+                            // get the status code (to handle 204 no data)
+                            BOOL bResult = ::WinHttpQueryHeaders(hRequest,
+                                WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+                                WINHTTP_HEADER_NAME_BY_INDEX,
+                                &dwStatusCode,
+                                &dwSize,
+                                WINHTTP_NO_HEADER_INDEX);
+
+                            // "no data" - success
+                            if (dwStatusCode == 204)
+                            {
+                                bGetReponseSucceed = true;
+                                break;
+                            }
 
                             // Get the buffer size of the HTTP response header.
-                            BOOL bResult = ::WinHttpQueryHeaders(hRequest,
+                            bResult &= ::WinHttpQueryHeaders(hRequest,
                                                                  WINHTTP_QUERY_RAW_HEADERS_CRLF,
                                                                  WINHTTP_HEADER_NAME_BY_INDEX,
                                                                  NULL,
                                                                  &dwSize,
                                                                  WINHTTP_NO_HEADER_INDEX);
+
                             if (bResult || (!bResult && (::GetLastError() == ERROR_INSUFFICIENT_BUFFER)))
                             {
                                 wchar_t *szHeader = new wchar_t[dwSize];
@@ -147,7 +205,7 @@ bool WinHttpClient::SendHttpRequest(const wstring &httpVerb)
                                             if (::WinHttpQueryDataAvailable(hRequest, &dwSize))
                                             {
                                                 BYTE *pResponse = new BYTE[dwSize];
-                                                if (pResponse != NULL)
+                                                if (pResponse != NULL && dwSize > 0)
                                                 {
                                                     memset(pResponse, 0, dwSize);
                                                     DWORD dwRead = 0;
@@ -165,6 +223,7 @@ bool WinHttpClient::SendHttpRequest(const wstring &httpVerb)
                                                                                                 dwSize, 
                                                                                                 NULL, 
                                                                                                 0);
+
                                                             if (iLength > 0)
                                                             {
                                                                 wchar_t *wideChar = new wchar_t[iLength + 1];
@@ -196,6 +255,7 @@ bool WinHttpClient::SendHttpRequest(const wstring &httpVerb)
                                                                                                 dwSize, 
                                                                                                 NULL, 
                                                                                                 0);
+
                                                             if (iLength > 0)
                                                             {
                                                                 wchar_t *wideChar = new wchar_t[iLength + 1];
@@ -226,8 +286,8 @@ bool WinHttpClient::SendHttpRequest(const wstring &httpVerb)
                                         }
                                         while (dwSize > 0);
 
-                                        // The smallest web page must contain more than 300 characters.
-                                        if (resource.size() > 300)
+                                        // The smallest web page must contain more than 1 characters.
+                                        if (resource.size() > 1)
                                         {
                                             bGetReponseSucceed = true;
                                             m_HttpResponse = resource;

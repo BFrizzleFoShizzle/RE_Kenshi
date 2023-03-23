@@ -23,8 +23,11 @@ class WinHttpClient
 public:
     WinHttpClient(const wstring &URL);
 
+    // escapes chars
+    static std::string UrlEncode(std::string str);
+
     // It is a synchronized method and may take a long time to finish.
-    bool SendHttpRequest(const wstring &httpVerb = L"GET");
+    bool SendHttpRequest(const wstring &httpVerb = L"GET", const wstring& httpRequestHeader = L"", const string &httpRequestData = "");
     wstring GetHttpResponseHeader(void);
     wstring GetHttpResponse(void);
     wstring GetCharset(void);
