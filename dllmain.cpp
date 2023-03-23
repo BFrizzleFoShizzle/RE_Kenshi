@@ -929,7 +929,7 @@ void InitGUI()
     modMenuWindow = gui->createWidgetReal<MyGUI::Window>("Kenshi_WindowCX", 0.1f, 0.1f, windowWidth, windowHeight, MyGUI::Align::Center, "Window", "DebugWindow");
     // fix aspect ratio
     float initScale = float(modMenuWindow->getCoord().height) / DEBUG_WINDOW_HEIGHT;
-    modMenuWindow->setCoord(100, 100, DEBUG_WINDOW_WIDTH * initScale, modMenuWindow->getCoord().height);
+    modMenuWindow->setCoord(((1920 * initScale) - (DEBUG_WINDOW_WIDTH * initScale)) - 100, 100, DEBUG_WINDOW_WIDTH * initScale, modMenuWindow->getCoord().height);
     float scale = float(modMenuWindow->getClientCoord().height) / DEBUG_WINDOW_HEIGHT;
     modMenuWindow->setCaption(boost::locale::gettext("RE_Kenshi Menu"));
     modMenuWindow->eventKeyButtonReleased += MyGUI::newDelegate(debugMenuKeyRelease);
