@@ -876,6 +876,26 @@ void ToggleUseCustomGameSpeeds(MyGUI::WidgetPtr sender)
     }
 }
 
+void ReportBugPress(MyGUI::WidgetPtr sender)
+{
+    MyGUI::EditBox* description = bugReportWindow->findWidget("BugDescription")->castType<MyGUI::EditBox>(false);
+    MyGUI::EditBox* infoText = bugReportWindow->findWidget("BugReportInfo")->castType<MyGUI::EditBox>(false);
+    // bootleg way of expanding bugDescription upwards to end of infoText - this solves font size issues
+    int descriptionBottom = description->getBottom();
+    description->setPosition(infoText->getLeft(), infoText->getTop() + infoText->getTextSize().height + 8);
+    description->setSize(infoText->getSize().width, descriptionBottom - description->getTop());
+
+    bugReportWindow->setVisible(true);
+}
+
+void SendBugPress(MyGUI::WidgetPtr sender)
+{
+    MyGUI::EditBox* description = bugReportWindow->findWidget("BugDescription")->castType<MyGUI::EditBox>(false);
+    Bugs::ReportUserBug(description->getCaption());
+    description->setCaption("Report sent.");
+    bugReportWindow->setVisible(false);
+}
+
 void InitGUI()
 {
     DebugLog("Main menu loaded.");
