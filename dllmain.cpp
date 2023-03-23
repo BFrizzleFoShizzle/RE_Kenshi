@@ -1209,7 +1209,7 @@ void InitGUI()
         DebugLog("");
         DebugLog("Supported versions:");
         DebugLog("GOG 1.0.59");
-        DebugLog("Steam 1.0.55, 1.0.59, 1.0.60");
+        DebugLog("Steam 1.0.55, 1.0.62");
         DebugLog("RE_Kenshi initialization aborted!");
 
         versionText->setCaption("RE_Kenshi " + Version::GetDisplayVersion() + " (ERROR) - " + version);
