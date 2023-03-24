@@ -494,12 +494,16 @@ MyGUI::WidgetPtr CreateSlider(MyGUI::WidgetPtr parent, int x, int y, int w, int 
 
     MyGUI::WidgetPtr sliderRoot = parent->createWidget<MyGUI::Widget>("PanelEmpty", x, y, w, h, MyGUI::Align::Top | MyGUI::Align::Left, namePrefix + "SliderRoot");
     int deleteSize = h - 10;
-    if(deleteButton)
+    // move widgets along if there's no delete button
+    int shift = 0;
+    if (deleteButton)
         MyGUI::ButtonPtr deleteButton = sliderRoot->createWidget<MyGUI::Button>("Kenshi_CloseButtonSkin", w - deleteSize, (h - deleteSize) / 2, deleteSize, deleteSize, MyGUI::Align::Right | MyGUI::Align::Top, namePrefix + "DeleteButton");
-    MyGUI::TextBox* sliderLabel = sliderRoot->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 0, 0, w * 0.3f, h, MyGUI::Align::Left | MyGUI::Align::VStretch, namePrefix + "ElementText");
+    else
+        shift += deleteSize;
+    MyGUI::TextBox* sliderLabel = sliderRoot->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 0, 0, shift + w * 0.3f, h, MyGUI::Align::Left | MyGUI::Align::VStretch, namePrefix + "ElementText");
     sliderLabel->setTextAlign(MyGUI::Align::Left);
-    MyGUI::ScrollBar* scrollBar = sliderRoot->createWidget<MyGUI::ScrollBar>("Kenshi_ScrollBar", w * 0.32f, 0, w * 0.48f, h, MyGUI::Align::Stretch, namePrefix + "Slider");
-    MyGUI::EditBox* valueText = sliderRoot->createWidget<MyGUI::EditBox>("Kenshi_EditBox", w * 0.82f, 0, w * 0.10f, h, MyGUI::Align::Right | MyGUI::Align::VStretch, namePrefix + "NumberText");
+    MyGUI::ScrollBar* scrollBar = sliderRoot->createWidget<MyGUI::ScrollBar>("Kenshi_ScrollBar", shift + w * 0.32f, 0, w * 0.48f, h, MyGUI::Align::Stretch, namePrefix + "Slider");
+    MyGUI::EditBox* valueText = sliderRoot->createWidget<MyGUI::EditBox>("Kenshi_EditBox", shift + w * 0.82f, 0, w * 0.10f, h, MyGUI::Align::Right | MyGUI::Align::VStretch, namePrefix + "NumberText");
 
     return sliderRoot;
 }
@@ -1209,7 +1213,7 @@ void InitGUI()
         DebugLog("");
         DebugLog("Supported versions:");
         DebugLog("GOG 1.0.59");
-        DebugLog("Steam 1.0.55, 1.0.62");
+        DebugLog("Steam 1.0.55, 1.0.62, 1.0.64");
         DebugLog("RE_Kenshi initialization aborted!");
 
         versionText->setCaption("RE_Kenshi " + Version::GetDisplayVersion() + " (ERROR) - " + version);
