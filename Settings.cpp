@@ -5,6 +5,8 @@
 #include <rapidjson/ostreamwrapper.h>
 #include <rapidjson/prettywriter.h>
 #include <rapidjson/error/en.h>
+#include <boost/thread/recursive_mutex.hpp>
+#include <boost/thread/lock_guard.hpp>
 #include <fstream>
 
 #include "kenshi/Kenshi.h"
@@ -14,6 +16,9 @@
 #include "Debug.h"
 
 rapidjson::Document settingsDOM;
+
+// would be nice if we could bypass this if settings haven't been changed...
+boost::recursive_mutex settingsLock;
 
 std::vector<float> GetDefaultGameSpeeds()
 {
@@ -101,11 +106,14 @@ void SaveSettings()
     std::ofstream outStream("RE_Kenshi.ini");
     rapidjson::OStreamWrapper osw(outStream);
     rapidjson::PrettyWriter<rapidjson::OStreamWrapper> writer(osw);
+    boost::lock_guard<boost::recursive_mutex> lock(settingsLock);
     settingsDOM.Accept(writer);
 }
 
 void Settings::Init()
 {
+    boost::lock_guard<boost::recursive_mutex> lock(settingsLock);
+
     // Open settings file
     std::ifstream settingsFile("RE_Kenshi.ini");
 
@@ -262,233 +270,226 @@ std::string Settings::ResolvePath(std::string path)
     return path;
 }
 
-bool Settings::UseHeightmapCompression()
+// internal functions
+bool GetSettingBool(rapidjson::GenericStringRef<char> name)
 {
-    rapidjson::Value& val = settingsDOM["UseCompressedHeightmap"];
-    return val.GetBool();
+    const char* namep = (const char*)name;
+
+    boost::lock_guard<boost::recursive_mutex> lock(settingsLock);
+
+    if (!settingsDOM.HasMember(name))
+    {
+        ErrorLog("Missing setting (bool get): " + std::string(name));
+        // this will be set to default value at function end
+        settingsDOM.AddMember(name, false, settingsDOM.GetAllocator());
+    }
+    else
+    {
+        rapidjson::Value& val = settingsDOM[namep];
+        if (!val.IsBool())
+            ErrorLog("Incorrect setting type (bool get): " + std::string(name));
+        else
+            // value exists and is of correct type
+            return val.GetBool();
+    }
+
+    ErrorLog("Overwriting with default value (bool get): " + std::string(name));
+    rapidjson::Document defaultSettings = GenerateDefaultSettings();
+    settingsDOM[namep] = defaultSettings[namep].GetBool();
+
+    return defaultSettings[namep].GetBool();
 }
 
+void SetSettingBool(rapidjson::GenericStringRef<char> name, bool value)
+{
+    boost::lock_guard<boost::recursive_mutex> lock(settingsLock);
+
+    if (!settingsDOM.HasMember(name))
+    {
+        ErrorLog("Missing setting (bool set): " + std::string(name));
+        settingsDOM.AddMember(name, value, settingsDOM.GetAllocator());
+    }
+    else
+    {
+        rapidjson::Value& val = settingsDOM[(const char*)name];
+        if (!val.IsInt())
+            ErrorLog("Incorrect setting type (bool set): " + std::string(name));
+        val.SetBool(value);
+    }
+
+    SaveSettings();
+}
+
+int GetSettingInt(rapidjson::GenericStringRef<char> name)
+{
+    const char* namep = (const char*)name;
+
+    boost::lock_guard<boost::recursive_mutex> lock(settingsLock);
+
+    if (!settingsDOM.HasMember(name))
+    {
+        ErrorLog("Missing setting (int get): " + std::string(name));
+        // this will be set to default value at function end
+        settingsDOM.AddMember(name, -1, settingsDOM.GetAllocator());
+    }
+    else
+    {
+        rapidjson::Value& val = settingsDOM[namep];
+        if (!val.IsInt())
+            ErrorLog("Incorrect setting type (int get): " + std::string(name));
+        else
+        {
+            // value exists and is of correct type
+            return val.GetInt();
+        }
+    }
+
+    ErrorLog("Overwriting with default value (int get): " + std::string(name));
+    rapidjson::Document defaultSettings = GenerateDefaultSettings();
+    settingsDOM[namep] = defaultSettings[namep].GetInt();
+
+    return defaultSettings[namep].GetInt();
+}
+
+void SetSettingInt(rapidjson::GenericStringRef<char> name, int value)
+{
+    boost::lock_guard<boost::recursive_mutex> lock(settingsLock);
+
+    if (!settingsDOM.HasMember(name))
+    {
+        ErrorLog("Missing setting (int set): " + std::string(name));
+        settingsDOM.AddMember(name, value, settingsDOM.GetAllocator());
+    }
+    else
+    {
+        rapidjson::Value& val = settingsDOM[(const char*)name];
+        if (!val.IsInt())
+            ErrorLog("Incorrect setting type (int set): " + std::string(name));
+        val.SetInt(value);
+    }
+
+    SaveSettings();
+}
+
+// read/write settings
+bool Settings::UseHeightmapCompression()
+{
+    return GetSettingBool("UseCompressedHeightmap");
+}
 
 void Settings::SetUseHeightmapCompression(bool value)
 {
-    settingsDOM["UseCompressedHeightmap"].SetBool(value);
-    SaveSettings();
+    SetSettingBool("UseCompressedHeightmap", value);
 }
 
 bool Settings::PreloadHeightmap()
 {
-    rapidjson::Value& val = settingsDOM["PreloadHeightmap"];
-    return val.GetBool();
+    return GetSettingBool("PreloadHeightmap");
 }
 
 bool Settings::GetFixRNG()
 {
-    rapidjson::Value& val = settingsDOM["FixRNG"];
-    return val.GetBool();
+    return GetSettingBool("FixRNG");
 }
  
 void Settings::SetFixRNG(bool value)
 {
-    if (!settingsDOM.HasMember("FixRNG"))
-        settingsDOM.AddMember("FixRNG", value, settingsDOM.GetAllocator());
-    else
-        settingsDOM["FixRNG"] = value;
-
-    SaveSettings();
+    SetSettingBool("FixRNG", value);
 }
 
 // TODO remove after dropping support for old versions
 bool Settings::GetFixFontSize()
 {
-    rapidjson::Value& val = settingsDOM["FixFontSize"];
-    return val.GetBool();
+    return GetSettingBool("FixFontSize");
 }
 
 void Settings::SetFixFontSize(bool value)
 {
-    if (!settingsDOM.HasMember("FixFontSize"))
-        settingsDOM.AddMember("FixFontSize", value, settingsDOM.GetAllocator());
-    else
-        settingsDOM["FixFontSize"] = value;
-
-    SaveSettings();
+    SetSettingBool("FixFontSize", value);
 }
 
 // -1 = use mod value
 int Settings::GetAttackSlots()
 {
-    rapidjson::Value& val = settingsDOM["AttackSlots"];
-    if (!val.IsInt())
-    {
-        SetAttackSlots(-1);
-        return -1;
-    }
-    else
-    {
-        return val.GetInt();
-    }
+    return GetSettingInt("AttackSlots");
 }
 
 void Settings::SetAttackSlots(int num)
 {
-    if (!settingsDOM.HasMember("AttackSlots"))
-        settingsDOM.AddMember("AttackSlots", num, settingsDOM.GetAllocator());
-    else
-        settingsDOM["AttackSlots"] = num;
-
-    SaveSettings();
+    SetSettingInt("AttackSlots", num);
 }
 
 // -1 = use mod value
 int Settings::GetMaxFactionSize()
 {
-    rapidjson::Value& val = settingsDOM["MaxFactionSize"];
-    if (!val.IsInt())
-    {
-        SetMaxFactionSize(-1);
-        return -1;
-    }
-    else
-    {
-        return val.GetInt();
-    }
+    return GetSettingInt("MaxFactionSize");
 }
 
 void Settings::SetMaxFactionSize(int num)
 {
-    if (!settingsDOM.HasMember("MaxFactionSize"))
-        settingsDOM.AddMember("MaxFactionSize", num, settingsDOM.GetAllocator());
-    else
-        settingsDOM["MaxFactionSize"] = num;
-
-    SaveSettings();
+    SetSettingInt("MaxFactionSize", num);
 }
 
 // -1 = use mod value
 int Settings::GetMaxSquadSize()
 {
-    rapidjson::Value& val = settingsDOM["MaxSquadSize"];
-    if (!val.IsInt())
-    {
-        SetMaxSquadSize(-1);
-        return -1;
-    }
-    else
-    {
-        return val.GetInt();
-    }
+    return GetSettingInt("MaxSquadSize");
 }
 
 void Settings::SetMaxSquadSize(int num)
 {
-    if (!settingsDOM.HasMember("MaxSquadSize"))
-        settingsDOM.AddMember("MaxSquadSize", num, settingsDOM.GetAllocator());
-    else
-        settingsDOM["MaxSquadSize"] = num;
-
-    SaveSettings();
+    SetSettingInt("MaxSquadSize", num);
 }
 
 // -1 = use mod value
 int Settings::GetMaxSquads()
 {
-    rapidjson::Value& val = settingsDOM["MaxSquads"];
-    if (!val.IsInt())
-    {
-        SetMaxSquads(-1);
-        return -1;
-    }
-    else
-    {
-        return val.GetInt();
-    }
+    return GetSettingInt("MaxSquads");
 }
 
 void Settings::SetMaxSquads(int num)
 {
-    if (!settingsDOM.HasMember("MaxSquads"))
-        settingsDOM.AddMember("MaxSquads", num, settingsDOM.GetAllocator());
-    else
-        settingsDOM["MaxSquads"] = num;
-
-    SaveSettings();
+    SetSettingInt("MaxSquads", num);
 }
 
 bool Settings::GetIncreaseMaxCameraDistance()
 {
-    rapidjson::Value& val = settingsDOM["IncreaseMaxCameraDistance"];
-    if (!val.IsBool())
-    {
-        SetIncreaseMaxCameraDistance(false);
-        return false;
-    }
-    else
-    {
-        return val.GetBool();
-    }
+    return GetSettingBool("IncreaseMaxCameraDistance");
 }
 
 void Settings::SetIncreaseMaxCameraDistance(bool value)
 {
-    if (!settingsDOM.HasMember("IncreaseMaxCameraDistance"))
-        settingsDOM.AddMember("IncreaseMaxCameraDistance", value, settingsDOM.GetAllocator());
-    else
-        settingsDOM["IncreaseMaxCameraDistance"] = value;
-
-    SaveSettings();
+    SetSettingBool("IncreaseMaxCameraDistance", value);
 }
 
 bool Settings::GetOpenSettingsOnStart()
 {
-    rapidjson::Value& val = settingsDOM["OpenSettingOnStart"];
-    if (!val.IsBool())
-    {
-        SetOpenSettingsOnStart(true);
-        return true;
-    }
-    else
-    {
-        return val.GetBool();
-    }
+    return GetSettingBool("OpenSettingOnStart");
 }
 
 void Settings::SetOpenSettingsOnStart(bool value)
 {
-    if (!settingsDOM.HasMember("OpenSettingOnStart"))
-        settingsDOM.AddMember("OpenSettingOnStart", value, settingsDOM.GetAllocator());
-    else
-        settingsDOM["OpenSettingOnStart"] = value;
-
-    SaveSettings();
+    SetSettingBool("OpenSettingOnStart", value);
 }
 
 bool Settings::GetUseCustomGameSpeeds()
 {
-    rapidjson::Value& val = settingsDOM["UseCustomGameSpeeds"];
-    if (!val.IsBool())
-    {
-        SetUseCustomGameSpeeds(false);
-        return false;
-    }
-    else
-    {
-        return val.GetBool();
-    }
+    return GetSettingBool("OpenSettingOnStart");
 }
 
 void Settings::SetUseCustomGameSpeeds(bool value)
-{ 
-    if (!settingsDOM.HasMember("UseCustomGameSpeeds"))
-        settingsDOM.AddMember("UseCustomGameSpeeds", value, settingsDOM.GetAllocator());
-    else
-        settingsDOM["UseCustomGameSpeeds"] = value;
-
-    SaveSettings();
+{
+    SetSettingBool("UseCustomGameSpeeds", value);
 }
 
 const std::vector<float> Settings::GetGameSpeeds()
 {
+    boost::lock_guard<boost::recursive_mutex> lock(settingsLock);
+
     rapidjson::Value& val = settingsDOM["GameSpeeds"];
+
+    if (!val.IsArray())
+        ErrorLog("Game speeds is not an array!");
 
     std::vector<float> gameSpeeds;
     if (val.Size() > 0)
@@ -511,6 +512,8 @@ void Settings::SetGameSpeeds(std::vector<float> speeds)
     if (speeds.size() == 0)
         return;
 
+    boost::lock_guard<boost::recursive_mutex> lock(settingsLock);
+
     rapidjson::Value gameSpeeds(rapidjson::kArrayType);
     for(int i=0;i<speeds.size();++i)
         gameSpeeds.PushBack(rapidjson::Value(speeds[i]), settingsDOM.GetAllocator());
@@ -525,70 +528,48 @@ void Settings::SetGameSpeeds(std::vector<float> speeds)
 
 bool Settings::GetCacheShaders()
 {
-    rapidjson::Value& val = settingsDOM["CacheShaders"];
-    return val.GetBool();
+    return GetSettingBool("CacheShaders");
 }
 
 void Settings::SetCacheShaders(bool value)
 {
-    if (!settingsDOM.HasMember("CacheShaders"))
-        settingsDOM.AddMember("CacheShaders", value, settingsDOM.GetAllocator());
-    else
-        settingsDOM["CacheShaders"] = value;
-
-    SaveSettings();
+    SetSettingBool("CacheShaders", value);
 }
 
 void Settings::SetLogFileIO(bool value)
 {
-    if (!settingsDOM.HasMember("LogFileIO"))
-        settingsDOM.AddMember("LogFileIO", value, settingsDOM.GetAllocator());
-    else
-        settingsDOM["LogFileIO"] = value;
-
-    SaveSettings();
+    SetSettingBool("LogFileIO", value);
 }
 
 bool Settings::GetLogFileIO()
 {
-    rapidjson::Value& val = settingsDOM["LogFileIO"];
-    return val.GetBool();
+    return GetSettingBool("LogFileIO");
 }
 
 void Settings::SetLogAudio(bool value)
 {
-    if (!settingsDOM.HasMember("LogAudio"))
-        settingsDOM.AddMember("LogAudio", value, settingsDOM.GetAllocator());
-    else
-        settingsDOM["LogAudio"] = value;
-
-    SaveSettings();
+    SetSettingBool("LogAudio", value);
 }
 
 bool Settings::GetLogAudio()
 {
-    rapidjson::Value& val = settingsDOM["LogAudio"];
-    return val.GetBool();
+    return GetSettingBool("LogAudio");
 }
 
 void Settings::SetCheckUpdates(bool value)
 {
-    if (!settingsDOM.HasMember("CheckUpdates"))
-        settingsDOM.AddMember("CheckUpdates", value, settingsDOM.GetAllocator());
-    else
-        settingsDOM["CheckUpdates"] = value;
-
-    SaveSettings();
+    SetSettingBool("CheckUpdates", value);
 }
 
 bool Settings::GetCheckUpdates()
 {
-    rapidjson::Value& val = settingsDOM["CheckUpdates"];
-    return val.GetBool();
+    return GetSettingBool("CheckUpdates");
 }
 
 std::string Settings::GetSkippedVersion()
 {
+    boost::lock_guard<boost::recursive_mutex> lock(settingsLock);
+
     rapidjson::Value& val = settingsDOM["SkippedVersion"];
     if (!val.IsString())
     {
@@ -603,6 +584,8 @@ std::string Settings::GetSkippedVersion()
 
 void Settings::SetSkippedVersion(std::string version)
 {
+    boost::lock_guard<boost::recursive_mutex> lock(settingsLock);
+
     rapidjson::Value value;
     value.SetString(version.c_str(), settingsDOM.GetAllocator());
     if (!settingsDOM.HasMember("SkippedVersion"))

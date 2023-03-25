@@ -1042,6 +1042,7 @@ void InitGUI()
         noCompressedHeightmapLabel->setCaption(boost::locale::gettext("To enable, reinstall RE_Kenshi and check \"Compress Heightmap\""));
         positionY += 30;
     }
+
     MyGUI::ButtonPtr useCompressedHeightmap = settingsView->createWidget<MyGUI::Button>("Kenshi_TickButton1", 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 26 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "UseCompressedHeightmapToggle");
     useCompressedHeightmap->setStateSelected(Settings::UseHeightmapCompression());
     useCompressedHeightmap->setCaption(boost::locale::gettext("[TOGGLE MAY CRASH] Use compressed heightmap"));
@@ -1053,6 +1054,7 @@ void InitGUI()
         useCompressedHeightmap->setEnabled(false);
     }
     positionY += 30;
+
     // Attack slots
     defaultAttackSlots = Kenshi::GetNumAttackSlots();
     int numAttackSlots = Settings::GetAttackSlots();
@@ -1416,6 +1418,9 @@ void dllmain()
 
     Kenshi::BinaryVersion gameVersion = Kenshi::GetKenshiVersion();
 
+    // this has to be done *before* the file I/O hook since that causes settings reads
+    Settings::Init();
+
     // TODO refactor these branches
     if (gameVersion.GetPlatform() != Kenshi::BinaryVersion::UNKNOWN)
     {
@@ -1429,7 +1434,6 @@ void dllmain()
         DebugLog("Error: Unsupported Kenshi version. Hooks disabled.");
     }
     
-    Settings::Init();
     Version::Init();
 
     if (gameVersion.GetPlatform() != Kenshi::BinaryVersion::UNKNOWN)
