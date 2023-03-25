@@ -8,7 +8,7 @@
 #include "Debug.h"
 #include "Settings.h"
 
-std::string version = "0.2.7";
+std::string version = "0.2.8";
 std::string latestVersionCache = "0.0.0";
 const bool isPrerelease = true;
 
