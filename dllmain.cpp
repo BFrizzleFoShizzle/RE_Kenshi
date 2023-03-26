@@ -379,6 +379,7 @@ std::string kenshiPlatformStr = "UNKNOWN";
 MyGUI::CanvasPtr debugImgCanvas = nullptr;
 MyGUI::ScrollViewPtr debugLogScrollView = nullptr;
 MyGUI::WidgetPtr gameSpeedPanel = nullptr;
+MyGUI::ButtonPtr sendUUIDToggle = nullptr;
 
 const uint32_t DEBUG_WINDOW_WIDTH = 700;
 const uint32_t DEBUG_WINDOW_HEIGHT = 600;
@@ -895,7 +896,10 @@ void ReportBugPress(MyGUI::WidgetPtr sender)
 void SendBugPress(MyGUI::WidgetPtr sender)
 {
     MyGUI::EditBox* description = bugReportWindow->findWidget("BugDescription")->castType<MyGUI::EditBox>(false);
-    Bugs::ReportUserBug(description->getCaption());
+    std::string uuid = "";
+    if (sendUUIDToggle->getStateSelected())
+        uuid = Bugs::GetUUIDHash();
+    Bugs::ReportUserBug(description->getCaption(), uuid);
     description->setCaption("Report sent.");
     bugReportWindow->setVisible(false);
 }
@@ -953,24 +957,32 @@ void InitGUI()
     gameSpeedTutorialWindow->setVisible(false);
 
     // Create bug report window
-    bugReportWindow = gui->createWidget<MyGUI::Window>("Kenshi_WindowCX", 100, 100, 500 * scale, 500 * scale, MyGUI::Align::Center, "Window", "BugReportWindow");
+    bugReportWindow = gui->createWidget<MyGUI::Window>("Kenshi_WindowCX", 100, 100, 600 * scale, 600 * scale, MyGUI::Align::Center, "Window", "BugReportWindow");
     bugReportWindow->setCaption(boost::locale::gettext("RE_Kenshi Bug Report"));
     bugReportWindow->eventWindowButtonPressed += MyGUI::newDelegate(debugMenuButtonPress); 
     MyGUI::WidgetPtr bugReportPanel = bugReportWindow->getClientWidget()->createWidgetReal<MyGUI::Widget>("Kenshi_FloatingPanelLight", 0.0f, 0.0f, 1.0f, 1.0f, MyGUI::Align::Stretch, "BugReportPanel");
     // Only edit boxes support word wrap?
-    MyGUI::EditBox* infoText = bugReportPanel->createWidgetReal<MyGUI::EditBox>("Kenshi_TextboxStandardText", 0.05f, 0.05f, 0.90f, 0.48f, MyGUI::Align::Top | MyGUI::Align::Left, "BugReportInfo");
+
+    MyGUI::EditBox* infoText = bugReportPanel->createWidgetReal<MyGUI::EditBox>("Kenshi_TextboxStandardText", 0.05f, 0.05f, 0.90f, 0.43f, MyGUI::Align::Top | MyGUI::Align::Left, "BugReportInfo");
     infoText->setEditMultiLine(true);
     infoText->setEditWordWrap(true);
     infoText->setEditStatic(true);
     infoText->setCaption(MyGUI::UString(boost::locale::gettext("Your report will be sent to RE_Kenshi's developer (BFrizzleFoShizzle) with the following information:"))
-        + boost::locale::gettext("\nRE_Kenshi version: ") + Version::GetDisplayVersion()
+        + "\n" + boost::locale::gettext("\nRE_Kenshi version: ") + Version::GetDisplayVersion()
         + boost::locale::gettext("\nKenshi version: ") + Kenshi::GetKenshiVersion().ToString()
+        + boost::locale::gettext("\nUUID hash: ") + Bugs::GetUUIDHash() + boost::locale::gettext(" (optional - allows the developer to know all your reports come from the same machine)")
         + boost::locale::gettext("\nYour bug description")
         + boost::locale::gettext("\n\nPlease describe the bug:"));
     
     MyGUI::EditBox* bugDescription = bugReportPanel->createWidgetReal<MyGUI::EditBox>("Kenshi_WordWrap", 0.05f, 0.50f, 0.90f, 0.33f, MyGUI::Align::Top | MyGUI::Align::Left, "BugDescription");
     bugDescription->setEditStatic(false);
-    MyGUI::ButtonPtr sendBugButton = bugReportPanel->createWidgetReal<MyGUI::Button>("Kenshi_Button1", 0.05f, 0.85f, 0.90f, 0.10f, MyGUI::Align::Top | MyGUI::Align::Left, "SendReportButton");
+
+    sendUUIDToggle = bugReportPanel->createWidgetReal<MyGUI::Button>("Kenshi_TickButton1", 0.05f, 0.84f, 0.90f, 0.05f, MyGUI::Align::Top | MyGUI::Align::Left, "SendUUIDToggle");
+    sendUUIDToggle->setStateSelected(true);
+    sendUUIDToggle->setCaption(boost::locale::gettext("Include UUID hash"));
+    sendUUIDToggle->eventMouseButtonClick += MyGUI::newDelegate(TickButtonBehaviourClick);
+
+    MyGUI::ButtonPtr sendBugButton = bugReportPanel->createWidgetReal<MyGUI::Button>("Kenshi_Button1", 0.05f, 0.90f, 0.90f, 0.07f, MyGUI::Align::Top | MyGUI::Align::Left, "SendReportButton");
     sendBugButton->setCaption(boost::locale::gettext("Send report"));
     sendBugButton->eventMouseButtonClick += MyGUI::newDelegate(SendBugPress);
     bugReportWindow->setVisible(false);
@@ -1410,7 +1422,6 @@ void LoadMods_hook(Kenshi::GameWorld* gameWorld)
 
     return;
 }
-
 
 void dllmain()
 {
