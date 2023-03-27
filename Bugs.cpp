@@ -71,7 +71,7 @@ std::string Bugs::GetUUIDHash()
 }
 
 // manual bug reporting
-void Bugs::ReportUserBug(std::string description, std::string uuid)
+bool Bugs::ReportUserBug(std::string description, std::string uuid)
 {
 	WinHttpClient client(modBugDiscordWebHookURL);
 
@@ -81,7 +81,7 @@ void Bugs::ReportUserBug(std::string description, std::string uuid)
 	message += " bug:\n" + description;
 
 	std::string encodedMessage = WinHttpClient::UrlEncode(message);
-	client.SendHttpRequest(L"POST", L"Content-Type: application/x-www-form-urlencoded\r\n", "content=" + encodedMessage);
+	return client.SendHttpRequest(L"POST", L"Content-Type: application/x-www-form-urlencoded\r\n", "content=" + encodedMessage);
 }
 
 // taken from https://stackoverflow.com/questions/7724448/simple-json-string-escape-for-c
@@ -100,7 +100,7 @@ std::string EscapeJson(const std::string& s) {
 }
 
 // report /w crashdump
-void Bugs::ReportCrash(std::string description, std::string crashDumpName, std::string uuidHash)
+bool Bugs::ReportCrash(std::string description, std::string crashDumpName, std::string uuidHash)
 {
 
 	std::vector<char> dumpBytes;
@@ -145,15 +145,24 @@ void Bugs::ReportCrash(std::string description, std::string crashDumpName, std::
 		+ "\r\n"
 		+ "--" + to_string(uuid) + "--\r\n";
 
-	client.SendHttpRequest(L"POST", header, body);
+	return client.SendHttpRequest(L"POST", header, body);
 }
 
-HWND uuidCheckbox = NULL;
-HWND yesButton = NULL;
-HWND noButton = NULL;
-HWND editbox = NULL;
+static HWND uuidCheckbox = NULL;
+static HWND yesButton = NULL;
+static HWND noButton = NULL;
+static HWND editbox = NULL;
 
-std::string crashDumpFileName = "";
+static std::string crashDumpFileName = "";
+
+enum CRASH_REPORT_STATUS
+{
+	SKIPPED,
+	SUCCESS,
+	FAIL
+};
+
+static CRASH_REPORT_STATUS crashReportStatus = SKIPPED;
 
 enum BUTTON_ID
 {
@@ -164,6 +173,25 @@ enum BUTTON_ID
 };
 
 const std::wstring placeholderText = boost::locale::gettext(L"Describe what caused the crash...");
+
+void CheckFocusAllowed(HWND hwnd, HWND widget)
+{
+	// stop Kenshi's window from getting focus
+	DWORD activeWindowProcessID = 0;
+	GetWindowThreadProcessId(GetActiveWindow(), &activeWindowProcessID);
+	if (GetActiveWindow() != hwnd && activeWindowProcessID == GetCurrentProcessId())
+	{
+		SetFocus(widget);
+		FLASHWINFO flashInfo;
+		flashInfo.cbSize = sizeof(FLASHWINFO);
+		flashInfo.hwnd = hwnd;
+		flashInfo.uCount = 2;
+		flashInfo.dwTimeout = 50;
+		flashInfo.dwFlags = FLASHW_CAPTION;
+		FlashWindowEx(&flashInfo);
+		MessageBeep(MB_ICONWARNING);
+	}
+}
 
 // Fugly WINAPI code for making the crash report window, I don't want to add 
 // a UI lib dependency just to make the *ONE* custom window RE_Kenshi needs :/
@@ -180,7 +208,19 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 				MF_BYCOMMAND | MF_DISABLED);
 
 			// warning icon
-			HICON warningIcon = LoadIcon(nullptr, IDI_WARNING);
+			SHSTOCKICONINFO stockIconInfo;
+			stockIconInfo.cbSize = sizeof(SHSTOCKICONINFO);
+			HICON warningIcon = NULL;
+			// attempt to get Win10 icon
+			if (SHGetStockIconInfo(SIID_WARNING, SHGFI_ICON, &stockIconInfo) == S_OK)
+			{
+				warningIcon = stockIconInfo.hIcon;
+			}
+			else
+			{
+				warningIcon = LoadIcon(nullptr, IDI_WARNING);
+			}
+
 			ICONINFO iconInfo;
 			BITMAP bitmapInfo;
 			GetIconInfo(warningIcon, &iconInfo);
@@ -214,17 +254,19 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 			editbox = CreateWindow(L"EDIT", placeholderText.c_str(),
 				WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_BORDER | WS_TABSTOP | ES_LEFT | ES_MULTILINE| ES_WANTRETURN | ES_AUTOVSCROLL,
 				20,	250, 455, 150, hwnd, (HMENU)EDIT_BOX, hInst, NULL);
-			uuidCheckbox = CreateWindowA("button", boost::locale::gettext("Include UUID hash").c_str(), WS_VISIBLE | WS_CHILD | WS_TABSTOP | BS_CHECKBOX,
+			uuidCheckbox = CreateWindowA("button", boost::locale::gettext("Include UUID hash").c_str(), WS_VISIBLE | WS_CHILD | WS_TABSTOP | BS_NOTIFY | BS_CHECKBOX,
 				20, 410, 150, 20, hwnd, (HMENU)UUID_CHECKBOX, hInst, NULL);
-			yesButton = CreateWindowA("button", boost::locale::gettext("Send").c_str(), WS_VISIBLE | WS_CHILD | WS_TABSTOP | BS_DEFPUSHBUTTON,
+			yesButton = CreateWindowA("button", boost::locale::gettext("Send").c_str(), WS_VISIBLE | WS_CHILD | WS_TABSTOP | BS_NOTIFY | BS_DEFPUSHBUTTON,
 				200, 420, 100, 30, hwnd, (HMENU)YES_BTN, hInst, NULL);
-			noButton = CreateWindowA("button", boost::locale::gettext("Don't send").c_str(), WS_VISIBLE | WS_CHILD | WS_TABSTOP | BS_PUSHBUTTON,
+			noButton = CreateWindowA("button", boost::locale::gettext("Don't send").c_str(), WS_VISIBLE | WS_CHILD | WS_TABSTOP | BS_NOTIFY | BS_PUSHBUTTON,
 				320, 420, 100, 30, hwnd, (HMENU)NO_BTN, hInst, NULL);
 
-			SendMessage(icon, STM_SETICON, WPARAM(warningIcon), TRUE);
+			// update icon
+			if(warningIcon != NULL)
+				SendMessage(icon, STM_SETICON, WPARAM(warningIcon), TRUE);
 
 			// get system font
-			NONCLIENTMETRICS metrics;
+			NONCLIENTMETRICS metrics = { 0 };
 			metrics.cbSize = sizeof(NONCLIENTMETRICS);
 			SystemParametersInfo(SPI_GETNONCLIENTMETRICS, sizeof(NONCLIENTMETRICS), &metrics, 0);
 			HFONT hFont = CreateFontIndirectW(&metrics.lfMessageFont);
@@ -246,6 +288,9 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 			CheckDlgButton(hwnd, 1, BST_CHECKED);
 
 			SetFocus(yesButton);
+
+			// play notification sound
+			MessageBeep(MB_ICONWARNING);
 
 			break;
 		}
@@ -284,7 +329,10 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 
 				DestroyWindow(hwnd);
 
-				Bugs::ReportCrash(description, crashDumpFileName, uuid);
+				if(Bugs::ReportCrash(description, crashDumpFileName, uuid))
+					crashReportStatus = SUCCESS;
+				else
+					crashReportStatus = FAIL;
 			}
 			else if (LOWORD(wParam) == EDIT_BOX && HIWORD(wParam) == EN_SETFOCUS)
 			{
@@ -293,14 +341,30 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 				bool success = Edit_GetText(editbox, &text[0], sizeof(text));
 				if (success && text == placeholderText)
 					Edit_SetText(editbox, L"");
-
-				break;
+			}
+			else if (LOWORD(wParam) == UUID_CHECKBOX && HIWORD(wParam) == BN_KILLFOCUS)
+			{
+				CheckFocusAllowed(hwnd, uuidCheckbox);
+			}
+			else if (LOWORD(wParam) == YES_BTN && HIWORD(wParam) == BN_KILLFOCUS)
+			{
+				CheckFocusAllowed(hwnd, yesButton);
+			}
+			else if (LOWORD(wParam) == NO_BTN && HIWORD(wParam) == BN_KILLFOCUS)
+			{
+				CheckFocusAllowed(hwnd, noButton);
+			}
+			else if (LOWORD(wParam) == EDIT_BOX && HIWORD(wParam) == EN_KILLFOCUS)
+			{
+				CheckFocusAllowed(hwnd, editbox);
 			}
 			break;
 		}
 
-		case EN_SETFOCUS:
+		case WM_KILLFOCUS:
 		{
+			CheckFocusAllowed(hwnd, hwnd);
+			break;
 		}
 
 		case WM_DESTROY:
@@ -323,9 +387,13 @@ static void CreateCrashReportWindow()
 	wc.hCursor = LoadCursor(0, IDC_ARROW);
 
 	RegisterClass(&wc);
-	HWND window = CreateWindow(wc.lpszClassName, boost::locale::gettext(L"RE_Kenshi Crash Reporter").c_str(),
+
+	HWND window = CreateWindowEx(WS_EX_TOPMOST, wc.lpszClassName, boost::locale::gettext(L"RE_Kenshi Crash Reporter").c_str(),
 		WS_SYSMENU | WS_OVERLAPPED | WS_VISIBLE,
-		CW_USEDEFAULT, CW_USEDEFAULT, 500, 500, 0, 0, NULL, 0);
+		CW_USEDEFAULT, CW_USEDEFAULT, 500, 500, NULL, 0, NULL, 0);
+
+	// force cursor to be shown
+	ShowCursor(true);
 
 	while (GetMessage(&msg, NULL, 0, 0)) {
 		if (!IsDialogMessage(window, &msg))
@@ -334,6 +402,11 @@ static void CreateCrashReportWindow()
 			DispatchMessage(&msg);
 		}
 	}
+
+	if(crashReportStatus == SUCCESS)
+		MessageBoxA(NULL, boost::locale::gettext("Crash report sent successfully").c_str(), boost::locale::gettext("Success").c_str(), MB_OK | MB_SYSTEMMODAL | MB_ICONINFORMATION);
+	else if(crashReportStatus == FAIL)
+		MessageBoxA(NULL, boost::locale::gettext("Crash report failed to send").c_str(), boost::locale::gettext("Error").c_str(), MB_OK | MB_SYSTEMMODAL | MB_ICONERROR);
 }
 
 void* (*CrashReport_orig)(void* arg1, void* arg2);
@@ -348,7 +421,7 @@ static void* CrashReport_hook(void* arg1, void* arg2)
 void Bugs::Init()
 {
 	if (discordID == "PUT_YOUR_ID_HERE")
-		MessageBoxA(NULL, "Discord setup error", "Add your info to \"Discord.h\" and recompile to fix  bug reporting", MB_ICONWARNING);
+		MessageBoxA(NULL, "Discord setup error", "Add your info to \"Discord.h\" and recompile to fix bug reporting", MB_ICONWARNING);
 
 	CrashReport_orig = Escort::JmpReplaceHook<void*(void*, void*)>(Kenshi::GetCrashReporterFunction(), &CrashReport_hook, 10);
 }
