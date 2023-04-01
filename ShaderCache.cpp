@@ -23,6 +23,29 @@ HRESULT(*D3DCompile_orig)(LPCVOID pSrcData,
 	ID3DBlob** ppErrorMsgs
 	);
 
+struct ShaderInclude
+{
+	ShaderInclude()
+		: type((D3D_INCLUDE_TYPE)-1), name(""), hash(0)
+	{
+
+	}
+	ShaderInclude(D3D_INCLUDE_TYPE type, std::string name, size_t hash)
+	{
+		this->type = type;
+		this->name = name;
+		this->hash = hash;
+	}
+
+	void Serialize(std::vector<char>& bytes) const;
+
+	static ShaderInclude Deserialize(std::vector<char>& bytes, size_t& offset);
+
+	std::string name;
+	D3D_INCLUDE_TYPE type;
+	size_t hash;
+};
+
 class Shader
 {
 public:
@@ -31,7 +54,6 @@ public:
 		LPCSTR pEntrypoint, LPCSTR pTarget, UINT Flags1, UINT Flags2)
 	{
 		source = std::string((const char*)pSrcData, SrcDataSize);
-		include = pInclude;
 		// Bugfix - LPCSTR can be null, but std::string can't be initialized from nullptr
 		entrypoint = "";
 		if(pEntrypoint != nullptr)
@@ -55,8 +77,8 @@ public:
 	{
 		return (source == other.source
 			&& std::equal(defines.begin(), defines.end(), other.defines.begin())
-			// this doesn't appear to differentiate shaders and would require taking into account ASLR
-			// to properly get working (too much effort for as far as I can tell no gain)
+			// includes aren't used as hash keys as you don't know their contents until
+			// after you've got the Shader from the hashmap
 			//&& include == other.include
 			&& entrypoint == other.entrypoint
 			&& target == other.target
@@ -64,12 +86,16 @@ public:
 			&& flags2 == other.flags2);
 	}
 	
-
 	void SetBlob(ID3DBlob* blob)
 	{
 		compiledSize = blob->GetBufferSize();
 		compiled = new char[compiledSize];
 		memcpy(compiled, blob->GetBufferPointer(), compiledSize);
+	}
+
+	void AddInclude(ShaderInclude include)
+	{
+		includes.push_back(include);
 	}
 
 	// convert to byte array
@@ -78,7 +104,7 @@ public:
 
 	std::string source;
 	std::vector<std::pair<std::string, std::string>> defines;
-	ID3DInclude* include;
+	std::vector<ShaderInclude> includes;
 	std::string entrypoint;
 	std::string target;
 	UINT flags1;
@@ -134,9 +160,9 @@ namespace std {
 		{
 			size_t hash = std::hash<std::string>()(k.source);
 			hash_combine(hash, k.defines);
-			// this doesn't appear to differentiate shaders and would require taking into account ASLR
-			// to properly get working (too much effort for as far as I can tell no gain)
-			//hash_combine(hash, k.include);
+			// includes aren't used as hash keys as you don't know their contents until
+			// after you've got the Shader from the hashmap
+			//hash_combine(hash, k.includes);
 			hash_combine(hash, k.entrypoint);
 			hash_combine(hash, k.target);
 			hash_combine(hash, k.flags1);
@@ -176,8 +202,8 @@ private:
 	std::vector<char> fileBytes;
 };
 
-// Shader Cache File Header v01
-#define SCFHMAGIC "SCFH01"
+// Shader Cache File Header v02
+#define SCFHMAGIC "SCFH02"
 
 struct ShaderCacheFileHeader
 {
@@ -203,6 +229,8 @@ ShaderCacheFile::ShaderCacheFile(std::string filename)
 		return;
 	}
 
+	DebugLog("Shader cache load start");
+
 	// read file into memory
 	fileBytes.resize(file.tellg());
 	file.seekg(std::ifstream::beg);
@@ -213,14 +241,16 @@ ShaderCacheFile::ShaderCacheFile(std::string filename)
 	ShaderCacheFileHeader header;
 	if (fileBytes.size() < sizeof(header))
 	{
-		ErrorLog("Shader cache doesn't have full header, clearing cache");
+		ErrorLog("Shader cache doesn't have full header, queueing cache clear");
+		fileBytes.clear();
 		return;
 	}
 	memcpy(&header, &fileBytes[readpos], sizeof(header));
 	readpos += sizeof(header);
 	if (strncmp(header.magic, SCFHMAGIC, 6) != 0)
 	{
-		ErrorLog("Shader cache magic number invalid, clearing cache");
+		ErrorLog("Shader cache magic number invalid, queueing cache clear");
+		fileBytes.clear();
 		return;
 	}
 	md5::md5_t hasher(&fileBytes[readpos], fileBytes.size() - readpos);
@@ -228,7 +258,8 @@ ShaderCacheFile::ShaderCacheFile(std::string filename)
 	hasher.get_string(hashStr);
 	if (strncmp(header.hash, hashStr, 33) != 0)
 	{
-		ErrorLog("Shader cache hash is invalid, clearing cache");
+		ErrorLog("Shader cache hash is invalid, queueing cache clear");
+		fileBytes.clear();
 		return;
 	}
 	
@@ -238,13 +269,82 @@ ShaderCacheFile::ShaderCacheFile(std::string filename)
 	for (size_t i = 0; i < header.numShaders; ++i)
 	{
 		Shader shader = Shader::Deserialize(fileBytes, readpos);
+		if (cachedShaders.find(shader) != cachedShaders.end())
+			ErrorLog("Duplicate shader");
 		cachedShaders.insert(shader);
 	}
 
-	DebugLog("Shader cache loaded successfully");
+	size_t remainingBytes = fileBytes.size() - readpos;
+	if (remainingBytes != 0)
+	{
+		ErrorLog("Shader cache has extra bytes, queueing cache clear");
+		cachedShaders.clear();
+		fileBytes.clear();
+		return;
+	}
+
+	DebugLog("Shader cache loaded successfully, " + std::to_string(cachedShaders.size()) + " cached shaders");
 	return;
 }
 
+class IncludeHook : public ID3DInclude
+{
+public:
+	IncludeHook(Shader* shader, ID3DInclude* hooked)
+		: hadError(false)
+	{
+		this->shader = shader;
+		this->hooked = hooked;
+	}
+	HRESULT Open(D3D_INCLUDE_TYPE includeType,
+		LPCSTR           pFileName,
+		LPCVOID          pParentData,
+		LPCVOID* ppData,
+		UINT* pBytes)
+	{
+		// Ogre uses a hard-coded include handler that doesn't use pParentData, so this is safe to ignore
+		/*
+		if (pParentData != nullptr)
+		{
+			hadError = true;
+			ErrorLog("ID3DInclude::Open pParentData isn't null");
+			ErrorLog(std::string((char*)pParentData));
+		}
+		*/
+
+		HRESULT result = hooked->Open(includeType, pFileName, pParentData, ppData, pBytes);
+
+		if (result == S_OK)
+		{
+			std::string includeStr((char*)*ppData, *pBytes);
+			shader->AddInclude(ShaderInclude(includeType, pFileName, std::hash<std::string>()(includeStr)));
+		}
+		else
+		{
+			hadError = true;
+			ErrorLog("ID3DInclude::Open error getting include: " + std::string(pFileName));
+		}
+
+		return result;
+	}
+
+	HRESULT Close(LPCVOID pData)
+	{
+		return hooked->Close(pData);
+	}
+
+	bool HadError()
+	{
+		return hadError;
+	}
+
+private:
+	ID3DInclude* hooked;
+	Shader* shader;
+	bool hadError;
+};
+
+// WARNING - YOU MUST HOLD A SHADER LOCK TO CALL THIS
 ID3DBlob* ShaderCacheFile::GetBlob(LPCVOID pSrcData,
 	SIZE_T                 SrcDataSize,
 	LPCSTR                 pSourceName,
@@ -265,44 +365,89 @@ ID3DBlob* ShaderCacheFile::GetBlob(LPCVOID pSrcData,
 	// pEntryPoint - this needs nullptr check in Shader() (done)
 	// ppErrorMsgs - nullptr check (done)
 
+	std::string shaderName = "[no name]";
+	if (pSourceName != nullptr)
+		shaderName = pSourceName;
+	
 	// sanity check
 	if (pTarget == nullptr)
 	{
 		ErrorLog("Shader missing target!");
-		if(pSourceName != nullptr)
-			ErrorLog(pSourceName);
+		ErrorLog(shaderName);
 	}
 
 	Shader shader = Shader(pSrcData, SrcDataSize, pDefines, pInclude, pEntrypoint, pTarget, Flags1, Flags2);
 	std::unordered_set<Shader>::iterator cachedShader = cachedShaders.find(shader);
 	if (cachedShader != cachedShaders.end())
 	{
-		//DebugLog("Shader is cached");
-		D3DCreateBlob(cachedShader->compiledSize, ppCode);
-		memcpy((*ppCode)->GetBufferPointer(), cachedShader->compiled, cachedShader->compiledSize);
-		*result = S_OK;
-		// Bugfix for 0.2.5 - this is sometimes null? Possibly from ReShade?
-		if (ppErrorMsgs)
-			*ppErrorMsgs = nullptr;
-		return *ppCode;
+		// check includes (write to new shader, but use include names/hashes from cache)
+		bool includesMatch = true;
+		for (int i = 0; i < cachedShader->includes.size(); ++i)
+		{
+			uint32_t includeSize;
+			char* includeBytes;
+			// Ogre uses a hard-coded include handler that doesn't use pParentData, so passing null here should be fine
+			if (pInclude->Open(cachedShader->includes[i].type, cachedShader->includes[i].name.c_str(), nullptr, (LPCVOID*)&includeBytes, &includeSize) == S_OK)
+			{
+				std::string includeStr(includeBytes, includeSize);
+				size_t newHash = std::hash<std::string>()(includeStr);
+				if (newHash != cachedShader->includes[i].hash)
+				{
+					DebugLog("Shader: " + shaderName + " include changed: " + cachedShader->includes[i].name);
+					includesMatch = false;
+					break;
+				}
+			}
+			else
+			{
+				ErrorLog("Error opening include: " + cachedShader->includes[i].name);
+				includesMatch = false;
+				break;
+			}
+		}
+		if (includesMatch)
+		{
+			//DebugLog("Shader is cached");
+			D3DCreateBlob(cachedShader->compiledSize, ppCode);
+			memcpy((*ppCode)->GetBufferPointer(), cachedShader->compiled, cachedShader->compiledSize);
+			*result = S_OK;
+			// Bugfix for 0.2.5 - this is sometimes null? Possibly from ReShade?
+			if (ppErrorMsgs)
+				*ppErrorMsgs = nullptr;
+			return *ppCode;
+		}
+		// else, recompile
+		// TODO delete old shader?
+		// HACK this will trigger a full reserialize
+		fileBytes.clear();
 	}
 
 	//DebugLog("Shader is uncached");
+
+	IncludeHook includeHook(&shader, pInclude);
+
 	// if the shader isn't cached, compile it and re-serialize
-	*result = D3DCompile_orig(pSrcData, SrcDataSize, pSourceName, pDefines, pInclude, pEntrypoint, pTarget, Flags1, Flags2, ppCode, ppErrorMsgs);
-	
+	*result = D3DCompile_orig(pSrcData, SrcDataSize, pSourceName, pDefines, &includeHook, pEntrypoint, pTarget, Flags1, Flags2, ppCode, ppErrorMsgs);
+
 	// this SOMETIMES happens?!?
 	if (ppCode == nullptr || *ppCode == nullptr || *result != S_OK)
 	{
 		std::stringstream err;
 		err << "D3DCompile error: " << *result;
 		ErrorLog(err.str());
-		ErrorLog(std::string(pSourceName));
+		ErrorLog(shaderName);
 		return nullptr;
+	}
+
+	if (includeHook.HadError())
+	{
+		DebugLog("Include error - skipping cache for " + shaderName);
+		return *ppCode;
 	}
 
 	shader.SetBlob(*ppCode);
 
+	// above code will already trigger a cache clear if this is a duplicate
 	cachedShaders.insert(shader);
 
 	if (fileBytes.size() > 0)
@@ -328,6 +473,7 @@ ID3DBlob* ShaderCacheFile::GetBlob(LPCVOID pSrcData,
 	else
 	{
 		// need to generate whole file
+		DebugLog("Regenerating shader cache file");
 		Serialize();
 	}
 	return *ppCode;
@@ -368,6 +514,19 @@ static void WriteString(std::string str, std::vector<char>& bytes)
 	memcpy(&bytes[writePos], str.c_str(), sourceLen);
 }
 
+void ShaderInclude::Serialize(std::vector<char>& bytes) const
+{
+	WriteString(name, bytes);
+
+	size_t writePos = bytes.size();
+	bytes.resize(bytes.size() + sizeof(type));
+	memcpy(&bytes[writePos], &type, sizeof(type));
+
+	writePos = bytes.size();
+	bytes.resize(bytes.size() + sizeof(hash));
+	memcpy(&bytes[writePos], &hash, sizeof(hash));
+}
+
 void Shader::Serialize(std::vector<char>& bytes) const
 {
 	WriteString(source, bytes);
@@ -382,7 +541,15 @@ void Shader::Serialize(std::vector<char>& bytes) const
 		WriteString(defines[i].second, bytes);
 	}
 
-	// skip includes because they don't seem to matter right now
+	// includes
+	writePos = bytes.size();
+	int32_t numIncludes = includes.size();
+	bytes.resize(bytes.size() + sizeof(numIncludes));
+	memcpy(&bytes[writePos], &numIncludes, sizeof(numIncludes));
+	for (size_t i = 0; i < numIncludes; ++i)
+	{
+		includes[i].Serialize(bytes);
+	}
 
 	// entrypoint
 	WriteString(entrypoint, bytes);
@@ -416,14 +583,29 @@ static std::string ReadString(std::vector<char>& bytes, size_t& offset)
 	return std::string(str);
 }
 
+ShaderInclude ShaderInclude::Deserialize(std::vector<char>& bytes, size_t& offset)
+{
+	std::string name = ReadString(bytes, offset);
+
+	D3D_INCLUDE_TYPE type;
+	memcpy(&type, &bytes[offset], sizeof(type));
+	offset += sizeof(type);
+
+	size_t hash;
+	memcpy(&hash, &bytes[offset], sizeof(hash));
+	offset += sizeof(hash);
+
+	return ShaderInclude(type, name, hash);
+}
+
 Shader Shader::Deserialize(std::vector<char>& bytes, size_t& offset)
 {
 	Shader shader;
 	shader.source = ReadString(bytes, offset);
+	// read defines
 	int32_t numDefines;
 	memcpy(&numDefines, &bytes[offset], sizeof(numDefines));
 	offset += sizeof(numDefines);
-	// read defines
 	shader.defines.resize(numDefines);
 	for (size_t i = 0; i < numDefines; ++i)
 	{
@@ -431,7 +613,15 @@ Shader Shader::Deserialize(std::vector<char>& bytes, size_t& offset)
 		shader.defines[i].second = ReadString(bytes, offset);
 	}
 
-	// skip includes because they don't seem to matter right now
+	// read includes
+	int32_t numIncludes;
+	memcpy(&numIncludes, &bytes[offset], sizeof(numIncludes));
+	offset += sizeof(numIncludes);
+	shader.includes.resize(numIncludes);
+	for (size_t i = 0; i < numIncludes; ++i)
+	{
+		shader.includes[i] = ShaderInclude::Deserialize(bytes, offset);
+	}
 
 	// entrypoint
 	shader.entrypoint = ReadString(bytes, offset);
