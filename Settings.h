@@ -40,6 +40,8 @@ namespace Settings
 	void SetCacheShaders(bool value);
 	bool GetLogAudio();
 	void SetLogAudio(bool value);
+	bool GetEnableEmergencySaves();
+	void SetEnableEmergencySaves(bool value);
 
 	const std::unordered_map<std::string, std::string> *GetFileOverrides();
 	std::vector<std::string> *GetModSoundBanks();

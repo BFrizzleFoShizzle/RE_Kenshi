@@ -51,6 +51,7 @@ rapidjson::Document GenerateDefaultSettings()
     defaultSettings.AddMember("SkippedVersion", "", defaultSettings.GetAllocator());
     defaultSettings.AddMember("OpenSettingOnStart", true, defaultSettings.GetAllocator());
     defaultSettings.AddMember("LogAudio", false, defaultSettings.GetAllocator());
+    defaultSettings.AddMember("EnableEmergencySaves", true, defaultSettings.GetAllocator());
     defaultSettings.AddMember("IncreaseMaxCameraDistance", false, defaultSettings.GetAllocator());
     rapidjson::Value gameSpeeds(rapidjson::kArrayType);
     std::vector<float> defaultGameSpeeds = GetDefaultGameSpeeds();
@@ -554,6 +555,16 @@ void Settings::SetLogAudio(bool value)
 bool Settings::GetLogAudio()
 {
     return GetSettingBool("LogAudio");
+}
+
+bool Settings::GetEnableEmergencySaves()
+{
+    return GetSettingBool("EnableEmergencySaves");
+}
+
+void Settings::SetEnableEmergencySaves(bool value)
+{
+    SetSettingBool("EnableEmergencySaves", value);
 }
 
 void Settings::SetCheckUpdates(bool value)

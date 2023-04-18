@@ -5,15 +5,20 @@
 #include "WinHttpClient.h"
 #include "Version.h"
 #include "Escort.h"
+#include "Settings.h"
 #include <kenshi/Kenshi.h>
 #include <boost/locale/message.hpp>
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
+#include <boost/filesystem.hpp>
 #include <sstream>
 #include <iomanip>
 #include <core/md5.h>
 #include <windowsx.h>
+
+#include <kenshi/SaveManager.h>
+#include <ogre/OgreConfigFile.h>
 
 static std::string GetUUID()
 {
@@ -413,15 +418,116 @@ void* (*CrashReport_orig)(void* arg1, void* arg2);
 static void* CrashReport_hook(void* arg1, void* arg2)
 {
 	ErrorLog("Crash detected");
+
 	CreateCrashReportWindow();
 
 	return CrashReport_orig(arg1, arg2);
+}
+
+void (*LogManager_destructor_orig)(void* thisptr);
+void LogManager_destructor_hook(void* thisptr)
+{
+	DebugLog("Log manager destructor, probably crashing");
+
+	if (Settings::GetEnableEmergencySaves())
+	{
+		// force cursor to be shown
+		ShowCursor(true);
+
+		// emergency save
+		int result = MessageBoxA(NULL, (boost::locale::gettext("Kenshi is probably crashing.")
+			+ "\n" + boost::locale::gettext("Do you want to force Kenshi to save before it crashes?")).c_str(), boost::locale::gettext("RE_Kenshi crash handler").c_str(), MB_YESNO | MB_SYSTEMMODAL | MB_ICONWARNING);
+
+		if (result == IDYES)
+		{
+			try
+			{
+				DebugLog("Attempting emergency save...");
+				Kenshi::SaveManager* saveManager = Kenshi::GetSaveManager();
+				Kenshi::SaveGameFunc* SaveManager_saveGame = Kenshi::GetSaveManagerSaveGameFunction();
+
+				int emergencySaveNum = 0;
+				for (; emergencySaveNum < 10000; ++emergencySaveNum)
+					if (!boost::filesystem::exists(saveManager->saveWriteDir + "emergency_save_" + std::to_string((uint64_t)emergencySaveNum)))
+						break;
+
+				if (emergencySaveNum < 10000)
+				{
+					if (!SaveManager_saveGame(saveManager, saveManager->saveWriteDir, "emergency_save_" + std::to_string((uint64_t)emergencySaveNum)))
+					{
+						Kenshi::SaveFileSystem* saveFileSystem = Kenshi::GetSaveFileSystem();
+						WaitForSingleObject(saveFileSystem->threadHandle, INFINITE);
+
+						// success? update continue save
+						Ogre::ConfigFile config;
+						config.load("settings.cfg");
+						std::ofstream outSettings("settings.cfg");
+
+						// copy out settings from default section
+						Ogre::ConfigFile::SectionIterator settingsIter = config.getSectionIterator();
+						for (Ogre::ConfigFile::SettingsMultiMap::iterator mapIter = settingsIter.current()->second->begin();
+							mapIter != settingsIter.current()->second->end(); ++mapIter)
+						{
+							// update continue save
+							if (mapIter->first == "continue")
+								outSettings << "continue=emergency_save_" << emergencySaveNum << std::endl;
+							else
+								outSettings << mapIter->first << "=" << mapIter->second << std::endl;
+						}
+
+						DebugLog("Emergency save completed successfully");
+						MessageBoxA(NULL, boost::locale::gettext("The game has saved successfully and will now crash.").c_str(), boost::locale::gettext("Save success").c_str(), MB_OK | MB_SYSTEMMODAL | MB_ICONINFORMATION);
+					}
+					else
+					{
+						ErrorLog("Couldn't create emergency save");
+						MessageBoxA(NULL, boost::locale::gettext("Error creating save file.").c_str(), boost::locale::gettext("Save failed").c_str(), MB_OK | MB_SYSTEMMODAL | MB_ICONERROR);
+					}
+				}
+				else
+				{
+					ErrorLog("Error finding unused emergency save slot");
+					MessageBoxA(NULL, boost::locale::gettext("Error finding unused emergency save slot.").c_str(), boost::locale::gettext("Save failed").c_str(), MB_OK | MB_SYSTEMMODAL | MB_ICONERROR);
+				}
+			}
+			catch (...)
+			{
+				ErrorLog("Unspecified emergency save error");
+				MessageBoxA(NULL, boost::locale::gettext("An unspecified error occurred while saving.").c_str(), boost::locale::gettext("Save failed").c_str(), MB_OK | MB_SYSTEMMODAL | MB_ICONERROR);
+			}
+		}
+	}
+
+	LogManager_destructor_orig(thisptr);
 }
 
 void Bugs::Init()
 {
 	if (discordID == "PUT_YOUR_ID_HERE")
 		MessageBoxA(NULL, "Discord setup error", "Add your info to \"Discord.h\" and recompile to fix bug reporting", MB_ICONWARNING);
-
+	
 	CrashReport_orig = Escort::JmpReplaceHook<void*(void*, void*)>(Kenshi::GetCrashReporterFunction(), &CrashReport_hook, 10);
+
+	// I tried a few ways of hooking the root crash function
+	// Kenshi's exception handler runs before the UnhandledExceptionFilter
+	// When an unhandled exception occurs, execution jumps directly to an address inside the body of a function, 
+	// meaning we can't use a regular function hook
+	// The first thing the game's exception handler does is call the LogManager destructor, so we hook that instead
+	// (nothing else seems to call it)
+	// void MyGUI::LogManager::~LogManager(LogManager* thisptr)
+	void* LogManagerDestructorPtr = Escort::GetFuncAddress("MyGUIEngine_x64.dll", "??1LogManager@MyGUI@@QEAA@XZ");
+	// annoyingly, this is a 5-byte instruction in a packed jmp table, so we need to dereference offset
+	// in order to find a place that can be safely hooked with our 6-byte hook
+	// TODO can we use JmpReplaceHook32 instead?
+	uint8_t* LogManagerDestructor_jmp_ptr = (uint8_t*)Escort::GetFuncAddress("MyGUIEngine_x64.dll", "??1LogManager@MyGUI@@QEAA@XZ");
+	if (*LogManagerDestructor_jmp_ptr != 0xE9)
+	{
+		ErrorLog("LogManager::~LogManager has incorrect instruction");
+		return;
+	}
+	// get address of offset in jmp instruction
+	uint32_t* offsetPtr = (uint32_t*)(LogManagerDestructor_jmp_ptr + 1);
+	// find target of jmp
+	uint8_t* LogManagerDestructor_body_ptr = LogManagerDestructor_jmp_ptr + *offsetPtr + 5;
+	LogManager_destructor_orig = Escort::JmpReplaceHook<void (void*)>(LogManagerDestructor_body_ptr, &LogManager_destructor_hook, 6);
 }

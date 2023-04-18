@@ -84,7 +84,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <LibraryPath>$(BOOST_INCLUDE_PATH)\stage\lib;$(SolutionDir)$(Platform)\$(Configuration)\;$(LibraryPath)</LibraryPath>
-    <IncludePath>CompressTools;KenshiLib/Include/ois;KenshiLib/Include;$(VC_IncludePath);$(WindowsSDK_IncludePath);rapidjson\include;3rdparty/;$(IncludePath)</IncludePath>
+    <IncludePath>$(DXSDK_DIR)Include;CompressTools;KenshiLib/Include/ois;KenshiLib/Include;$(VC_IncludePath);$(WindowsSDK_IncludePath);rapidjson\include;3rdparty/;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -159,6 +159,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <AdditionalIncludeDirectories>$(DXSDK_DIR)\Include;$(BOOST_INCLUDE_PATH);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <ExceptionHandling>Async</ExceptionHandling>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -176,6 +177,7 @@
     <ClCompile Include="Escort.cpp" />
     <ClCompile Include="FSHook.cpp" />
     <ClCompile Include="HeightmapHook.cpp" />
+    <ClCompile Include="KenshiLib\Source\core\md5.cpp" />
     <ClCompile Include="MiscHooks.cpp" />
     <ClCompile Include="MyGUIHooks.cpp" />
     <ClCompile Include="Settings.cpp" />
@@ -190,6 +192,7 @@
     <ClInclude Include="Escort.h" />
     <ClInclude Include="FSHook.h" />
     <ClInclude Include="HeightmapHook.h" />
+    <ClInclude Include="KenshiLib\Include\core\md5.h" />
     <ClInclude Include="MiscHooks.h" />
     <ClInclude Include="MyGUIHooks.h" />
     <ClInclude Include="Settings.h" />
