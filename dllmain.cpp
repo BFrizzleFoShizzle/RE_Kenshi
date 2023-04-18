@@ -950,11 +950,27 @@ void InitGUI()
     MyGUI::TabControl *tabControl = client->createWidget<MyGUI::TabControl>("Kenshi_TabControl", MyGUI::IntCoord(2, 2, modMenuWindow->getClientCoord().width - 4, modMenuWindow->getClientCoord().height - 4), MyGUI::Align::Stretch);
     
     // Create game speed tutorial window
-    gameSpeedTutorialWindow = gui->createWidget<MyGUI::Window>("Kenshi_WindowCX", 100, 100, 620 * scale, 460 * scale, MyGUI::Align::Center, "Window", "GameSpeedTutorialWindow");
+    gameSpeedTutorialWindow = gui->createWidget<MyGUI::Window>("Kenshi_WindowCX", 100, 100, 630 * scale, 470 * scale, MyGUI::Align::Center, "Window", "GameSpeedTutorialWindow");
     gameSpeedTutorialWindow->eventWindowButtonPressed += MyGUI::newDelegate(debugMenuButtonPress);
+    gameSpeedTutorialWindow->setCaption(boost::locale::gettext("Game speed tutorial"));
     // don't know why this isn't centering properly...
     MyGUI::ImageBox* gameSpeedTutImage = gameSpeedTutorialWindow->getClientWidget()->createWidget<MyGUI::ImageBox>("ImageBox", 10 * scale, 10 * scale, 600 * scale, 400 * scale, MyGUI::Align::Center, "GameSpeedTutorialImage");
     gameSpeedTutImage->setImageTexture("game_speed_tutorial.png");
+    MyGUI::TextBox* tutorialPauseLabel = gameSpeedTutImage->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 85 * scale, 190 * scale, 60 * scale, 30 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "TutorialPauseLabel");
+    tutorialPauseLabel->setCaption(boost::locale::gettext("Pause"));
+    tutorialPauseLabel->setTextAlign(MyGUI::Align::Center);
+    MyGUI::TextBox* tutorial1xSpeedLabel = gameSpeedTutImage->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 125 * scale, 145 * scale, 90 * scale, 30 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "Tutorial1xSpeedLabel");
+    tutorial1xSpeedLabel->setCaption(boost::locale::gettext("1x speed"));
+    tutorial1xSpeedLabel->setTextAlign(MyGUI::Align::Center);
+    MyGUI::TextBox* tutorialDecreaseSpeedLabel = gameSpeedTutImage->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 200 * scale, 170 * scale, 90 * scale, 60 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "TutorialDecreaseSpeedLabel");
+    tutorialDecreaseSpeedLabel->setCaption(boost::locale::gettext("Decrease\nspeed"));
+    tutorialDecreaseSpeedLabel->setTextAlign(MyGUI::Align::Center);
+    MyGUI::TextBox* tutorialIncreaseSpeedLabel = gameSpeedTutImage->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 270 * scale, 130 * scale, 90 * scale, 60 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "TutorialIncreaseSpeedLabel");
+    tutorialIncreaseSpeedLabel->setCaption(boost::locale::gettext("Increase\nspeed"));
+    tutorialIncreaseSpeedLabel->setTextAlign(MyGUI::Align::Center);
+    MyGUI::TextBox* currentSpeedLabel = gameSpeedTutImage->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 350 * scale, 185 * scale, 150 * scale, 60 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "currentSpeedLabel");
+    currentSpeedLabel->setCaption(boost::locale::gettext("Current speed"));
+    currentSpeedLabel->setTextAlign(MyGUI::Align::Center);
     gameSpeedTutorialWindow->setVisible(false);
 
     // Create bug report window
@@ -1178,7 +1194,7 @@ void InitGUI()
     
     MyGUI::TextBox* gameSpeedsLabel = gameSpeedPanel->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 2, 0, DEBUG_WINDOW_RIGHT * scale, 30 * scale, MyGUI::Align::Top | MyGUI::Align::Center, "GameSpeedsLabel");
     gameSpeedsLabel->setCaption(boost::locale::gettext("Game speeds"));
-    MyGUI::ButtonPtr addGameSpeed = gameSpeedPanel->createWidget<MyGUI::Button>("Kenshi_Button1", 250 * scale, 0, 300 * scale, 30 * scale, MyGUI::Align::Top | MyGUI::Align::Right, "AddGameSpeedBtn");
+    MyGUI::ButtonPtr addGameSpeed = gameSpeedPanel->createWidget<MyGUI::Button>("Kenshi_Button1", 250 * scale, 0, (DEBUG_WINDOW_RIGHT - 250) * scale, 30 * scale, MyGUI::Align::Top | MyGUI::Align::Right, "AddGameSpeedBtn");
     addGameSpeed->setCaption(boost::locale::gettext("Add game speed"));
     addGameSpeed->eventMouseButtonClick += MyGUI::newDelegate(AddGameSpeed);
     gameSpeedScrollBarsStart = positionY;
