@@ -8,6 +8,8 @@
 #include "Debug.h"
 #include "Settings.h"
 
+#include <boost/locale.hpp>
+
 std::string version = "0.2.8";
 std::string latestVersionCache = "0.0.0";
 const bool isPrerelease = true;
@@ -102,8 +104,8 @@ DWORD WINAPI checkVersionThread(LPVOID param)
         // Ask if user wants to update if needed
         if (!Version::IsCurrentVersion())
         {
-            std::string msg = "A new version of RE_Kenshi (" + latestVersionCache + ") has been released.\nDo you want to update?";
-            int result = MessageBoxA(NULL, msg.c_str(), "RE_Kenshi update", MB_YESNO | MB_TOPMOST);
+            std::string msg = boost::locale::gettext("A new version of RE_Kenshi (") + latestVersionCache + boost::locale::gettext(") has been released.\nDo you want to update?");
+            int result = MessageBoxA(NULL, msg.c_str(), boost::locale::gettext("RE_Kenshi update").c_str(), MB_YESNO | MB_TOPMOST);
             if (result == IDYES)
             {
                 DebugLog("Opening browser...");
@@ -111,12 +113,12 @@ DWORD WINAPI checkVersionThread(LPVOID param)
             }
             if (result == IDNO)
             {
-                std::string msg = "Do you want to skip RE_Kenshi release " + latestVersionCache + "?\n(disables notifications for this release)";
-                result = MessageBoxA(NULL, msg.c_str(), "RE_Kenshi update", MB_YESNO | MB_TOPMOST);
+                std::string msg = boost::locale::gettext("Do you want to skip RE_Kenshi release ") + latestVersionCache + boost::locale::gettext("?\n(disables notifications for this release)");
+                result = MessageBoxA(NULL, msg.c_str(), boost::locale::gettext("RE_Kenshi update").c_str(), MB_YESNO | MB_TOPMOST);
                 if (result == IDYES)
                 {
                     Settings::SetSkippedVersion(latestVersionCache);
-                    MessageBoxA(NULL, "Version skipped!", "RE_Kenshi update", MB_OK | MB_TOPMOST);
+                    MessageBoxA(NULL, boost::locale::gettext("Version skipped!").c_str(), boost::locale::gettext("RE_Kenshi update").c_str(), MB_OK | MB_TOPMOST);
                 }
             }
         }
