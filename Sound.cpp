@@ -6,6 +6,7 @@
 #include <unordered_set>
 #include <stdint.h>
 #include <boost/signals2/mutex.hpp>
+#include <boost/filesystem.hpp>
 
 enum AKRESULT
 {
@@ -175,6 +176,19 @@ enum AKRESULT AK_SoundEngine_RegisterGameObj_hook(unsigned long long in_gameObje
 	return AK_SoundEngine_RegisterGameObj_orig(in_gameObjectID, in_pszObjName, in_uListenerMask);
 }
 
+class CAkFilePackageLowLevelIOBlocking
+{
+public:
+	virtual ~CAkFilePackageLowLevelIOBlocking();
+	// vtable 
+	uint64_t vmt2;
+	// vtable
+	uint64_t vmt3;
+	wchar_t basePath[260];
+};
+
+CAkFilePackageLowLevelIOBlocking* (*AK_StreamMgr_GetFileLocationResolver)();
+
 // MAKE SURE YOU HAVE LOCKED THE SOUND LOCK BEFORE CALLING
 static void LoadQueuedBanks()
 {
@@ -193,17 +207,29 @@ static void LoadQueuedBanks()
 	DebugLog(out.str());
 
 	std::vector<std::string>* modSoundBanks = Settings::GetModSoundBanks();
+	// clear base path so we can load from absolute directories
+	std::wstring baseLocation = AK_StreamMgr_GetFileLocationResolver()->basePath;
+	AK_StreamMgr_GetFileLocationResolver()->basePath[0] = L'\0';
 	for (int i = 0; i < modSoundBanks->size(); ++i)
 	{
 		unsigned long ID;
 		std::stringstream out;
-		const char* bankName = modSoundBanks->at(i).c_str();
-		AKRESULT ret = AK_SoundEngine_LoadBank_orig(bankName, -1, ID);
-		out << "Mod bank load: " << bankName << " " << -1 << " " << ID << " ";
+		std::string bankPath = modSoundBanks->at(i);
+		if (boost::filesystem::exists(std::string(baseLocation.begin(), baseLocation.end()) + bankPath))
+			// use relative path if it exists
+			bankPath = std::string(baseLocation.begin(), baseLocation.end()) + bankPath;
+		else if (!boost::filesystem::exists(bankPath))
+			// else if the absolute path doesn't exist either, error
+			ErrorLog("Unable to find soundbank: " + bankPath);
+
+
+		AKRESULT ret = AK_SoundEngine_LoadBank_orig(bankPath.c_str(), -1, ID);
+		out << "Mod bank load: " << bankPath << " " << -1 << " " << ID << " ";
 		out << std::hex << ret;
 		DebugLog(out.str());
 	}
-
+	// switch back to original base path
+	AK_StreamMgr_GetFileLocationResolver()->basePath[0] = baseLocation[0];
 	for (int i = 1; i < queuedBanks.size(); ++i)
 	{
 		unsigned long ID;
@@ -280,6 +306,7 @@ void Sound::TryLoadQueuedBanks()
 void Sound::Init()
 {
 	// find function addresses
+	AK_StreamMgr_GetFileLocationResolver = (CAkFilePackageLowLevelIOBlocking * (*)())Escort::GetFuncAddress(Kenshi::GetKenshiVersion().GetBinaryName(), "?GetFileLocationResolver@StreamMgr@AK@@YAPEAVIAkFileLocationResolver@12@XZ");
 	void* AK_SoundEngine_GetIDFromString_ptr = Escort::GetFuncAddress(Kenshi::GetKenshiVersion().GetBinaryName(), "?GetIDFromString@SoundEngine@AK@@YAKPEBD@Z");
 	void* AK_SoundEngine_GetIDFromString2_ptr = Escort::GetFuncAddress(Kenshi::GetKenshiVersion().GetBinaryName(), "?GetIDFromString@SoundEngine@AK@@YAKPEB_W@Z");
 	void* AK_SoundEngine_LoadBank_ptr = Escort::GetFuncAddress(Kenshi::GetKenshiVersion().GetBinaryName(), "?LoadBank@SoundEngine@AK@@YA?AW4AKRESULT@@PEBDJAEAK@Z");
