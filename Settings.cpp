@@ -313,7 +313,7 @@ void SetSettingBool(rapidjson::GenericStringRef<char> name, bool value)
     else
     {
         rapidjson::Value& val = settingsDOM[(const char*)name];
-        if (!val.IsInt())
+        if (!val.IsBool())
             ErrorLog("Incorrect setting type (bool set): " + std::string(name));
         val.SetBool(value);
     }
