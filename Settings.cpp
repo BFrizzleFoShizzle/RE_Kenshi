@@ -24,7 +24,7 @@ std::vector<float> GetDefaultGameSpeeds()
 {
     std::vector<float> gameSpeeds;
     gameSpeeds.push_back(1.0f);
-    gameSpeeds.push_back(3.0f);
+    gameSpeeds.push_back(2.0f);
     gameSpeeds.push_back(5.0f);
     gameSpeeds.push_back(10.0f);
     gameSpeeds.push_back(20.0f);
