@@ -475,7 +475,7 @@ void Settings::SetOpenSettingsOnStart(bool value)
 
 bool Settings::GetUseCustomGameSpeeds()
 {
-    return GetSettingBool("OpenSettingOnStart");
+    return GetSettingBool("UseCustomGameSpeeds");
 }
 
 void Settings::SetUseCustomGameSpeeds(bool value)
