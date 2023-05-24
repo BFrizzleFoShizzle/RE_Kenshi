@@ -29,7 +29,8 @@ void* Escort::GetFuncAddress(std::string moduleName, std::string functionName)
 void Escort::WriteProtected(void* destAddr, void* sourceAddr, size_t count)
 {
 	DWORD oldProtect;
-	bool success = VirtualProtect(destAddr, count, PAGE_EXECUTE_READWRITE, &oldProtect) == 0;
+	// "If the function succeeds, the return value is nonzero"
+	bool success = VirtualProtect(destAddr, count, PAGE_EXECUTE_READWRITE, &oldProtect);
 	if (!success)
 	{
 		DWORD error = GetLastError();
@@ -37,6 +38,15 @@ void Escort::WriteProtected(void* destAddr, void* sourceAddr, size_t count)
 		ErrorLog(errorMsg.c_str());
 	}
 	memcpy(destAddr, sourceAddr, count);
+	// revert protection
+	DWORD oldProtect2;
+	success = VirtualProtect(destAddr, count, oldProtect, &oldProtect2);
+	if (!success)
+	{
+		DWORD error = GetLastError();
+		std::string errorMsg = "Protection revert failed! " + std::to_string((long long)error);
+		ErrorLog(errorMsg.c_str());
+	}
 }
 
 // call &function (near, relative)
@@ -185,7 +195,7 @@ void Escort::PushRetHookASM(void* sourceAddr, void* destAddr, size_t replacedByt
 	HANDLE handle = GetModuleHandle(NULL);
 	size_t bytesWritten = -1;
 	DWORD oldProtect;
-	bool success = VirtualProtect(sourceAddr, hookSize, PAGE_EXECUTE_READWRITE, &oldProtect) == 0;
+	bool success = VirtualProtect(sourceAddr, hookSize, PAGE_EXECUTE_READWRITE, &oldProtect);
 	if (!success)
 	{
 		DWORD error = GetLastError();
