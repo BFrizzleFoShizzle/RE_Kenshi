@@ -92,8 +92,20 @@ unsigned __int64 __cdecl Terrain_getRawData(Terrain* thisPtr, int x, int y, int 
 	return written;
 }
 
+static void CompressToolsDebugLog(const char* message)
+{
+	DebugLog(message);
+}
+
+static void CompressToolsErrorLog(const char* message)
+{
+	ErrorLog(message);
+}
+
 void HeightmapHook::Preload()
 {
+	CompressToolsLib::SetLoggers(CompressToolsDebugLog, CompressToolsErrorLog);
+
 	// early return if heightmap compression is disabled
 	if (!Settings::UseHeightmapCompression() || !CompressedHeightmapFileExists())
 		return;

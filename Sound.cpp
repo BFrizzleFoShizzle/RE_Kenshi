@@ -238,7 +238,8 @@ static void LoadQueuedBanks()
 		AKRESULT ret = AK_SoundEngine_LoadBank_orig(bankName, -1, ID);
 		out << "Vanilla bank load: " << bankName << " " << -1 << " " << ID << " ";
 		out << std::hex << ret;
-		DebugLog(out.str());
+		if (Settings::GetLogAudio())
+			DebugLog(out.str());
 	}
 	queuedBanks.clear();
 
@@ -275,7 +276,8 @@ AKRESULT __cdecl AK_SoundEngine_LoadBankHook(char const* __ptr64 bankName, long 
 		unk2 = fakeBankID;
 		++fakeBankID;
 		out << "Deferred load: " << bankName << " " << unk1 << " " << unk2;
-		DebugLog(out.str());
+		if (Settings::GetLogAudio())
+			DebugLog(out.str());
 		queuedBanks.push_back(bankName);
 
 		soundLock.unlock();
@@ -288,7 +290,8 @@ AKRESULT __cdecl AK_SoundEngine_LoadBankHook(char const* __ptr64 bankName, long 
 		AKRESULT ret = AK_SoundEngine_LoadBank_orig(bankName, unk1, unk2);
 		out << "Bank load: " << bankName << " " << unk1 << " " << unk2 << " ";
 		out << std::hex << ret;
-		DebugLog(out.str());
+		if (Settings::GetLogAudio())
+			DebugLog(out.str());
 		return ret;
 	}
 }
