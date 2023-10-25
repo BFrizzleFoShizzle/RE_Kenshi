@@ -38,6 +38,7 @@
 #include "win32/Win32KeyBoard.h"
 
 #include <boost/locale.hpp>
+#include <boost/thread/condition_variable.hpp>
 
 float gameSpeed = 1.0f;
 MyGUI::TextBox* gameSpeedText = nullptr;
@@ -1423,21 +1424,33 @@ void GUIUpdate(float timeDelta)
 // I haven't reverse-engineered this function, it probably does more than just load mods
 // but we hook it for sync'ing with the mod loader
 void (*LoadMods_orig)(Kenshi::GameWorld* gameWorld);
+
+// used so we can wait for mods to load on the main thread, so we don't have to do post-mod init in LoadMods_hook() directly
 bool setupMods = false;
+boost::mutex modLoadLock;
+boost::condition_variable modLoadCV;
+
 void LoadMods_hook(Kenshi::GameWorld* gameWorld)
 {
     LoadMods_orig(gameWorld);
-
     if (!setupMods)
     {
         DebugLog("Load mod hook");
-        // Must be called AFTER mod load
-        Settings::LoadModOverrides();
-        Sound::TryLoadQueuedBanks();
+        boost::lock_guard<boost::mutex> lock(modLoadLock);
         setupMods = true;
+        modLoadCV.notify_all();
     }
 
     return;
+}
+
+void WaitForModSetup()
+{
+    boost::unique_lock<boost::mutex> lock(modLoadLock);
+    while (!setupMods)
+    {
+        modLoadCV.wait(lock);
+    }
 }
 
 void dllmain()
@@ -1471,6 +1484,13 @@ void dllmain()
         HeightmapHook::Preload();
         MiscHooks::Init();
         Sound::Init();
+
+        DebugLog("Waiting for mod setup.");
+        WaitForModSetup();
+
+        Settings::LoadModOverrides();
+        Sound::TryLoadQueuedBanks();
+        HeightmapHook::Init();
     }
 
     DebugLog("Waiting for main menu.");
@@ -1482,8 +1502,6 @@ void dllmain()
     {
         // GUI will be created next frame
         gui->eventFrameStart += MyGUI::newDelegate(GUIUpdate);
-
-        HeightmapHook::Init();
 
         WaitForInGame();
 
