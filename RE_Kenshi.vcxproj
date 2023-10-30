@@ -177,6 +177,7 @@
     <ClCompile Include="Escort.cpp" />
     <ClCompile Include="FSHook.cpp" />
     <ClCompile Include="HeightmapHook.cpp" />
+    <ClCompile Include="io.cpp" />
     <ClCompile Include="KenshiLib\Source\core\md5.cpp" />
     <ClCompile Include="MiscHooks.cpp" />
     <ClCompile Include="MyGUIHooks.cpp" />
@@ -192,6 +193,7 @@
     <ClInclude Include="Escort.h" />
     <ClInclude Include="FSHook.h" />
     <ClInclude Include="HeightmapHook.h" />
+    <ClInclude Include="io.h" />
     <ClInclude Include="KenshiLib\Include\core\md5.h" />
     <ClInclude Include="MiscHooks.h" />
     <ClInclude Include="MyGUIHooks.h" />

@@ -3,13 +3,16 @@
 
 #include <ogre/OgreVector3.h>
 
+#define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <string>
 #include <sstream>
+#include <boost/filesystem.hpp>
 
 #include "CompressTools/CompressToolsLib.h"
 #include "Debug.h"
 #include "Settings.h"
+#include "io.h"
 
 CompressToolsLib::CompressedImageFileHdl heightmapHandle = nullptr;
 
@@ -42,8 +45,18 @@ struct Terrain
 };
 
 
-float __cdecl Terrain_getHeight(Terrain* thisPtr, class Ogre::Vector3 const& vec, int unk)
+// These exist so we don't have to re-read this setting a million times in hot loops
+// These don't need to be thread-safe since incorrectly using the old value
+// only results in a performance loss, not a crash
+static HeightmapHook::HeightmapMode heightmapModeCache = HeightmapHook::VANILLA;
+
+float (*Terrain_getHeight_orig)(Terrain* thisPtr, class Ogre::Vector3 const& vec, int unk);
+float Terrain_getHeight_hook(Terrain* thisPtr, class Ogre::Vector3 const& vec, int unk)
 {
+	HeightmapHook::HeightmapMode heightmapMode = heightmapModeCache;
+	if (heightmapMode == HeightmapHook::VANILLA)
+		return Terrain_getHeight_orig(thisPtr, vec, unk);
+
 	// transform into terrain space
 	// reverse-engineered
 	float x_transformed = vec.x - thisPtr->worldToTextureOffset;
@@ -62,7 +75,16 @@ float __cdecl Terrain_getHeight(Terrain* thisPtr, class Ogre::Vector3 const& vec
 		&& pixelX >= 0
 		&& pixelY >= 0)
 	{
-		uint16_t height = CompressToolsLib::ReadHeightValue(heightmapHandle, pixelX, pixelY);
+		uint16_t height = 0;
+		if (heightmapMode == HeightmapHook::COMPRESSED)
+			height = CompressToolsLib::ReadHeightValue(heightmapHandle, pixelX, pixelY);
+		else
+		{
+			ErrorLog("Heightmap mode is invalid! Resetting to vanilla.");
+			Settings::SetHeightmapMode(HeightmapHook::VANILLA);
+			heightmapModeCache = HeightmapHook::VANILLA;
+			return Terrain_getHeight_orig(thisPtr, vec, unk);
+		}
 		return height * thisPtr->heightScale;
 	}
 	else
@@ -72,19 +94,27 @@ float __cdecl Terrain_getHeight(Terrain* thisPtr, class Ogre::Vector3 const& vec
 	}
 }
 
-unsigned __int64 __cdecl Terrain_getRawData(Terrain* thisPtr, int x, int y, int w, int h, char* __ptr64 out)
+unsigned __int64 (*Terrain_getRawData_orig)(Terrain* thisPtr, int x, int y, int w, int h, char* __ptr64 out);
+unsigned __int64 Terrain_getRawData_hook(Terrain* thisPtr, int x, int y, int w, int h, char* __ptr64 out)
 {
+	// this MUST be cached here for safety reasons, explained in the below note
+	HeightmapHook::HeightmapMode heightmapMode = heightmapModeCache;
+
+	if (heightmapMode == HeightmapHook::VANILLA)
+		return Terrain_getRawData_orig(thisPtr, x, y, w, h, out);
+
 	uint16_t *shortPtr = reinterpret_cast<uint16_t*>(out);
 	uint64_t written = 0;
-
 	for (int i = 0; i < h; ++i)
 	{
 		for (int j = 0; j < w; ++j)
 		{
 			int pixelX = x + j;
 			int pixelY = y + i;
-
-			uint16_t height = CompressToolsLib::ReadHeightValue(heightmapHandle, pixelX, pixelY);
+			uint16_t height = 0;
+			// Note: using useCompressedHeightmapCache directly here would be unsafe if the setting is 
+			if (heightmapMode == HeightmapHook::COMPRESSED)
+				height = CompressToolsLib::ReadHeightValue(heightmapHandle, pixelX, pixelY);
 			shortPtr[i * w + j] = height;
 			++written;
 		}
@@ -104,10 +134,11 @@ static void CompressToolsErrorLog(const char* message)
 
 void HeightmapHook::Preload()
 {
+	// this is called before mods are set up, so doing anything else here is unsafe
 	CompressToolsLib::SetLoggers(CompressToolsDebugLog, CompressToolsErrorLog);
-
-	// early return if heightmap compression is disabled
+	/*
 	if (!Settings::UseHeightmapCompression() || !CompressedHeightmapFileExists())
+		// early return if heightmap compression is disabled
 		return;
 
 	CompressToolsLib::ImageMode mode = CompressToolsLib::ImageMode::Streaming;
@@ -118,18 +149,123 @@ void HeightmapHook::Preload()
 	DebugLog("Loading heightmap...");
 	heightmapHandle = CompressToolsLib::OpenImage(Settings::ResolvePath("data/newland/land/fullmap.cif").c_str(), mode);
 	DebugLog("Heightmap loaded!");
+	*/
 }
+
+// bytes before modification
+//uint8_t Terrain_getHeightOld[15];
+//uint8_t Terrain_getRawDataOld[15];
 
 void HeightmapHook::Init()
 {
-	// early return if heightmap compression is disabled
-	if (!Settings::UseHeightmapCompression() || !CompressedHeightmapFileExists())
-		return;
+	// first call to this on a drive takes ~250ms, so we do it while the main menu is loading
+	// that way, lookups on Kenshi's install drive won't cause stalls when they're actually needed
+	HeightmapHook::HeightmapMode compressedHeightmapExists = GetRecommendedHeightmapMode();
+	if (Settings::GetHeightmapMode() == HeightmapHook::AUTO)
+	{
+		if (compressedHeightmapExists == COMPRESSED
+			&& CompressedHeightmapFileExists())
+		{
+			Settings::SetHeightmapMode(COMPRESSED);
+		}
+	}
 
-	EnableHeightmapHooks();
+	// mangled symbol for protected Terrain::getHeight()
+	// protected: float __cdecl Terrain::getHeight(class Ogre::Vector3 const & __ptr64,int) __ptr64
+	void* Terrain_getHeight_ptr = Escort::GetFuncAddress("Plugin_Terrain_x64.dll", "?getHeight@Terrain@@IEAAMAEBVVector3@Ogre@@H@Z");
+	Terrain_getHeight_orig = Escort::JmpReplaceHook<float(Terrain* thisPtr, class Ogre::Vector3 const& vec, int unk)>(Terrain_getHeight_ptr, Terrain_getHeight_hook);
+	/*
+	// backup bytes
+	memcpy(Terrain_getHeightOld, Terrain_getHeightPtr, 15);
+	// TODO update
+	Escort::PushRetHookASM(Terrain_getHeightPtr, Terrain_getHeight, 15);
+	*/
+	// mangled symbol for Terrain::getRawData()
+	// public: unsigned __int64 __cdecl Terrain::getRawData(int,int,int,int,char * __ptr64)const __ptr64
+	// backup bytes
+	//memcpy(Terrain_getRawDataOld, Terrain_getRawDataPtr, 15);
+	//Escort::PushRetHookASM(Terrain_getRawDataPtr, Terrain_getRawData, 15);
+	void* Terrain_getRawData_ptr = Escort::GetFuncAddress("Plugin_Terrain_x64.dll", "?getRawData@Terrain@@QEBA_KHHHHPEAD@Z");
+	Terrain_getRawData_orig = Escort::JmpReplaceHook<uint64_t(Terrain* thisPtr, int x, int y, int w, int h, char* __ptr64 out)>(Terrain_getRawData_ptr, Terrain_getRawData_hook);
+
+	DebugLog("Heightmap hooks installed...");
+
+	UpdateHeightmapSettings();
 }
 
-// debugging functions
+void HeightmapHook::UpdateHeightmapSettings()
+{
+	// update settings cache
+	// cache to avoid race condtitions
+	HeightmapMode newMode = Settings::GetHeightmapMode();
+
+	// if we're now using the compressed heightmap, it isn't loaded, and the file exists, load it
+	if (newMode == COMPRESSED)
+	{
+		if (CompressedHeightmapFileExists())
+		{
+			if (heightmapHandle == nullptr)
+			{
+				CompressToolsLib::ImageMode mode = CompressToolsLib::ImageMode::Streaming;
+
+				if (Settings::PreloadHeightmap())
+					mode = CompressToolsLib::ImageMode::Preload;
+
+				DebugLog("Loading compressed heightmap...");
+				heightmapHandle = CompressToolsLib::OpenImage(Settings::ResolvePath("data/newland/land/fullmap.cif").c_str(), mode);
+				DebugLog("Compressed heightmap loaded!");
+			}
+		}
+		else
+		{
+			ErrorLog("Heightmap mode set to compressed, but the compressed heightmap doesn't exist!");
+			newMode = VANILLA;
+		}
+	}
+
+	// it's now safe to update these as all required files will be open
+	heightmapModeCache = Settings::GetHeightmapMode();
+}
+
+enum ExistsState
+{
+	UNSET,
+	// Windows defines TRUE and FALSE macros, so we use these instead
+	EXISTS,
+	DOESNT_EXIST
+};
+
+static ExistsState compressedFilemapExists = UNSET;
+
+bool HeightmapHook::CompressedHeightmapFileExists()
+{
+	if (compressedFilemapExists == UNSET)
+	{
+		if (boost::filesystem::exists(Settings::ResolvePath("data/newland/land/fullmap.cif")))
+			compressedFilemapExists = EXISTS;
+		else
+			compressedFilemapExists = DOESNT_EXIST;
+	}
+	return compressedFilemapExists == EXISTS;
+}
+
+HeightmapHook::HeightmapMode HeightmapHook::GetRecommendedHeightmapMode()
+{
+	// if the compressed heightmap exists and the user is loading off an HDD, that's probably the best setting
+	if (IO::GetDriveStorageType(Settings::ResolvePath("data/newland/land/fullmap.cif")) == IO::HDD)
+	{
+		return HeightmapHook::COMPRESSED;
+	}
+}
+
+/******** debugging functions ************/
+
+bool HeightmapHook::CompressedHeightmapIsLoaded()
+{
+	// TODO update?
+	return heightmapHandle != nullptr;
+}
+
 std::vector<uint8_t> HeightmapHook::GetBlockLODs()
 {
 	uint32_t width = GetBlocksWidth();
@@ -142,12 +278,10 @@ std::vector<uint8_t> HeightmapHook::GetBlockLODs()
 	return std::move(blockLODs);
 }
 
-bool test = false;
-
 void HeightmapHook::WriteBlockLODsToCanvas(MyGUI::Canvas* canvas)
 {
 	// return if heightmap not loaded
-	if (!HeightmapIsLoaded())
+	if (!CompressedHeightmapIsLoaded())
 		return;
 
 
@@ -194,87 +328,4 @@ uint32_t HeightmapHook::GetBlocksWidth()
 uint32_t HeightmapHook::GetBlocksHeight()
 {
 	return CompressToolsLib::GetImageHeightInBlocks(heightmapHandle);
-}
-
-bool HeightmapHook::HeightmapIsLoaded()
-{
-	return heightmapHandle != nullptr;
-}
-
-bool hooksInstalled = false;
-
-// bytes before modification
-uint8_t Terrain_getHeightOld[15];
-uint8_t Terrain_getRawDataOld[15];
-
-void HeightmapHook::EnableHeightmapHooks()
-{
-	// start loading heightmap if not done yet
-	if (!HeightmapIsLoaded())
-		Preload();
-
-	if (hooksInstalled)
-		return;
-
-	// if heightmap *still* isn't loaded, something has gone wrong
-	assert(HeightmapIsLoaded());
-	if (!HeightmapIsLoaded())
-		return;
-
-	// mangled symbol for protected Terrain::getHeight()
-	// protected: float __cdecl Terrain::getHeight(class Ogre::Vector3 const & __ptr64,int) __ptr64
-	void* Terrain_getHeightPtr = Escort::GetFuncAddress("Plugin_Terrain_x64.dll", "?getHeight@Terrain@@IEAAMAEBVVector3@Ogre@@H@Z");
-	// backup bytes
-	memcpy(Terrain_getHeightOld, Terrain_getHeightPtr, 15);
-	Escort::PushRetHookASM(Terrain_getHeightPtr, Terrain_getHeight, 15);
-
-
-	// mangled symbol for Terrain::getRawData()
-	// public: unsigned __int64 __cdecl Terrain::getRawData(int,int,int,int,char * __ptr64)const __ptr64
-	void* Terrain_getRawDataPtr = Escort::GetFuncAddress("Plugin_Terrain_x64.dll", "?getRawData@Terrain@@QEBA_KHHHHPEAD@Z");
-	// backup bytes
-	memcpy(Terrain_getRawDataOld, Terrain_getRawDataPtr, 15);
-	Escort::PushRetHookASM(Terrain_getRawDataPtr, Terrain_getRawData, 15);
-
-	hooksInstalled = true;
-
-	DebugLog("Heightmap hooks installed...");
-}
-
-void HeightmapHook::DisableHeightmapHooks()
-{
-	if (!hooksInstalled)
-		return;
-
-	// mangled symbol for protected Terrain::getHeight()
-	// protected: float __cdecl Terrain::getHeight(class Ogre::Vector3 const & __ptr64,int) __ptr64
-	void* Terrain_getHeightPtr = Escort::GetFuncAddress("Plugin_Terrain_x64.dll", "?getHeight@Terrain@@IEAAMAEBVVector3@Ogre@@H@Z");
-	// Restore backup
-	Escort::WriteProtected(Terrain_getHeightOld, Terrain_getHeightPtr, 15);
-
-
-	// mangled symbol for Terrain::getRawData()
-	// public: unsigned __int64 __cdecl Terrain::getRawData(int,int,int,int,char * __ptr64)const __ptr64
-	void* Terrain_getRawDataPtr = Escort::GetFuncAddress("Plugin_Terrain_x64.dll", "?getRawData@Terrain@@QEBA_KHHHHPEAD@Z");
-	// Restore backup
-	Escort::WriteProtected(Terrain_getRawDataOld, Terrain_getRawDataPtr, 15);
-
-	hooksInstalled = false;
-
-	DebugLog("Heightmap hooks uninstalled...");
-}
-
-
-bool HeightmapHook::CompressedHeightmapFileExists()
-{
-	std::ifstream file(Settings::ResolvePath("data/newland/land/fullmap.cif"));
-	if (file.is_open())
-	{
-		file.close();
-		return true;
-	}
-	else
-	{
-		return false;
-	}
 }

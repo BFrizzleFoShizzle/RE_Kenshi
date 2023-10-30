@@ -1,5 +1,9 @@
+#pragma once
+
 #include <vector>
 #include <unordered_map>
+
+#include "HeightmapHook.h"
 
 namespace Settings
 {
@@ -8,8 +12,8 @@ namespace Settings
 	// whether mod overrides have been loaded
 	bool GetModOverridesLoaded();
 
-	void SetUseHeightmapCompression(bool value);
-	bool UseHeightmapCompression();
+	void SetHeightmapMode(HeightmapHook::HeightmapMode value);
+	HeightmapHook::HeightmapMode GetHeightmapMode();
 	// TODO remove after testing
 	void SetPreloadHeightmap(bool value);
 	bool PreloadHeightmap();

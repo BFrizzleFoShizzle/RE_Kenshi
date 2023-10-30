@@ -36,7 +36,11 @@ rapidjson::Document GenerateDefaultSettings()
     rapidjson::Document defaultSettings;
     // TODO
     defaultSettings.SetObject();
-    defaultSettings.AddMember("UseCompressedHeightmap", true, defaultSettings.GetAllocator());
+    // the first call to HeightmapHook::GetRecommendedHeightmapMode() is expensive, 
+    // and our function gets called at a time you really don't want to stall at, so
+    // we hope the installer already set this to something sensible, else use AUTO
+    // and detect optimal settings later
+    defaultSettings.AddMember("HeightmapMode", HeightmapHook::AUTO, defaultSettings.GetAllocator());
     defaultSettings.AddMember("PreloadHeightmap", false, defaultSettings.GetAllocator());
     defaultSettings.AddMember("AttackSlots", -1, defaultSettings.GetAllocator());
     defaultSettings.AddMember("MaxFactionSize", -1, defaultSettings.GetAllocator());
@@ -373,14 +377,14 @@ void SetSettingInt(rapidjson::GenericStringRef<char> name, int value)
 }
 
 // read/write settings
-bool Settings::UseHeightmapCompression()
+void Settings::SetHeightmapMode(HeightmapHook::HeightmapMode value)
 {
-    return GetSettingBool("UseCompressedHeightmap");
+    SetSettingInt("HeightmapMode", value);
 }
 
-void Settings::SetUseHeightmapCompression(bool value)
+HeightmapHook::HeightmapMode Settings::GetHeightmapMode()
 {
-    SetSettingBool("UseCompressedHeightmap", value);
+    return (HeightmapHook::HeightmapMode)GetSettingInt("HeightmapMode");
 }
 
 bool Settings::PreloadHeightmap()
