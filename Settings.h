@@ -17,6 +17,8 @@ namespace Settings
 	// TODO remove after testing
 	void SetPreloadHeightmap(bool value);
 	bool PreloadHeightmap();
+	void SetProfileLoads(bool value);
+	bool GetProfileLoads();
 	int GetAttackSlots();
 	void SetAttackSlots(int num);
 	int GetMaxFactionSize();

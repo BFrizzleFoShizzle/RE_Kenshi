@@ -55,6 +55,7 @@ rapidjson::Document GenerateDefaultSettings()
     defaultSettings.AddMember("SkippedVersion", "", defaultSettings.GetAllocator());
     defaultSettings.AddMember("OpenSettingOnStart", true, defaultSettings.GetAllocator());
     defaultSettings.AddMember("LogAudio", false, defaultSettings.GetAllocator());
+    defaultSettings.AddMember("ProfileLoads", false, defaultSettings.GetAllocator());
     defaultSettings.AddMember("EnableEmergencySaves", true, defaultSettings.GetAllocator());
     defaultSettings.AddMember("IncreaseMaxCameraDistance", false, defaultSettings.GetAllocator());
     rapidjson::Value gameSpeeds(rapidjson::kArrayType);
@@ -390,6 +391,16 @@ HeightmapHook::HeightmapMode Settings::GetHeightmapMode()
 bool Settings::PreloadHeightmap()
 {
     return GetSettingBool("PreloadHeightmap");
+}
+
+void Settings::SetProfileLoads(bool value)
+{
+    SetSettingBool("ProfileLoads", value);
+}
+
+bool Settings::GetProfileLoads()
+{
+    return GetSettingBool("ProfileLoads");
 }
 
 bool Settings::GetFixRNG()

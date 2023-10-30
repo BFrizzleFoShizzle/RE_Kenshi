@@ -1290,7 +1290,9 @@ void LoadStart(MyGUI::WidgetPtr widget)
     DebugLog("Game loading...");
 }
 
+// used for profiling loads
 bool oldLoadingPanelVisible = false;
+static clock_t loadTime = 0;
 
 void InjectSettings()
 {
@@ -1427,11 +1429,20 @@ void GUIUpdate(float timeDelta)
     }
 
     MyGUI::WidgetPtr loadingPanel = Kenshi::FindWidget(MyGUI::Gui::getInstancePtr()->getEnumerator(), "LoadingPanel");
-    if (loadingPanel && loadingPanel->getInheritedVisible() != oldLoadingPanelVisible)
+    if (loadingPanel && loadingPanel->getInheritedVisible() != oldLoadingPanelVisible && Settings::GetProfileLoads())
     {
+        clock_t newTime = clock();
         oldLoadingPanelVisible = loadingPanel->getInheritedVisible();
         std::string msg = oldLoadingPanelVisible ? "true" : "false";
+        if (!oldLoadingPanelVisible)
+        {
+            clock_t timeInMSecs = (newTime - loadTime) / (CLOCKS_PER_SEC / 1000);
+            char timeStr[10];
+            sprintf_s(timeStr, "%i.%03i", timeInMSecs / 1000, timeInMSecs % 1000);
+            msg = msg + ", load time: " + timeStr;
+        }
         DebugLog("Loading panel visibility changed to " + msg);
+        loadTime = newTime;
     }
 
     if (debugLogScrollView && debugLogScrollView->getInheritedVisible() && debugOut)
