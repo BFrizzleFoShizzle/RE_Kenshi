@@ -149,8 +149,6 @@ static uint16_t* MMapTIFF(std::string path)
 		return nullptr;
 	}
 
-	//bool isDNG = tinydng::IsDNGFromMemory(fileAddr, fileSize, nullptr);
-
 	std::vector<tinydng::FieldInfo> custom_fields;
 	std::vector<tinydng::DNGImage> images;
 	// tinydng::LoadDNGFromMemory actually loads all bytes into RAM, which we don't want to do...
@@ -183,6 +181,7 @@ static uint16_t* MMapTIFF(std::string path)
 
 	uint16_t* pixels = (uint16_t*)&fileAddr[data_offset];
 	return pixels;
+
 	/*
 	// here's GC code, but there's no reason to close the heightmap
 	UnmapViewOfFile(fileAddr);
@@ -292,35 +291,7 @@ void HeightmapHook::Preload()
 {
 	// this is called before mods are set up, so doing anything else here is unsafe
 	CompressToolsLib::SetLoggers(CompressToolsDebugLog, CompressToolsErrorLog);
-	/*
-	UpdateHeightmapSettings();
-	// compressed heightmap overrides fast heightmap
-	if (!Settings::UseHeightmapCompression() || !CompressedHeightmapFileExists())
-	{
-		if (Settings::UseFastUncompressedHeightmap())
-		{
-			DebugLog("Opening fast heightmap...");
-			mappedHeightmapPixels = MMapTIFF(Settings::ResolvePath("data/newland/land/fullmap.tif"));
-			DebugLog("Heightmap mapped!");
-		}
-		// early return if heightmap compression is disabled
-		return;
-	}
-
-	CompressToolsLib::ImageMode mode = CompressToolsLib::ImageMode::Streaming;
-
-	if (Settings::PreloadHeightmap())
-		mode = CompressToolsLib::ImageMode::Preload;
-
-	DebugLog("Loading heightmap...");
-	heightmapHandle = CompressToolsLib::OpenImage(Settings::ResolvePath("data/newland/land/fullmap.cif").c_str(), mode);
-	DebugLog("Heightmap loaded!");
-	*/
 }
-
-// bytes before modification
-//uint8_t Terrain_getHeightOld[15];
-//uint8_t Terrain_getRawDataOld[15];
 
 void HeightmapHook::Init()
 {
@@ -344,17 +315,9 @@ void HeightmapHook::Init()
 	// protected: float __cdecl Terrain::getHeight(class Ogre::Vector3 const & __ptr64,int) __ptr64
 	void* Terrain_getHeight_ptr = Escort::GetFuncAddress("Plugin_Terrain_x64.dll", "?getHeight@Terrain@@IEAAMAEBVVector3@Ogre@@H@Z");
 	Terrain_getHeight_orig = Escort::JmpReplaceHook<float(Terrain* thisPtr, class Ogre::Vector3 const& vec, int unk)>(Terrain_getHeight_ptr, Terrain_getHeight_hook);
-	/*
-	// backup bytes
-	memcpy(Terrain_getHeightOld, Terrain_getHeightPtr, 15);
-	// TODO update
-	Escort::PushRetHookASM(Terrain_getHeightPtr, Terrain_getHeight, 15);
-	*/
+
 	// mangled symbol for Terrain::getRawData()
 	// public: unsigned __int64 __cdecl Terrain::getRawData(int,int,int,int,char * __ptr64)const __ptr64
-	// backup bytes
-	//memcpy(Terrain_getRawDataOld, Terrain_getRawDataPtr, 15);
-	//Escort::PushRetHookASM(Terrain_getRawDataPtr, Terrain_getRawData, 15);
 	void* Terrain_getRawData_ptr = Escort::GetFuncAddress("Plugin_Terrain_x64.dll", "?getRawData@Terrain@@QEBA_KHHHHPEAD@Z");
 	Terrain_getRawData_orig = Escort::JmpReplaceHook<uint64_t(Terrain* thisPtr, int x, int y, int w, int h, char* __ptr64 out)>(Terrain_getRawData_ptr, Terrain_getRawData_hook);
 
