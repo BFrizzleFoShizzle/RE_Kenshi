@@ -101,6 +101,12 @@
     <ClInclude Include="KenshiLib\Include\core\md5.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="stb_image.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="tiny_dng_loader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="io.h">
       <Filter>Header Files</Filter>
     </ClInclude>

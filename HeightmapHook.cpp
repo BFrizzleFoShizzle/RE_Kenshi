@@ -13,6 +13,14 @@
 #include "Debug.h"
 #include "Settings.h"
 #include "io.h"
+#include "Release_Assert.h"
+
+
+// pretty sure this macro is defined in C++11? so we just NOP it out
+#define __func__ ""
+#define TINY_DNG_LOADER_IMPLEMENTATION
+#define STB_IMAGE_IMPLEMENTATION
+#include "tiny_dng_loader.h"
 
 CompressToolsLib::CompressedImageFileHdl heightmapHandle = nullptr;
 
@@ -44,6 +52,144 @@ struct Terrain
 
 };
 
+// used for mmap'd TIF loading, which is faster on SSDs
+// adapted from tinydng::LoadDNGFromMemory
+static bool ParseDNGFromMemory(const char* mem, unsigned int size,
+	std::vector<tinydng::FieldInfo>& custom_fields,
+	std::vector<tinydng::DNGImage>* images)
+{
+	if (mem == nullptr || size < 32 || images == nullptr) {
+		ErrorLog("Invalid argument. Argument is null or invalid.");
+		return false;
+	}
+
+	bool is_dng_big_endian = false;
+
+	const unsigned short magic = *(reinterpret_cast<const unsigned short*>(mem));
+
+	if (magic == 0x4949) 
+	{
+		// might be TIFF(DNG).
+	}
+	else if (magic == 0x4d4d) 
+	{
+		// might be TIFF(DNG, bigendian).
+		is_dng_big_endian = true;
+		TINY_DNG_DPRINTF("DNG is big endian\n");
+	}
+	else 
+	{
+		std::stringstream ss;
+		ss << "Seems the data is not a DNG format." << std::endl;
+		ErrorLog(ss.str());
+		return false;
+	}
+
+	const bool swap_endian = (is_dng_big_endian && (!tinydng::IsBigEndian()));
+	tinydng::StreamReader sr(reinterpret_cast<const uint8_t*>(mem), size, swap_endian);
+
+	char header[32];
+
+	if (32 != sr.read(32, 32, reinterpret_cast<unsigned char*>(header))) 
+	{
+		ErrorLog("Error reading header");
+		return false;
+	}
+
+	// skip magic header
+	if (!sr.seek_set(4)) 
+	{
+		ErrorLog("Failed to seek to offset 4.");
+		return false;
+	}
+
+	std::string warn, err;
+	bool ret = ParseDNGFromMemory(sr, custom_fields, images, &warn, &err);
+
+	if (!ret) 
+	{
+		ErrorLog(err + "Failed to parse DNG data.");
+		return false;
+	}
+
+	assert_release(images->size() == 1, "wrong number of images in TIFF");
+	tinydng::DNGImage* image = &images->at(0);
+	image->bits_per_sample = image->bits_per_sample_original;
+	assert_release(image->bits_per_sample == 16, "wrong number of bits per sample in TIFF");
+
+	return true;
+}
+
+static uint16_t* mappedHeightmapPixels = nullptr;
+static const uint64_t heightmapDim = 16385;
+
+static uint16_t* MMapTIFF(std::string path)
+{
+	size_t fileSize = boost::filesystem::file_size(path);
+	// TODO is sequential scan useful here?
+	HANDLE hFile = CreateFileA(path.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_NO_BUFFERING | FILE_FLAG_SEQUENTIAL_SCAN, NULL);
+	if (hFile == INVALID_HANDLE_VALUE)
+	{
+		ErrorLog("Error opening TIFF file");
+		return nullptr;
+	}
+	HANDLE hMappingObject = CreateFileMappingA(hFile, NULL, PAGE_READONLY, 0, 0, NULL);
+	if (hMappingObject == NULL)
+	{
+		ErrorLog("Error mapping TIFF file");
+		CloseHandle(hFile);
+		return nullptr;
+	}
+	char* fileAddr = (char*)MapViewOfFile(hMappingObject, FILE_MAP_READ, 0, 0, 0);
+	if (fileAddr == NULL)
+	{
+		ErrorLog("Error mapping view of TIFF file");
+		CloseHandle(hFile);
+		CloseHandle(hMappingObject);
+		return nullptr;
+	}
+
+	//bool isDNG = tinydng::IsDNGFromMemory(fileAddr, fileSize, nullptr);
+
+	std::vector<tinydng::FieldInfo> custom_fields;
+	std::vector<tinydng::DNGImage> images;
+	// tinydng::LoadDNGFromMemory actually loads all bytes into RAM, which we don't want to do...
+	bool loaded = ParseDNGFromMemory(fileAddr, fileSize, custom_fields, &images);
+
+	if (!loaded)
+	{
+		ErrorLog("ParseDNGFromMemory failed loading " + path);
+		return nullptr;
+	}
+
+	tinydng::DNGImage* image = &images[0];
+	const size_t data_offset = (image->offset > 0) ? image->offset : image->tile_offset;
+
+	const size_t len = size_t(image->samples_per_pixel) *
+		size_t(image->width) * size_t(image->height) *
+		size_t(image->bits_per_sample) / size_t(8);
+
+	if (data_offset + len > fileSize)
+	{
+		ErrorLog("TIFF pixel buffer overruns" + path);
+		return nullptr;
+	}
+
+	if (len != heightmapDim * heightmapDim * sizeof(uint16_t))
+	{
+		ErrorLog("TIFF pixel buffer size unexpected, got " + std::to_string(len) + " expected " + std::to_string(heightmapDim * heightmapDim * sizeof(uint16_t)));
+		return nullptr;
+	}
+
+	uint16_t* pixels = (uint16_t*)&fileAddr[data_offset];
+	return pixels;
+	/*
+	// here's GC code, but there's no reason to close the heightmap
+	UnmapViewOfFile(fileAddr);
+	CloseHandle(hFile);
+	CloseHandle(hMappingObject);
+	*/
+}
 
 // These exist so we don't have to re-read this setting a million times in hot loops
 // These don't need to be thread-safe since incorrectly using the old value
@@ -78,6 +224,8 @@ float Terrain_getHeight_hook(Terrain* thisPtr, class Ogre::Vector3 const& vec, i
 		uint16_t height = 0;
 		if (heightmapMode == HeightmapHook::COMPRESSED)
 			height = CompressToolsLib::ReadHeightValue(heightmapHandle, pixelX, pixelY);
+		else if (heightmapMode == HeightmapHook::FAST_UNCOMPRESSED)
+			height = mappedHeightmapPixels[pixelX + (pixelY * thisPtr->bounds->mapMaxX)];
 		else
 		{
 			ErrorLog("Heightmap mode is invalid! Resetting to vanilla.");
@@ -103,6 +251,10 @@ unsigned __int64 Terrain_getRawData_hook(Terrain* thisPtr, int x, int y, int w, 
 	if (heightmapMode == HeightmapHook::VANILLA)
 		return Terrain_getRawData_orig(thisPtr, x, y, w, h, out);
 
+	// this check should never fail, if it does, the following code will segfault
+	if (heightmapMode != HeightmapHook::COMPRESSED)
+		assert_release(mappedHeightmapPixels != nullptr);
+
 	uint16_t *shortPtr = reinterpret_cast<uint16_t*>(out);
 	uint64_t written = 0;
 	for (int i = 0; i < h; ++i)
@@ -113,8 +265,12 @@ unsigned __int64 Terrain_getRawData_hook(Terrain* thisPtr, int x, int y, int w, 
 			int pixelY = y + i;
 			uint16_t height = 0;
 			// Note: using useCompressedHeightmapCache directly here would be unsafe if the setting is 
+			// toggled part-way through the function and UseFastUncompressedHeightmap() is false
+			// (the mmap read would trigger a segfault)
 			if (heightmapMode == HeightmapHook::COMPRESSED)
 				height = CompressToolsLib::ReadHeightValue(heightmapHandle, pixelX, pixelY);
+			else
+				height = mappedHeightmapPixels[pixelX + (pixelY * heightmapDim)];
 			shortPtr[i * w + j] = height;
 			++written;
 		}
@@ -137,9 +293,19 @@ void HeightmapHook::Preload()
 	// this is called before mods are set up, so doing anything else here is unsafe
 	CompressToolsLib::SetLoggers(CompressToolsDebugLog, CompressToolsErrorLog);
 	/*
+	UpdateHeightmapSettings();
+	// compressed heightmap overrides fast heightmap
 	if (!Settings::UseHeightmapCompression() || !CompressedHeightmapFileExists())
+	{
+		if (Settings::UseFastUncompressedHeightmap())
+		{
+			DebugLog("Opening fast heightmap...");
+			mappedHeightmapPixels = MMapTIFF(Settings::ResolvePath("data/newland/land/fullmap.tif"));
+			DebugLog("Heightmap mapped!");
+		}
 		// early return if heightmap compression is disabled
 		return;
+	}
 
 	CompressToolsLib::ImageMode mode = CompressToolsLib::ImageMode::Streaming;
 
@@ -167,6 +333,10 @@ void HeightmapHook::Init()
 			&& CompressedHeightmapFileExists())
 		{
 			Settings::SetHeightmapMode(COMPRESSED);
+		}
+		else
+		{
+			Settings::SetHeightmapMode(FAST_UNCOMPRESSED);
 		}
 	}
 
@@ -222,6 +392,12 @@ void HeightmapHook::UpdateHeightmapSettings()
 			newMode = VANILLA;
 		}
 	}
+	else if (newMode == FAST_UNCOMPRESSED && mappedHeightmapPixels == nullptr)
+	{
+		DebugLog("Opening fast heightmap...");
+		mappedHeightmapPixels = MMapTIFF(Settings::ResolvePath("data/newland/land/fullmap.tif"));
+		DebugLog("Fast heightmap mapped!");
+	}
 
 	// it's now safe to update these as all required files will be open
 	heightmapModeCache = Settings::GetHeightmapMode();
@@ -256,6 +432,8 @@ HeightmapHook::HeightmapMode HeightmapHook::GetRecommendedHeightmapMode()
 	{
 		return HeightmapHook::COMPRESSED;
 	}
+	// For pretty much all other configurations, "fast uncompressed" should be fastest
+	return HeightmapHook::FAST_UNCOMPRESSED;
 }
 
 /******** debugging functions ************/

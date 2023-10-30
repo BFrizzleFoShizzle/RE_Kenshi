@@ -12,6 +12,7 @@ namespace HeightmapHook
 		AUTO = -1,
 		VANILLA = 0,
 		COMPRESSED = 1,
+		FAST_UNCOMPRESSED = 2
 	};
 
 	void Preload();

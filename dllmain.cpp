@@ -1100,6 +1100,12 @@ void InitGUI()
         logAudio->eventMouseButtonClick += MyGUI::newDelegate(TickButtonBehaviourClick);
         logAudio->eventMouseButtonClick += MyGUI::newDelegate(ToggleLogAudio);
         positionY += 30;
+
+        std::string heightmapRecommendationText = boost::locale::gettext("Fast uncompressed heightmap should be faster on SSDs\nCompressed heightmap should be faster on HDDs");
+        MyGUI::TextBox* heighmapRecommendLabel = settingsView->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 10 * scale, MyGUI::Align::VStretch | MyGUI::Align::Left, "HeightmapRecommendLabel");
+        heighmapRecommendLabel->setCaption(heightmapRecommendationText);
+        positionY += 50;
+
         if (!HeightmapHook::CompressedHeightmapFileExists())
         {
             MyGUI::FactoryManager& factory = MyGUI::FactoryManager::getInstance();
@@ -1134,13 +1140,17 @@ void InitGUI()
         }
 
         std::string compressedHeighmapTip = "";
+        std::string fastUncompressedHeighmapTip = "";
         if (HeightmapHook::GetRecommendedHeightmapMode() == HeightmapHook::COMPRESSED)
             compressedHeighmapTip = boost::locale::gettext("[RECOMMENDED] ");
+        if (HeightmapHook::GetRecommendedHeightmapMode() == HeightmapHook::FAST_UNCOMPRESSED)
+            fastUncompressedHeighmapTip = boost::locale::gettext("[RECOMMENDED] ");
         if (!HeightmapHook::CompressedHeightmapFileExists())
             compressedHeighmapTip += "#440000" + boost::locale::gettext("[UNAVAILABLE] ");
         MyGUI::ComboBoxPtr heightmapOptions = settingsView->createWidget<MyGUI::ComboBox>("Kenshi_ComboBox", 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 36 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "HeightmapComboBox");
         heightmapOptions->addItem(boost::locale::gettext("Use vanilla heightmap implementation"), HeightmapHook::VANILLA);
         heightmapOptions->addItem(compressedHeighmapTip + boost::locale::gettext("Use compressed heightmap"), HeightmapHook::COMPRESSED);
+        heightmapOptions->addItem(fastUncompressedHeighmapTip + boost::locale::gettext("Use fast uncompressed heightmap"), HeightmapHook::FAST_UNCOMPRESSED);
         heightmapOptions->setIndexSelected(Settings::GetHeightmapMode());
         heightmapOptions->setComboModeDrop(true);
         heightmapOptions->setSmoothShow(false);

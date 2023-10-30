@@ -200,6 +200,8 @@
     <ClInclude Include="Settings.h" />
     <ClInclude Include="ShaderCache.h" />
     <ClInclude Include="Sound.h" />
+    <ClInclude Include="stb_image.h" />
+    <ClInclude Include="tiny_dng_loader.h" />
     <ClInclude Include="UnwindCode.h" />
     <ClInclude Include="Version.h" />
     <ClInclude Include="WinHttpClient.h" />
