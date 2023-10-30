@@ -801,20 +801,18 @@ void MaxSquadsSliderTextChange(MyGUI::EditBox* editBox)
     MaxSquadsScroll(scrollBar, value + 1);
 }
 
-void ToggleFixRNG(MyGUI::WidgetPtr sender)
+template<void F(bool)>
+void ButtonToggleSetting(MyGUI::WidgetPtr sender)
 {
     MyGUI::ButtonPtr button = sender->castType<MyGUI::Button>();
-    bool fixRNG = button->getStateSelected();
+    bool newState = button->getStateSelected();
 
     // Update settings + hooks
-    MiscHooks::SetFixRNG(fixRNG);
+    F(newState);
 }
 
-void ToggleIncreaseMaxCameraDistance(MyGUI::WidgetPtr sender)
+void SetIncreaseMaxCameraDistance(bool increaseMaxCameraDistance)
 {
-    MyGUI::ButtonPtr button = sender->castType<MyGUI::Button>();
-    bool increaseMaxCameraDistance = button->getStateSelected();
-
     if (increaseMaxCameraDistance)
         MiscHooks::SetMaxCameraDistance(4000.0f);
     else
@@ -823,56 +821,8 @@ void ToggleIncreaseMaxCameraDistance(MyGUI::WidgetPtr sender)
     Settings::SetIncreaseMaxCameraDistance(increaseMaxCameraDistance);
 }
 
-void ToggleCacheShaders(MyGUI::WidgetPtr sender)
+void SetUseCustomGameSpeeds(bool useCustomGameSpeeds)
 {
-    MyGUI::ButtonPtr button = sender->castType<MyGUI::Button>();
-    bool cacheShaders = button->getStateSelected();
-
-    // Update settings + hooks
-    Settings::SetCacheShaders(cacheShaders);
-}
-
-void ToggleLogFileIO(MyGUI::WidgetPtr sender)
-{
-    MyGUI::ButtonPtr button = sender->castType<MyGUI::Button>();
-    bool logFileIO = button->getStateSelected();
-
-    // Update settings + hooks
-    Settings::SetLogFileIO(logFileIO);
-}
-
-void ToggleLogAudio(MyGUI::WidgetPtr sender)
-{
-    MyGUI::ButtonPtr button = sender->castType<MyGUI::Button>();
-    bool logAudio = button->getStateSelected();
-
-    // Update settings + hooks
-    Settings::SetLogAudio(logAudio);
-}
-
-void ToggleCheckUpdates(MyGUI::WidgetPtr sender)
-{
-    MyGUI::ButtonPtr button = sender->castType<MyGUI::Button>();
-    bool checkUpdates = button->getStateSelected();
-
-    // Update settings + hooks
-    Settings::SetCheckUpdates(checkUpdates);
-}
-
-void ToggleOpenSettingsOnStart(MyGUI::WidgetPtr sender)
-{
-    MyGUI::ButtonPtr button = sender->castType<MyGUI::Button>();
-    bool openSettingsOnStart = button->getStateSelected();
-
-    // Update settings + hooks
-    Settings::SetOpenSettingsOnStart(openSettingsOnStart);
-}
-
-void ToggleUseCustomGameSpeeds(MyGUI::WidgetPtr sender)
-{
-    MyGUI::ButtonPtr button = sender->castType<MyGUI::Button>();
-    bool useCustomGameSpeeds = button->getStateSelected();
-
     gameSpeedPanel->setVisible(useCustomGameSpeeds);
     gameSpeedTutorialWindow->setVisible(useCustomGameSpeeds);
 
@@ -1056,49 +1006,49 @@ void InitGUI()
         checkUpdatesToggle->setStateSelected(Settings::GetCheckUpdates());
         checkUpdatesToggle->setCaption(boost::locale::gettext("Automatically check for updates"));
         checkUpdatesToggle->eventMouseButtonClick += MyGUI::newDelegate(TickButtonBehaviourClick);
-        checkUpdatesToggle->eventMouseButtonClick += MyGUI::newDelegate(ToggleCheckUpdates);
+        checkUpdatesToggle->eventMouseButtonClick += MyGUI::newDelegate(ButtonToggleSetting<Settings::SetCheckUpdates>);
         positionY += 30;
 
         MyGUI::ButtonPtr openSettingsOnStartToggle = settingsView->createWidget<MyGUI::Button>("Kenshi_TickButton1", 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 26 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "OpenSettingsOnStart");
         openSettingsOnStartToggle->setStateSelected(Settings::GetOpenSettingsOnStart());
         openSettingsOnStartToggle->setCaption(boost::locale::gettext("Open RE_Kenshi settings on startup"));
         openSettingsOnStartToggle->eventMouseButtonClick += MyGUI::newDelegate(TickButtonBehaviourClick);
-        openSettingsOnStartToggle->eventMouseButtonClick += MyGUI::newDelegate(ToggleOpenSettingsOnStart);
+        openSettingsOnStartToggle->eventMouseButtonClick += MyGUI::newDelegate(ButtonToggleSetting<Settings::SetOpenSettingsOnStart>);
         positionY += 30;
 
         MyGUI::ButtonPtr fixRNGToggle = settingsView->createWidget<MyGUI::Button>("Kenshi_TickButton1", 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 26 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "FixRNGToggle");
         fixRNGToggle->setStateSelected(Settings::GetFixRNG());
         fixRNGToggle->setCaption(boost::locale::gettext("Fix Kenshi's RNG bug"));
         fixRNGToggle->eventMouseButtonClick += MyGUI::newDelegate(TickButtonBehaviourClick);
-        fixRNGToggle->eventMouseButtonClick += MyGUI::newDelegate(ToggleFixRNG);
+        fixRNGToggle->eventMouseButtonClick += MyGUI::newDelegate(ButtonToggleSetting<MiscHooks::SetFixRNG>);
         positionY += 30;
 
         MyGUI::ButtonPtr increaseMaxCameraDistance = settingsView->createWidget<MyGUI::Button>("Kenshi_TickButton1", 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 26 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "IncreaseMaxCameraDistance");
         increaseMaxCameraDistance->setStateSelected(Settings::GetIncreaseMaxCameraDistance());
         increaseMaxCameraDistance->setCaption(boost::locale::gettext("Increase max camera distance"));
         increaseMaxCameraDistance->eventMouseButtonClick += MyGUI::newDelegate(TickButtonBehaviourClick);
-        increaseMaxCameraDistance->eventMouseButtonClick += MyGUI::newDelegate(ToggleIncreaseMaxCameraDistance);
+        increaseMaxCameraDistance->eventMouseButtonClick += MyGUI::newDelegate(ButtonToggleSetting<SetIncreaseMaxCameraDistance>);
         positionY += 30;
 
         MyGUI::ButtonPtr cacheShaders = settingsView->createWidget<MyGUI::Button>("Kenshi_TickButton1", 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 26 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "CacheShadersToggle");
         cacheShaders->setStateSelected(Settings::GetCacheShaders());
         cacheShaders->setCaption(boost::locale::gettext("Cache shaders"));
         cacheShaders->eventMouseButtonClick += MyGUI::newDelegate(TickButtonBehaviourClick);
-        cacheShaders->eventMouseButtonClick += MyGUI::newDelegate(ToggleCacheShaders);
+        cacheShaders->eventMouseButtonClick += MyGUI::newDelegate(ButtonToggleSetting<Settings::SetCacheShaders>);
         positionY += 30;
 
         MyGUI::ButtonPtr logFileIO = settingsView->createWidget<MyGUI::Button>("Kenshi_TickButton1", 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 26 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "LogFileIO");
         logFileIO->setStateSelected(Settings::GetLogFileIO());
         logFileIO->setCaption(boost::locale::gettext("Log file IO"));
         logFileIO->eventMouseButtonClick += MyGUI::newDelegate(TickButtonBehaviourClick);
-        logFileIO->eventMouseButtonClick += MyGUI::newDelegate(ToggleLogFileIO);
+        logFileIO->eventMouseButtonClick += MyGUI::newDelegate(ButtonToggleSetting<Settings::SetLogFileIO>);
         positionY += 30;
 
         MyGUI::ButtonPtr logAudio = settingsView->createWidget<MyGUI::Button>("Kenshi_TickButton1", 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 26 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "LogAudio");
         logAudio->setStateSelected(Settings::GetLogAudio());
         logAudio->setCaption(boost::locale::gettext("Log audio IDs/events/switches/states"));
         logAudio->eventMouseButtonClick += MyGUI::newDelegate(TickButtonBehaviourClick);
-        logAudio->eventMouseButtonClick += MyGUI::newDelegate(ToggleLogAudio);
+        logAudio->eventMouseButtonClick += MyGUI::newDelegate(ButtonToggleSetting<Settings::SetLogAudio>);
         positionY += 30;
 
         std::string heightmapRecommendationText = boost::locale::gettext("Fast uncompressed heightmap should be faster on SSDs\nCompressed heightmap should be faster on HDDs");
@@ -1260,7 +1210,7 @@ void InitGUI()
         useCustomGameSpeeds->setStateSelected(Settings::GetUseCustomGameSpeeds());
         useCustomGameSpeeds->setCaption(boost::locale::gettext("Use custom game speed controls"));
         useCustomGameSpeeds->eventMouseButtonClick += MyGUI::newDelegate(TickButtonBehaviourClick);
-        useCustomGameSpeeds->eventMouseButtonClick += MyGUI::newDelegate(ToggleUseCustomGameSpeeds);
+        useCustomGameSpeeds->eventMouseButtonClick += MyGUI::newDelegate(ButtonToggleSetting<SetUseCustomGameSpeeds>);
         positionY += 30;
 
         gameSpeedPanel = settingsView->createWidget<MyGUI::Widget>("", 0, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 100, MyGUI::Align::Top | MyGUI::Align::Left, "GameSpeedPanel");
