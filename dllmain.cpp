@@ -389,7 +389,6 @@ MyGUI::ButtonPtr sendUUIDToggle = nullptr;
 
 const uint32_t DEBUG_WINDOW_WIDTH = 700;
 const uint32_t DEBUG_WINDOW_HEIGHT = 600;
-const uint32_t DEBUG_WINDOW_RIGHT = DEBUG_WINDOW_WIDTH - 30; // technically correct value would have VScrollBar width subtracted
 
 void TickButtonBehaviourClick(MyGUI::WidgetPtr sender)
 {
@@ -508,10 +507,11 @@ MyGUI::WidgetPtr CreateSlider(MyGUI::WidgetPtr parent, int x, int y, int w, int 
         MyGUI::ButtonPtr deleteButton = sliderRoot->createWidget<MyGUI::Button>("Kenshi_CloseButtonSkin", w - deleteSize, (h - deleteSize) / 2, deleteSize, deleteSize, MyGUI::Align::Right | MyGUI::Align::Top, namePrefix + "DeleteButton");
     else
         shift += deleteSize;
-    MyGUI::TextBox* sliderLabel = sliderRoot->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 0, 0, shift + w * 0.3f, h, MyGUI::Align::Left | MyGUI::Align::VStretch, namePrefix + "ElementText");
-    sliderLabel->setTextAlign(MyGUI::Align::Left);
-    MyGUI::ScrollBar* scrollBar = sliderRoot->createWidget<MyGUI::ScrollBar>("Kenshi_ScrollBar", shift + w * 0.32f, 0, w * 0.48f, h, MyGUI::Align::Stretch, namePrefix + "Slider");
-    MyGUI::EditBox* valueText = sliderRoot->createWidget<MyGUI::EditBox>("Kenshi_EditBox", shift + w * 0.82f, 0, w * 0.10f, h, MyGUI::Align::Right | MyGUI::Align::VStretch, namePrefix + "NumberText");
+    MyGUI::TextBox* sliderLabel = sliderRoot->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 0, 0, shift + w * 0.3f, h, MyGUI::Align::Left | MyGUI::Align::Top, namePrefix + "ElementText");
+    sliderLabel->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
+    MyGUI::ScrollBar* scrollBar = sliderRoot->createWidget<MyGUI::ScrollBar>("Kenshi_ScrollBar", shift + w * 0.32f, 0, w * 0.48f, h, MyGUI::Align::Left | MyGUI::Align::Top, namePrefix + "Slider");
+    MyGUI::EditBox* valueText = sliderRoot->createWidget<MyGUI::EditBox>("Kenshi_EditBox", shift + w * 0.82f, 0, w * 0.10f, h, MyGUI::Align::Right | MyGUI::Align::Top, namePrefix + "NumberText");
+    valueText->getClientWidget()->setAlign(MyGUI::Align::Stretch);
 
     return sliderRoot;
 }
@@ -524,8 +524,15 @@ MyGUI::WidgetPtr CreateSlider(MyGUI::WidgetPtr parent, int x, int y, int w, int 
     elementText->setCaption(label);
     MyGUI::EditBox* numberText = slider->findWidget(namePrefix + "NumberText")->castType<MyGUI::EditBox>();
     numberText->setEditStatic(readOnlyText);
-
     numberText->setCaption(defaultValue);
+    // grow input box size if needed
+    int sizeDelta = numberText->getTextSize().height - numberText->getClientWidget()->getCoord().height;
+    if (sizeDelta > 0)
+    {
+        slider->setSize(slider->getWidth(), slider->getHeight() + sizeDelta);
+        numberText->setSize(numberText->getWidth(), numberText->getHeight() + sizeDelta);
+    }
+
     MyGUI::ScrollBar* scrollBar = slider->findWidget(namePrefix + "Slider")->castType<MyGUI::ScrollBar>();
     scrollBar->setScrollRange(scrollRange);
     scrollBar->setScrollPosition(defaultPosition);
@@ -582,7 +589,7 @@ void DeleteGameSpeedScroll(MyGUI::WidgetPtr deleteBtn)
     RedrawGameSpeedSettings();
 }
 
-MyGUI::ScrollViewPtr settingsView;
+MyGUI::ScrollViewPtr gameplayScroll;
 int gameSpeedScrollBarsStart = 0;
 
 void RedrawGameSpeedSettings()
@@ -590,14 +597,15 @@ void RedrawGameSpeedSettings()
     MyGUI::Gui* gui = MyGUI::Gui::getInstancePtr();
 
     float scale = float(modMenuWindow->getClientCoord().height) / DEBUG_WINDOW_HEIGHT;
+    int canvasWidth = gameplayScroll->getCanvasSize().width;
 
     // Clear old scroll bars
     int scrollBarIndex = 0;
     std::stringstream nameStr;
     nameStr << "SpeedSlider" << scrollBarIndex << "_";
-    while (settingsView->findWidget(nameStr.str() + "SliderRoot"))
+    while (gameplayScroll->findWidget(nameStr.str() + "SliderRoot"))
     {
-        gui->destroyWidget(settingsView->findWidget(nameStr.str() + "SliderRoot"));
+        gui->destroyWidget(gameplayScroll->findWidget(nameStr.str() + "SliderRoot"));
         ++scrollBarIndex;
         nameStr = std::stringstream();
         nameStr << "SpeedSlider" << scrollBarIndex << "_";
@@ -606,6 +614,7 @@ void RedrawGameSpeedSettings()
     // Create new scroll bars
     std::vector<float> gameSpeeds = Settings::GetGameSpeeds();
     int positionY = 35;
+    int pad = 4 * scale;
     for (int i = 0; i < gameSpeeds.size(); ++i)
     {
         std::stringstream nameStr;
@@ -615,7 +624,7 @@ void RedrawGameSpeedSettings()
         std::stringstream value;
         value << gameSpeeds[i];
         // 0...range-1 = 0...1000
-        MyGUI::WidgetPtr slider = CreateSlider(gameSpeedPanel, 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 40 * scale, nameStr.str(), true, label.str(),
+        MyGUI::WidgetPtr slider = CreateSlider(gameSpeedPanel, 2, positionY, canvasWidth - 4, 40 * scale, nameStr.str(), true, label.str(),
             false, value.str(), UnscaleGameSpeed(gameSpeeds[i]), 1001);
         MyGUI::ScrollBar* scrollBar = slider->findWidget(nameStr.str() + "Slider")->castType<MyGUI::ScrollBar>();
         if (!scrollBar)
@@ -626,13 +635,14 @@ void RedrawGameSpeedSettings()
         valueText->eventEditTextChange += MyGUI::newDelegate(SpeedSliderTextChange);
         MyGUI::ButtonPtr deleteButton = slider->findWidget(nameStr.str() + "DeleteButton")->castType<MyGUI::Button>();
         deleteButton->eventMouseButtonClick += MyGUI::newDelegate(DeleteGameSpeedScroll);
-        positionY += 45;
+        positionY += slider->getHeight() + pad;
     }
 
     // resize settings
-    MyGUI::IntSize canvasSize = settingsView->getCanvasSize();
-    gameSpeedPanel->setSize(gameSpeedPanel->getWidth(), positionY * scale);
-    settingsView->setCanvasSize(canvasSize.width, std::max(int((gameSpeedScrollBarsStart + positionY) * scale), canvasSize.height));
+    MyGUI::IntSize canvasSize = gameplayScroll->getCanvasSize();
+    gameSpeedPanel->setSize(gameSpeedPanel->getWidth(), positionY);
+    int newHeight = gameSpeedPanel->getBottom();
+    gameplayScroll->setCanvasSize(canvasSize.width, std::max(newHeight, canvasSize.height));
 }
 
 void AddGameSpeed(MyGUI::WidgetPtr button)
@@ -811,12 +821,17 @@ void ButtonToggleSetting(MyGUI::WidgetPtr sender)
     F(newState);
 }
 
+// NOTE: this re-sizes the height so the text isn't clipped
 template<void F(MyGUI::WidgetPtr)>
-MyGUI::ButtonPtr CreateStandardTickButton(MyGUI::WidgetPtr parent, std::string caption, float left, float top, float width, float height, std::string name, bool initialState)
+MyGUI::ButtonPtr CreateStandardTickButton(MyGUI::WidgetPtr parent, std::string caption, float left, float top, float width, float minHeight, std::string name, bool initialState)
 {
-    MyGUI::ButtonPtr newToggle = parent->createWidget<MyGUI::Button>("Kenshi_TickButton1", left, top, width, height, MyGUI::Align::Top | MyGUI::Align::Left, name);
+    MyGUI::ButtonPtr newToggle = parent->createWidget<MyGUI::Button>("Kenshi_TickButton1", left, top, width, minHeight, MyGUI::Align::Top | MyGUI::Align::Left, name);
     newToggle->setStateSelected(initialState);
     newToggle->setCaption(caption);
+    int minHeightToNotLookBad = newToggle->getTextSize().height + 4;
+    // auto-resize to avoid clipping
+    if (minHeightToNotLookBad > minHeight)
+        newToggle->setSize(width, minHeightToNotLookBad);
     newToggle->eventMouseButtonClick += MyGUI::newDelegate(TickButtonBehaviourClick);
     newToggle->eventMouseButtonClick += MyGUI::newDelegate(F);
     return newToggle;
@@ -872,6 +887,67 @@ void SendBugPress(MyGUI::WidgetPtr sender)
     bugReportWindow->setVisible(false);
 }
 
+void CreateGameSpeedTutorialWindow(MyGUI::Gui* gui, float scale)
+{
+    gameSpeedTutorialWindow = gui->createWidget<MyGUI::Window>("Kenshi_WindowCX", 100, 100, 630 * scale, 470 * scale, MyGUI::Align::Center, "Window", "GameSpeedTutorialWindow");
+    gameSpeedTutorialWindow->eventWindowButtonPressed += MyGUI::newDelegate(debugMenuButtonPress);
+    gameSpeedTutorialWindow->setCaption(boost::locale::gettext("Game speed tutorial"));
+    // don't know why this isn't centering properly...
+    MyGUI::ImageBox* gameSpeedTutImage = gameSpeedTutorialWindow->getClientWidget()->createWidget<MyGUI::ImageBox>("ImageBox", 10 * scale, 10 * scale, 600 * scale, 400 * scale, MyGUI::Align::Center, "GameSpeedTutorialImage");
+    gameSpeedTutImage->setImageTexture("game_speed_tutorial.png");
+    MyGUI::TextBox* tutorialPauseLabel = gameSpeedTutImage->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 85 * scale, 190 * scale, 60 * scale, 30 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "TutorialPauseLabel");
+    tutorialPauseLabel->setCaption(boost::locale::gettext("Pause"));
+    tutorialPauseLabel->setTextAlign(MyGUI::Align::Center);
+    MyGUI::TextBox* tutorial1xSpeedLabel = gameSpeedTutImage->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 125 * scale, 145 * scale, 90 * scale, 30 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "Tutorial1xSpeedLabel");
+    tutorial1xSpeedLabel->setCaption(boost::locale::gettext("1x speed"));
+    tutorial1xSpeedLabel->setTextAlign(MyGUI::Align::Center);
+    MyGUI::TextBox* tutorialDecreaseSpeedLabel = gameSpeedTutImage->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 200 * scale, 170 * scale, 90 * scale, 60 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "TutorialDecreaseSpeedLabel");
+    tutorialDecreaseSpeedLabel->setCaption(boost::locale::gettext("Decrease\nspeed"));
+    tutorialDecreaseSpeedLabel->setTextAlign(MyGUI::Align::Center);
+    MyGUI::TextBox* tutorialIncreaseSpeedLabel = gameSpeedTutImage->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 270 * scale, 130 * scale, 90 * scale, 60 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "TutorialIncreaseSpeedLabel");
+    tutorialIncreaseSpeedLabel->setCaption(boost::locale::gettext("Increase\nspeed"));
+    tutorialIncreaseSpeedLabel->setTextAlign(MyGUI::Align::Center);
+    MyGUI::TextBox* currentSpeedLabel = gameSpeedTutImage->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 350 * scale, 185 * scale, 150 * scale, 60 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "currentSpeedLabel");
+    currentSpeedLabel->setCaption(boost::locale::gettext("Current speed"));
+    currentSpeedLabel->setTextAlign(MyGUI::Align::Center);
+    gameSpeedTutorialWindow->setVisible(false);
+}
+
+void CreateBugReportWindow(MyGUI::Gui* gui, float scale)
+{
+    // Create bug report window
+    bugReportWindow = gui->createWidget<MyGUI::Window>("Kenshi_WindowCX", 100, 100, 600 * scale, 600 * scale, MyGUI::Align::Center, "Window", "BugReportWindow");
+    bugReportWindow->setCaption(boost::locale::gettext("RE_Kenshi Bug Report"));
+    bugReportWindow->eventWindowButtonPressed += MyGUI::newDelegate(debugMenuButtonPress);
+    MyGUI::WidgetPtr bugReportPanel = bugReportWindow->getClientWidget()->createWidgetReal<MyGUI::Widget>("Kenshi_FloatingPanelLight", 0.0f, 0.0f, 1.0f, 1.0f, MyGUI::Align::Stretch, "BugReportPanel");
+    // Only edit boxes support word wrap?
+
+    MyGUI::EditBox* infoText = bugReportPanel->createWidgetReal<MyGUI::EditBox>("Kenshi_TextboxStandardText", 0.05f, 0.05f, 0.90f, 0.43f, MyGUI::Align::Top | MyGUI::Align::Left, "BugReportInfo");
+    infoText->setEditMultiLine(true);
+    infoText->setEditWordWrap(true);
+    infoText->setEditStatic(true);
+    infoText->setCaption(MyGUI::UString(boost::locale::gettext("Your report will be sent to RE_Kenshi's developer (BFrizzleFoShizzle) with the following information:"))
+        + "\n" + boost::locale::gettext("\nRE_Kenshi version: ") + Version::GetDisplayVersion()
+        + boost::locale::gettext("\nKenshi version: ") + Kenshi::GetKenshiVersion().ToString()
+        + boost::locale::gettext("\nUUID hash: ") + Bugs::GetUUIDHash() + boost::locale::gettext(" (optional - allows the developer to know all your reports come from the same machine)")
+        + boost::locale::gettext("\nYour bug description")
+        + boost::locale::gettext("\n\nPlease describe the bug:"));
+
+    MyGUI::EditBox* bugDescription = bugReportPanel->createWidgetReal<MyGUI::EditBox>("Kenshi_WordWrap", 0.05f, 0.50f, 0.90f, 0.33f, MyGUI::Align::Top | MyGUI::Align::Left, "BugDescription");
+    bugDescription->setEditStatic(false);
+
+    // Note: createWidgetReal can't be converted to CreateStandardTickButton
+    sendUUIDToggle = bugReportPanel->createWidgetReal<MyGUI::Button>("Kenshi_TickButton1", 0.05f, 0.84f, 0.90f, 0.05f, MyGUI::Align::Top | MyGUI::Align::Left, "SendUUIDToggle");
+    sendUUIDToggle->setStateSelected(true);
+    sendUUIDToggle->setCaption(boost::locale::gettext("Include UUID hash"));
+    sendUUIDToggle->eventMouseButtonClick += MyGUI::newDelegate(TickButtonBehaviourClick);
+
+    MyGUI::ButtonPtr sendBugButton = bugReportPanel->createWidgetReal<MyGUI::Button>("Kenshi_Button1", 0.05f, 0.90f, 0.90f, 0.07f, MyGUI::Align::Top | MyGUI::Align::Left, "SendReportButton");
+    sendBugButton->setCaption(boost::locale::gettext("Send report"));
+    sendBugButton->eventMouseButtonClick += MyGUI::newDelegate(SendBugPress);
+    bugReportWindow->setVisible(false);
+}
+
 void InitGUI()
 {
     DebugLog("Main menu loaded.");
@@ -911,6 +987,32 @@ void InitGUI()
         if (resMan)
             resMan->addResourceLocation("./RE_Kenshi", "FileSystem", "GUI");
 
+        MyGUI::FactoryManager& factory = MyGUI::FactoryManager::getInstance();
+        MyGUI::IObject* object = factory.createObject("Resource", "ResourceTrueTypeFont");
+
+        // small font has to be created BEFORE the font fix
+        // TODO move back after dropping support for old versions
+        MyGUI::ResourceTrueTypeFont* smallFont = object->castType<MyGUI::ResourceTrueTypeFont>(false);
+        if (smallFont != nullptr)
+        {
+            smallFont->setResourceName("Kenshi_StandardFont_Medium18");
+            smallFont->setSource("Exo2-Bold.ttf");
+            // TODO should this should use Kenshi font size?
+            smallFont->setSize(18);
+            smallFont->setHinting("use_native");
+            smallFont->setResolution(50);
+            smallFont->setAntialias(false);
+            smallFont->setTabWidth(4);
+            smallFont->setOffsetHeight(0);
+            smallFont->setSubstituteCode(0);
+            smallFont->setDistance(2);
+            smallFont->addCodePointRange(32, 126);
+            smallFont->addCodePointRange(8127, 8217);
+            smallFont->initialise();
+
+            MyGUI::ResourceManager::getInstance().addResource(smallFont);
+        }
+
         // Fixes fonts
         // TODO remove after dropping support for old versions
         MyGUIHooks::InitMainMenu();
@@ -944,160 +1046,85 @@ void InitGUI()
         if (!Settings::GetOpenSettingsOnStart())
             modMenuWindow->setVisible(false);
         MyGUI::Widget* client = modMenuWindow->findWidget("Client");
-        MyGUI::TabControl* tabControl = client->createWidget<MyGUI::TabControl>("Kenshi_TabControl", MyGUI::IntCoord(2, 2, modMenuWindow->getClientCoord().width - 4, modMenuWindow->getClientCoord().height - 4), MyGUI::Align::Stretch);
+        MyGUI::TabControl* tabControl = client->createWidget<MyGUI::TabControl>("Kenshi_TabControl", MyGUI::IntCoord(2, 2, modMenuWindow->getClientCoord().width - 4, modMenuWindow->getClientCoord().height - 4), MyGUI::Align::Stretch, "SettingsTabs");
 
         // Create game speed tutorial window
-        gameSpeedTutorialWindow = gui->createWidget<MyGUI::Window>("Kenshi_WindowCX", 100, 100, 630 * scale, 470 * scale, MyGUI::Align::Center, "Window", "GameSpeedTutorialWindow");
-        gameSpeedTutorialWindow->eventWindowButtonPressed += MyGUI::newDelegate(debugMenuButtonPress);
-        gameSpeedTutorialWindow->setCaption(boost::locale::gettext("Game speed tutorial"));
-        // don't know why this isn't centering properly...
-        MyGUI::ImageBox* gameSpeedTutImage = gameSpeedTutorialWindow->getClientWidget()->createWidget<MyGUI::ImageBox>("ImageBox", 10 * scale, 10 * scale, 600 * scale, 400 * scale, MyGUI::Align::Center, "GameSpeedTutorialImage");
-        gameSpeedTutImage->setImageTexture("game_speed_tutorial.png");
-        MyGUI::TextBox* tutorialPauseLabel = gameSpeedTutImage->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 85 * scale, 190 * scale, 60 * scale, 30 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "TutorialPauseLabel");
-        tutorialPauseLabel->setCaption(boost::locale::gettext("Pause"));
-        tutorialPauseLabel->setTextAlign(MyGUI::Align::Center);
-        MyGUI::TextBox* tutorial1xSpeedLabel = gameSpeedTutImage->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 125 * scale, 145 * scale, 90 * scale, 30 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "Tutorial1xSpeedLabel");
-        tutorial1xSpeedLabel->setCaption(boost::locale::gettext("1x speed"));
-        tutorial1xSpeedLabel->setTextAlign(MyGUI::Align::Center);
-        MyGUI::TextBox* tutorialDecreaseSpeedLabel = gameSpeedTutImage->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 200 * scale, 170 * scale, 90 * scale, 60 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "TutorialDecreaseSpeedLabel");
-        tutorialDecreaseSpeedLabel->setCaption(boost::locale::gettext("Decrease\nspeed"));
-        tutorialDecreaseSpeedLabel->setTextAlign(MyGUI::Align::Center);
-        MyGUI::TextBox* tutorialIncreaseSpeedLabel = gameSpeedTutImage->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 270 * scale, 130 * scale, 90 * scale, 60 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "TutorialIncreaseSpeedLabel");
-        tutorialIncreaseSpeedLabel->setCaption(boost::locale::gettext("Increase\nspeed"));
-        tutorialIncreaseSpeedLabel->setTextAlign(MyGUI::Align::Center);
-        MyGUI::TextBox* currentSpeedLabel = gameSpeedTutImage->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 350 * scale, 185 * scale, 150 * scale, 60 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "currentSpeedLabel");
-        currentSpeedLabel->setCaption(boost::locale::gettext("Current speed"));
-        currentSpeedLabel->setTextAlign(MyGUI::Align::Center);
-        gameSpeedTutorialWindow->setVisible(false);
+        // Use font size to scale game speed tutorial
+        CreateGameSpeedTutorialWindow(gui, Kenshi::GetCurrentFontSize() / 18.0f);
 
         // Create bug report window
-        bugReportWindow = gui->createWidget<MyGUI::Window>("Kenshi_WindowCX", 100, 100, 600 * scale, 600 * scale, MyGUI::Align::Center, "Window", "BugReportWindow");
-        bugReportWindow->setCaption(boost::locale::gettext("RE_Kenshi Bug Report"));
-        bugReportWindow->eventWindowButtonPressed += MyGUI::newDelegate(debugMenuButtonPress);
-        MyGUI::WidgetPtr bugReportPanel = bugReportWindow->getClientWidget()->createWidgetReal<MyGUI::Widget>("Kenshi_FloatingPanelLight", 0.0f, 0.0f, 1.0f, 1.0f, MyGUI::Align::Stretch, "BugReportPanel");
-        // Only edit boxes support word wrap?
+        CreateBugReportWindow(gui, scale);
 
-        MyGUI::EditBox* infoText = bugReportPanel->createWidgetReal<MyGUI::EditBox>("Kenshi_TextboxStandardText", 0.05f, 0.05f, 0.90f, 0.43f, MyGUI::Align::Top | MyGUI::Align::Left, "BugReportInfo");
-        infoText->setEditMultiLine(true);
-        infoText->setEditWordWrap(true);
-        infoText->setEditStatic(true);
-        infoText->setCaption(MyGUI::UString(boost::locale::gettext("Your report will be sent to RE_Kenshi's developer (BFrizzleFoShizzle) with the following information:"))
-            + "\n" + boost::locale::gettext("\nRE_Kenshi version: ") + Version::GetDisplayVersion()
-            + boost::locale::gettext("\nKenshi version: ") + Kenshi::GetKenshiVersion().ToString()
-            + boost::locale::gettext("\nUUID hash: ") + Bugs::GetUUIDHash() + boost::locale::gettext(" (optional - allows the developer to know all your reports come from the same machine)")
-            + boost::locale::gettext("\nYour bug description")
-            + boost::locale::gettext("\n\nPlease describe the bug:"));
+        // create all tabs so we can figure out if the window width is large enough to fit all tabs
+        MyGUI::TabItemPtr generalTab = tabControl->addItem(boost::locale::gettext("General"));
+        MyGUI::ScrollViewPtr generalScroll = generalTab->createWidget<MyGUI::ScrollView>("Kenshi_ScrollViewEmpty", MyGUI::IntCoord(2, 2, generalTab->getClientCoord().width - 4, generalTab->getClientCoord().height - 4), MyGUI::Align::Stretch, "GeneralTab");
 
-        MyGUI::EditBox* bugDescription = bugReportPanel->createWidgetReal<MyGUI::EditBox>("Kenshi_WordWrap", 0.05f, 0.50f, 0.90f, 0.33f, MyGUI::Align::Top | MyGUI::Align::Left, "BugDescription");
-        bugDescription->setEditStatic(false);
+        MyGUI::TabItemPtr gameplayTab = tabControl->addItem(boost::locale::gettext("Gameplay"));
+        gameplayScroll = gameplayTab->createWidget<MyGUI::ScrollView>("Kenshi_ScrollViewEmpty", MyGUI::IntCoord(2, 2, gameplayTab->getClientCoord().width - 4, gameplayTab->getClientCoord().height - 4), MyGUI::Align::Stretch);
 
-        // Note: createWidgetReal can't be converted to CreateStandardTickButton
-        sendUUIDToggle = bugReportPanel->createWidgetReal<MyGUI::Button>("Kenshi_TickButton1", 0.05f, 0.84f, 0.90f, 0.05f, MyGUI::Align::Top | MyGUI::Align::Left, "SendUUIDToggle");
-        sendUUIDToggle->setStateSelected(true);
-        sendUUIDToggle->setCaption(boost::locale::gettext("Include UUID hash"));
-        sendUUIDToggle->eventMouseButtonClick += MyGUI::newDelegate(TickButtonBehaviourClick);
+        MyGUI::TabItemPtr performanceTab = tabControl->addItem(boost::locale::gettext("Performance"));
+        MyGUI::ScrollViewPtr performanceScroll = performanceTab->createWidget<MyGUI::ScrollView>("Kenshi_ScrollViewEmpty", MyGUI::IntCoord(2, 2, performanceTab->getClientCoord().width - 4, performanceTab->getClientCoord().height - 4), MyGUI::Align::Stretch);
 
-        MyGUI::ButtonPtr sendBugButton = bugReportPanel->createWidgetReal<MyGUI::Button>("Kenshi_Button1", 0.05f, 0.90f, 0.90f, 0.07f, MyGUI::Align::Top | MyGUI::Align::Left, "SendReportButton");
-        sendBugButton->setCaption(boost::locale::gettext("Send report"));
-        sendBugButton->eventMouseButtonClick += MyGUI::newDelegate(SendBugPress);
-        bugReportWindow->setVisible(false);
+        MyGUI::TabItemPtr debugLogTab = tabControl->addItem(boost::locale::gettext("Debug log"));
+        debugLogScrollView = debugLogTab->createWidget<MyGUI::ScrollView>("Kenshi_ScrollViewEmpty", MyGUI::IntCoord(2, 2, debugLogTab->getClientCoord().width - 4, debugLogTab->getClientCoord().height - 4), MyGUI::Align::Stretch);
 
-        // Mod settings
-        MyGUI::TabItemPtr settingsTab = tabControl->addItem(boost::locale::gettext("Settings"));
-        settingsView = settingsTab->createWidget<MyGUI::ScrollView>("Kenshi_ScrollView", MyGUI::IntCoord(2, 2, settingsTab->getClientCoord().width - 4, settingsTab->getClientCoord().height - 4), MyGUI::Align::Stretch);
-        settingsView->setVisibleHScroll(false);
-        int positionY = 2;
-        settingsView->setCanvasSize(settingsView->getWidth(), settingsView->getHeight());
+        // resize to fit tabs if needed
+        size_t currentTabBarWidth = 0;
+        for (int i = 0; i < tabControl->getItemCount(); ++i)
+            currentTabBarWidth += tabControl->getButtonWidthAt(i);
 
-        MyGUI::ButtonPtr reportBugButton = settingsView->createWidget<MyGUI::Button>("Kenshi_Button1", 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 26 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "ReportBugButton");
-        reportBugButton->setCaption(boost::locale::gettext("Report bug"));
-        reportBugButton->eventMouseButtonClick += MyGUI::newDelegate(ReportBugPress);
-        positionY += 40;
-
-        CreateStandardTickButton<ButtonToggleSetting<Settings::SetCheckUpdates>>(settingsView,
-            boost::locale::gettext("Automatically check for updates"), 2, positionY* scale, DEBUG_WINDOW_RIGHT* scale, 26 * scale, "CheckUpdates", Settings::GetCheckUpdates());
-        positionY += 30;
-
-        CreateStandardTickButton<ButtonToggleSetting<Settings::SetOpenSettingsOnStart>>(settingsView,
-            boost::locale::gettext("Open RE_Kenshi settings on startup"), 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 26 * scale, "OpenSettingsOnStart", Settings::GetOpenSettingsOnStart());
-        positionY += 30;
-
-        CreateStandardTickButton<ButtonToggleSetting<MiscHooks::SetFixRNG>>(settingsView,
-            boost::locale::gettext("Fix Kenshi's RNG bug"), 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 26 * scale, "FixRNGToggle", Settings::GetFixRNG());
-        positionY += 30;
-
-        CreateStandardTickButton<ButtonToggleSetting<SetIncreaseMaxCameraDistance>>(settingsView,
-            boost::locale::gettext("Increase max camera distance"), 2, positionY* scale, DEBUG_WINDOW_RIGHT* scale, 26 * scale, "IncreaseMaxCameraDistance", Settings::GetIncreaseMaxCameraDistance());
-        positionY += 30;
-
-        CreateStandardTickButton<ButtonToggleSetting<Settings::SetCacheShaders>>(settingsView,
-            boost::locale::gettext("Cache shaders"), 2, positionY* scale, DEBUG_WINDOW_RIGHT* scale, 26 * scale, "CacheShadersToggle", Settings::GetCacheShaders());
-        positionY += 30;
-
-        CreateStandardTickButton<ButtonToggleSetting<Settings::SetLogFileIO>>(settingsView,
-            boost::locale::gettext("Log file IO"), 2, positionY* scale, DEBUG_WINDOW_RIGHT* scale, 26 * scale, "LogFileIO", Settings::GetLogFileIO());
-        positionY += 30;
-
-        CreateStandardTickButton<ButtonToggleSetting<Settings::SetLogAudio>>(settingsView,
-            boost::locale::gettext("Log audio IDs/events/switches/states"), 2, positionY* scale, DEBUG_WINDOW_RIGHT* scale, 26 * scale, "LogAudio", Settings::GetLogAudio());
-        positionY += 30;
-
-        std::string heightmapRecommendationText = boost::locale::gettext("Fast uncompressed heightmap should be faster on SSDs\nCompressed heightmap should be faster on HDDs");
-        MyGUI::TextBox* heighmapRecommendLabel = settingsView->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 10 * scale, MyGUI::Align::VStretch | MyGUI::Align::Left, "HeightmapRecommendLabel");
-        heighmapRecommendLabel->setCaption(heightmapRecommendationText);
-        positionY += 50;
-
-        if (!HeightmapHook::CompressedHeightmapFileExists())
+        // Kenshi_ScrollView has 20px of padding
+        int extraPixelsNeeded = (currentTabBarWidth - tabControl->getWidth()) + 20;
+        if (extraPixelsNeeded > 0)
         {
-            MyGUI::FactoryManager& factory = MyGUI::FactoryManager::getInstance();
-            MyGUI::IObject* object = factory.createObject("Resource", "ResourceTrueTypeFont");
-
-            MyGUI::ResourceTrueTypeFont* smallFont = object->castType<MyGUI::ResourceTrueTypeFont>(false);
-
-            if (smallFont != nullptr)
-            {
-                smallFont->setResourceName("Kenshi_StandardFont_Medium18");
-                smallFont->setSource("Exo2-Bold.ttf");
-                smallFont->setSize(18);
-                smallFont->setHinting("use_native");
-                smallFont->setResolution(50);
-                smallFont->setAntialias(false);
-                smallFont->setTabWidth(4);
-                smallFont->setOffsetHeight(0);
-                smallFont->setSubstituteCode(0);
-                smallFont->setDistance(2);
-                smallFont->addCodePointRange(32, 126);
-                smallFont->addCodePointRange(8127, 8217);
-                smallFont->initialise();
-
-                MyGUI::ResourceManager::getInstance().addResource(smallFont);
-            }
-
-            MyGUI::TextBox* noCompressedHeightmapLabel = settingsView->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 30 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "NoCompressedHeightmapLabel");
-            noCompressedHeightmapLabel->setFontName("Kenshi_StandardFont_Medium18");
-            noCompressedHeightmapLabel->setCaption(boost::locale::gettext("To enable compressed heightmap, reinstall RE_Kenshi and check \"Compress Heightmap\""));
-            noCompressedHeightmapLabel->setEnabled(HeightmapHook::CompressedHeightmapFileExists());
-            positionY += 30;
+            // need to scale up window to fit the tabs
+            DebugLog("Adding " + std::to_string((int64_t)extraPixelsNeeded) + " pixels for tabs");
+            MyGUI::IntCoord modMenuCoord = modMenuWindow->getCoord();
+            // factor we're stretching the UI by
+            float stretchFactor = float(modMenuCoord.width + extraPixelsNeeded) / modMenuCoord.width;
+            // this update is done with the integer number becasue it has to be PIXEL-PERFECT WITH NO ROUNDING
+            modMenuCoord.width += extraPixelsNeeded;
+            modMenuWindow->setCoord(modMenuCoord);
         }
 
-        std::string compressedHeighmapTip = "";
-        std::string fastUncompressedHeighmapTip = "";
-        if (HeightmapHook::GetRecommendedHeightmapMode() == HeightmapHook::COMPRESSED)
-            compressedHeighmapTip = boost::locale::gettext("[RECOMMENDED] ");
-        if (HeightmapHook::GetRecommendedHeightmapMode() == HeightmapHook::FAST_UNCOMPRESSED)
-            fastUncompressedHeighmapTip = boost::locale::gettext("[RECOMMENDED] ");
-        if (!HeightmapHook::CompressedHeightmapFileExists())
-            compressedHeighmapTip += "#440000" + boost::locale::gettext("[UNAVAILABLE] ");
-        MyGUI::ComboBoxPtr heightmapOptions = settingsView->createWidget<MyGUI::ComboBox>("Kenshi_ComboBox", 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 36 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "HeightmapComboBox");
-        heightmapOptions->addItem(boost::locale::gettext("Use vanilla heightmap implementation"), HeightmapHook::VANILLA);
-        heightmapOptions->addItem(compressedHeighmapTip + boost::locale::gettext("Use compressed heightmap"), HeightmapHook::COMPRESSED);
-        heightmapOptions->addItem(fastUncompressedHeighmapTip + boost::locale::gettext("Use fast uncompressed heightmap"), HeightmapHook::FAST_UNCOMPRESSED);
-        heightmapOptions->setIndexSelected(Settings::GetHeightmapMode());
-        heightmapOptions->setComboModeDrop(true);
-        heightmapOptions->setSmoothShow(false);
-        heightmapOptions->eventComboAccept += MyGUI::newDelegate(ChangeHeightmapMode);
-        positionY += 40;
+        // This has to be done after fixing the scale
+        // setting canvas align to Stretch doesn't work btw
+        generalScroll->setCanvasSize(generalScroll->getWidth() - 20, generalScroll->getHeight() - 20);
+        gameplayScroll->setCanvasSize(gameplayScroll->getWidth() - 20, gameplayScroll->getHeight() - 20);
+        performanceScroll->setCanvasSize(performanceScroll->getWidth() - 20, performanceScroll->getHeight() - 20);
+        //miscScroll->setCanvasSize(miscScroll->getWidth() - 20, miscScroll->getHeight() - 20);
+        debugLogScrollView->setCanvasSize(debugLogScrollView->getWidth() - 20, debugLogScrollView->getHeight() - 20);
+        //debugLogScrollView->setCanvasSize(debugLogScrollView->getWidth(), DEBUG_WINDOW_HEIGHT / 2);
 
+        int canvasWidth = generalScroll->getWidth() - 20;
+
+        // TODO scale?
+        int pad = 4 * scale;
+
+        /******            GENERAL SETTINGS            ******/
+        int positionY = 2;
+        MyGUI::ButtonPtr reportBugButton = generalScroll->createWidget<MyGUI::Button>("Kenshi_Button1", 0, positionY, canvasWidth, 26 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "ReportBugButton");
+        reportBugButton->setCaption(boost::locale::gettext("Report bug"));
+        reportBugButton->eventMouseButtonClick += MyGUI::newDelegate(ReportBugPress);
+        positionY += reportBugButton->getHeight() + pad + 10;
+
+        MyGUI::ButtonPtr checkUpdatesButton = CreateStandardTickButton<ButtonToggleSetting<Settings::SetCheckUpdates>>(generalScroll,
+            boost::locale::gettext("Automatically check for updates"), 2, positionY, canvasWidth - 4, 26 * scale, "CheckUpdates", Settings::GetCheckUpdates());
+        positionY += checkUpdatesButton->getHeight() + pad;
+        
+        MyGUI::ButtonPtr openSettingsOnStartButton = CreateStandardTickButton<ButtonToggleSetting<Settings::SetOpenSettingsOnStart>>(generalScroll,
+            boost::locale::gettext("Open RE_Kenshi settings on startup"), 2, positionY, canvasWidth - 4, 26 * scale, "OpenSettingsOnStart", Settings::GetOpenSettingsOnStart());
+        positionY += openSettingsOnStartButton->getHeight() + pad;
+
+        /******            GAMEPLAY SETTINGS            ******/
+        positionY = 2;
+        MyGUI::ButtonPtr fixRNGButton = CreateStandardTickButton<ButtonToggleSetting<MiscHooks::SetFixRNG>>(gameplayScroll,
+            boost::locale::gettext("Fix Kenshi's RNG bug"), 2, positionY, canvasWidth - 4, 26 * scale, "FixRNGToggle", Settings::GetFixRNG());
+        positionY += fixRNGButton->getHeight() + pad;
+
+        MyGUI::ButtonPtr increaseMaxCameraDistanceButton = CreateStandardTickButton<ButtonToggleSetting<SetIncreaseMaxCameraDistance>>(gameplayScroll,
+            boost::locale::gettext("Increase max camera distance"), 2, positionY, canvasWidth - 4, 26 * scale, "IncreaseMaxCameraDistance", Settings::GetIncreaseMaxCameraDistance());
+        positionY += increaseMaxCameraDistanceButton->getHeight() + pad;
 
         // Attack slots
         defaultAttackSlots = Kenshi::GetNumAttackSlots();
@@ -1116,11 +1143,11 @@ void InitGUI()
             numAttackSlots = 0;
         }
         std::string attackSlotsLabel = boost::locale::gettext("Attack slots (") + std::to_string((long long)defaultAttackSlots) + "):";
-        MyGUI::WidgetPtr attackSlotsSlider = CreateSlider(settingsView, 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 40 * scale, "AttackSlotsSlider_", false,
+        MyGUI::WidgetPtr attackSlotsSlider = CreateSlider(gameplayScroll, 2, positionY, canvasWidth - 4, 40 * scale, "AttackSlotsSlider_", false,
             attackSlotsLabel, true, attackSlotsValue.str(), numAttackSlots, 6);
         MyGUI::ScrollBar* attackSlotsScrollBar = attackSlotsSlider->findWidget("AttackSlotsSlider_Slider")->castType<MyGUI::ScrollBar>();
         attackSlotsScrollBar->eventScrollChangePosition += MyGUI::newDelegate(AttackSlotScroll);
-        positionY += 45;
+        positionY += attackSlotsSlider->getHeight() + pad;
 
         // max faction size
         defaultMaxFactionSize = Kenshi::GetMaxFactionSize();
@@ -1139,13 +1166,13 @@ void InitGUI()
             maxFactionSize = 0;
         }
         std::string maxFactionSizeLabel = boost::locale::gettext("Max. faction size (") + std::to_string((long long)defaultMaxFactionSize) + "):";
-        MyGUI::WidgetPtr maxFactionSizeSlider = CreateSlider(settingsView, 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 40 * scale, "MaxFactionSizeSlider_", false,
+        MyGUI::WidgetPtr maxFactionSizeSlider = CreateSlider(gameplayScroll, 2, positionY, canvasWidth - 4, 40 * scale, "MaxFactionSizeSlider_", false,
             maxFactionSizeLabel, false, maxFactionSizeValue.str(), maxFactionSize, 1001);
         MyGUI::ScrollBar* maxFactionSizeScrollBar = maxFactionSizeSlider->findWidget("MaxFactionSizeSlider_Slider")->castType<MyGUI::ScrollBar>();
         maxFactionSizeScrollBar->eventScrollChangePosition += MyGUI::newDelegate(MaxFactionSizeScroll);
         MyGUI::EditBox* valueText = maxFactionSizeSlider->findWidget("MaxFactionSizeSlider_NumberText")->castType<MyGUI::EditBox>();
         valueText->eventEditTextChange += MyGUI::newDelegate(MaxFactionSizeSliderTextChange);
-        positionY += 45;
+        positionY += maxFactionSizeSlider->getHeight() + pad;
 
         // max squad size
         defaultMaxSquadSize = Kenshi::GetMaxSquadSize();
@@ -1164,13 +1191,13 @@ void InitGUI()
             maxSquadSize = 0;
         }
         std::string maxSquadSizeLabel = boost::locale::gettext("Max. squad size (") + std::to_string((long long)defaultMaxSquadSize) + "):";
-        MyGUI::WidgetPtr maxSquadSizeSlider = CreateSlider(settingsView, 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 40 * scale, "MaxSquadSizeSlider_", false,
+        MyGUI::WidgetPtr maxSquadSizeSlider = CreateSlider(gameplayScroll, 2, positionY, canvasWidth - 4, 40 * scale, "MaxSquadSizeSlider_", false,
             maxSquadSizeLabel, false, maxSquadSizeValue.str(), maxSquadSize, 1001);
         MyGUI::ScrollBar* maxSquadSizeScrollBar = maxSquadSizeSlider->findWidget("MaxSquadSizeSlider_Slider")->castType<MyGUI::ScrollBar>();
         maxSquadSizeScrollBar->eventScrollChangePosition += MyGUI::newDelegate(MaxSquadSizeScroll);
         valueText = maxSquadSizeSlider->findWidget("MaxSquadSizeSlider_NumberText")->castType<MyGUI::EditBox>();
         valueText->eventEditTextChange += MyGUI::newDelegate(MaxSquadSizeSliderTextChange);
-        positionY += 45;
+        positionY += maxSquadSizeSlider->getHeight() + pad;
 
         // max squads
         defaultMaxSquads = Kenshi::GetMaxSquads();
@@ -1189,35 +1216,88 @@ void InitGUI()
             maxSquads = 0;
         }
         std::string maxSquadsLabel = boost::locale::gettext("Max. squads (") + std::to_string((long long)defaultMaxSquads) + "):";
-        MyGUI::WidgetPtr maxSquadsSlider = CreateSlider(settingsView, 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 40 * scale, "MaxSquadsSlider_", false,
+        MyGUI::WidgetPtr maxSquadsSlider = CreateSlider(gameplayScroll, 2, positionY, canvasWidth - 4, 40 * scale, "MaxSquadsSlider_", false,
             maxSquadsLabel, false, maxSquadsValue.str(), maxSquads, 1001);
         MyGUI::ScrollBar* maxSquadsScrollBar = maxSquadsSlider->findWidget("MaxSquadsSlider_Slider")->castType<MyGUI::ScrollBar>();
         maxSquadsScrollBar->eventScrollChangePosition += MyGUI::newDelegate(MaxSquadsScroll);
         valueText = maxSquadsSlider->findWidget("MaxSquadsSlider_NumberText")->castType<MyGUI::EditBox>();
         valueText->eventEditTextChange += MyGUI::newDelegate(MaxSquadsSliderTextChange);
-        positionY += 45;
+        positionY += maxSquadsSlider->getHeight() + pad;
 
-        CreateStandardTickButton<ButtonToggleSetting<SetUseCustomGameSpeeds>>(settingsView,
-            boost::locale::gettext("Use custom game speed controls"), 2, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 26 * scale, "UseCustomGameSpeeds", Settings::GetUseCustomGameSpeeds());
-        positionY += 30;
+        MyGUI::ButtonPtr setCustomGameSpeedsButton = CreateStandardTickButton<ButtonToggleSetting<SetUseCustomGameSpeeds>>(gameplayScroll,
+            boost::locale::gettext("Use custom game speed controls"), 2, positionY, canvasWidth - 4, 26 * scale, "UseCustomGameSpeeds", Settings::GetUseCustomGameSpeeds());
+        positionY += setCustomGameSpeedsButton->getHeight() + pad;
 
-        gameSpeedPanel = settingsView->createWidget<MyGUI::Widget>("", 0, positionY * scale, DEBUG_WINDOW_RIGHT * scale, 100, MyGUI::Align::Top | MyGUI::Align::Left, "GameSpeedPanel");
+        gameSpeedPanel = gameplayScroll->createWidget<MyGUI::Widget>("", 0, positionY, canvasWidth - 4, 100, MyGUI::Align::Top | MyGUI::Align::Left, "GameSpeedPanel");
         gameSpeedPanel->setVisible(Settings::GetUseCustomGameSpeeds());
 
-        MyGUI::TextBox* gameSpeedsLabel = gameSpeedPanel->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 2, 0, DEBUG_WINDOW_RIGHT * scale, 30 * scale, MyGUI::Align::Top | MyGUI::Align::Center, "GameSpeedsLabel");
+        MyGUI::TextBox* gameSpeedsLabel = gameSpeedPanel->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 2, 0, canvasWidth - 4, 30 * scale, MyGUI::Align::Top | MyGUI::Align::Center, "GameSpeedsLabel");
         gameSpeedsLabel->setCaption(boost::locale::gettext("Game speeds"));
-        MyGUI::ButtonPtr addGameSpeed = gameSpeedPanel->createWidget<MyGUI::Button>("Kenshi_Button1", 250 * scale, 0, (DEBUG_WINDOW_RIGHT - 250) * scale, 30 * scale, MyGUI::Align::Top | MyGUI::Align::Right, "AddGameSpeedBtn");
+        MyGUI::ButtonPtr addGameSpeed = gameSpeedPanel->createWidget<MyGUI::Button>("Kenshi_Button1", (250 * scale) - 2, 0, canvasWidth - (250 * scale), 30 * scale, MyGUI::Align::Top | MyGUI::Align::Right, "AddGameSpeedBtn");
         addGameSpeed->setCaption(boost::locale::gettext("Add game speed"));
         addGameSpeed->eventMouseButtonClick += MyGUI::newDelegate(AddGameSpeed);
         gameSpeedScrollBarsStart = positionY;
+
         RedrawGameSpeedSettings();
 
-        // Debug log
-        MyGUI::TabItemPtr debugLogTab = tabControl->addItem(boost::locale::gettext("Debug log"));
-        debugLogScrollView = debugLogTab->createWidget<MyGUI::ScrollView>("Kenshi_ScrollView", MyGUI::IntCoord(2, 2, debugLogTab->getClientCoord().width - 4, debugLogTab->getClientCoord().height - 4), MyGUI::Align::Stretch);
-        debugLogScrollView->setVisibleHScroll(false);
-        debugLogScrollView->setCanvasSize(debugLogScrollView->getWidth(), DEBUG_WINDOW_HEIGHT / 2);
-        MyGUI::TextBox* debugOut = debugLogScrollView->createWidgetReal<MyGUI::TextBox>("Kenshi_TextboxStandardText", 0, 0, 1, 1, MyGUI::Align::Stretch, "DebugPrint");
+        /******            PERFORMANCE SETTINGS            ******/
+        positionY = 2;
+        MyGUI::ButtonPtr cacheShadersButton = CreateStandardTickButton<ButtonToggleSetting<Settings::SetCacheShaders>>(performanceScroll,
+            boost::locale::gettext("Cache shaders"), 2, positionY, canvasWidth - 4, 26 * scale, "CacheShadersToggle", Settings::GetCacheShaders());
+        positionY += cacheShadersButton->getHeight() + pad;
+
+        std::string heightmapRecommendationText = boost::locale::gettext("Fast uncompressed heightmap should be faster on SSDs\nCompressed heightmap should be faster on HDDs");
+        MyGUI::TextBox* heighmapRecommendLabel = performanceScroll->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 2, positionY, canvasWidth - 4, 40 * scale, MyGUI::Align::VStretch | MyGUI::Align::Left, "HeightmapRecommendLabel");
+        heighmapRecommendLabel->setCaption(heightmapRecommendationText);
+        heighmapRecommendLabel->setSize(canvasWidth - 4, heighmapRecommendLabel->getTextSize().height);
+        positionY += heighmapRecommendLabel->getTextSize().height + 4;
+
+        if (!HeightmapHook::CompressedHeightmapFileExists())
+        {
+            MyGUI::TextBox* noCompressedHeightmapLabel = performanceScroll->createWidget<MyGUI::TextBox>("Kenshi_TextboxStandardText", 2, positionY, canvasWidth - 4 * scale, 30 * scale, MyGUI::Align::VStretch | MyGUI::Align::Left, "NoCompressedHeightmapLabel");
+            noCompressedHeightmapLabel->setFontName("Kenshi_StandardFont_Medium18");
+            noCompressedHeightmapLabel->setCaption(boost::locale::gettext("To enable compressed heightmap, reinstall RE_Kenshi and check \"Compress Heightmap\""));
+            noCompressedHeightmapLabel->setEnabled(HeightmapHook::CompressedHeightmapFileExists());
+            positionY += noCompressedHeightmapLabel->getTextSize().height + 4;
+        }
+
+        std::string compressedHeighmapTip = "";
+        std::string fastUncompressedHeighmapTip = "";
+        if (HeightmapHook::GetRecommendedHeightmapMode() == HeightmapHook::COMPRESSED)
+            compressedHeighmapTip = boost::locale::gettext("[RECOMMENDED] ");
+        if (HeightmapHook::GetRecommendedHeightmapMode() == HeightmapHook::FAST_UNCOMPRESSED)
+            fastUncompressedHeighmapTip = boost::locale::gettext("[RECOMMENDED] ");
+        if (!HeightmapHook::CompressedHeightmapFileExists())
+            compressedHeighmapTip += "#440000" + boost::locale::gettext("[UNAVAILABLE] ");
+        MyGUI::ComboBoxPtr heightmapOptions = performanceScroll->createWidget<MyGUI::ComboBox>("Kenshi_ComboBox", 2, positionY, canvasWidth - 4, 36 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "HeightmapComboBox");
+        heightmapOptions->addItem(boost::locale::gettext("Use vanilla heightmap implementation"), HeightmapHook::VANILLA);
+        heightmapOptions->addItem(compressedHeighmapTip + boost::locale::gettext("Use compressed heightmap"), HeightmapHook::COMPRESSED);
+        heightmapOptions->addItem(fastUncompressedHeighmapTip + boost::locale::gettext("Use fast uncompressed heightmap"), HeightmapHook::FAST_UNCOMPRESSED);
+        heightmapOptions->setIndexSelected(Settings::GetHeightmapMode());
+        heightmapOptions->setComboModeDrop(true);
+        heightmapOptions->setSmoothShow(false);
+        heightmapOptions->eventComboAccept += MyGUI::newDelegate(ChangeHeightmapMode);
+        MyGUI::TextBox* itemLabelText = heightmapOptions->getClientWidget()->castType<MyGUI::TextBox>();
+        int sizeNeededForText = itemLabelText->getTextSize().height - itemLabelText->getHeight();
+        if (sizeNeededForText > 0)
+        {
+            heightmapOptions->setSize(heightmapOptions->getWidth(), heightmapOptions->getHeight() + sizeNeededForText);
+            itemLabelText->setSize(itemLabelText->getWidth(), itemLabelText->getHeight() + sizeNeededForText);
+        }
+        positionY += heightmapOptions->getHeight() + 4;;
+
+        /******            DEBUG LOG            ******/
+        positionY = 2;
+        MyGUI::ButtonPtr logFileIOButton = CreateStandardTickButton<ButtonToggleSetting<Settings::SetLogFileIO>>(debugLogScrollView,
+            boost::locale::gettext("Log file IO"), 2, positionY, canvasWidth - 4, 26 * scale, "LogFileIO", Settings::GetLogFileIO());
+        positionY += logFileIOButton->getHeight() + pad;
+
+        MyGUI::ButtonPtr lodAudioButton = CreateStandardTickButton<ButtonToggleSetting<Settings::SetLogAudio>>(debugLogScrollView,
+            boost::locale::gettext("Log audio IDs/events/switches/states"), 2, positionY, canvasWidth - 4, 26 * scale, "LogAudio", Settings::GetLogAudio());
+        positionY += lodAudioButton->getHeight() + pad;
+
+        MyGUI::TextBox* debugOut = debugLogScrollView->createWidget<MyGUI::TextBox>("Kenshi_GenericTextBox", 0, positionY, canvasWidth, 100, MyGUI::Align::Stretch, "DebugPrint");
+        debugOut->setSize(canvasWidth - debugOut->getTextRegion().left, 100);
     }
 }
 
@@ -1391,11 +1471,14 @@ void GUIUpdate(float timeDelta)
 
         // update scroll view size if needed
         int logSize = debugOut->getTextSize().height;
-        if (debugLogScrollView->getCanvasSize().height < logSize)
+        int padding = debugOut->getTextRegion().top;
+        int finalHeight = logSize + padding;
+        int finalBottom = debugOut->getTop() + finalHeight;
+        debugOut->setSize(debugOut->getWidth(), finalHeight);
+        if (debugLogScrollView->getCanvasSize().height < finalBottom)
         {
-            debugLogScrollView->setCanvasSize(debugLogScrollView->getWidth(), logSize);
+            debugLogScrollView->setCanvasSize(debugLogScrollView->getWidth(), finalBottom);
             debugLogScrollView->setVisibleHScroll(false);
-            debugOut->setRealSize(1, 1);
         }
     }
 }
