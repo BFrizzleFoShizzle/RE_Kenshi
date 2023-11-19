@@ -21,12 +21,20 @@ namespace Settings
 	bool GetProfileLoads();
 	int GetAttackSlots();
 	void SetAttackSlots(int num);
+	bool GetOverrideAttackSlots();
+	void SetOverrideAttackSlots(bool value);
 	int GetMaxFactionSize();
 	void SetMaxFactionSize(int num);
+	bool GetOverrideMaxFactionSize();
+	void SetOverrideMaxFactionSize(bool value);
 	int GetMaxSquadSize();
 	void SetMaxSquadSize(int num);
+	bool GetOverrideMaxSquadSize();
+	void SetOverrideMaxSquadSize(bool value);
 	int GetMaxSquads();
 	void SetMaxSquads(int num);
+	bool GetOverrideMaxSquads();
+	void SetOverrideMaxSquads(bool value);
 	bool GetFixRNG();
 	void SetFixRNG(bool value);
 	// TODO remove after dropping support for old versions

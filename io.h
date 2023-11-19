@@ -13,7 +13,9 @@ namespace IO
         FAIL = 6,
         COUNT
     };
-
+    // sets up COM stuff, which has to be done ASAP
+    // TODO this would be safer to do in a hook
+    void Init();
     // NOTE: First call of thse for a drive are expensive, takes maybe 250ms
     DriveType GetDriveStorageType(std::string filePath);
 }

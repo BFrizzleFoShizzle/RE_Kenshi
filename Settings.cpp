@@ -43,9 +43,13 @@ rapidjson::Document GenerateDefaultSettings()
     defaultSettings.AddMember("HeightmapMode", HeightmapHook::AUTO, defaultSettings.GetAllocator());
     defaultSettings.AddMember("PreloadHeightmap", false, defaultSettings.GetAllocator());
     defaultSettings.AddMember("AttackSlots", -1, defaultSettings.GetAllocator());
+    defaultSettings.AddMember("AttackSlotsOverride", false, defaultSettings.GetAllocator());
     defaultSettings.AddMember("MaxFactionSize", -1, defaultSettings.GetAllocator());
+    defaultSettings.AddMember("MaxFactionSizeOverride", false, defaultSettings.GetAllocator());
     defaultSettings.AddMember("MaxSquadSize", -1, defaultSettings.GetAllocator());
+    defaultSettings.AddMember("MaxSquadSizeOverride", false, defaultSettings.GetAllocator());
     defaultSettings.AddMember("MaxSquads", -1, defaultSettings.GetAllocator());
+    defaultSettings.AddMember("MaxSquadsOverride", false, defaultSettings.GetAllocator());
     defaultSettings.AddMember("FixRNG", true, defaultSettings.GetAllocator());
     // TODO remove after dropping support for old versions
     defaultSettings.AddMember("FixFontSize", true, defaultSettings.GetAllocator());
@@ -435,6 +439,16 @@ void Settings::SetAttackSlots(int num)
     SetSettingInt("AttackSlots", num);
 }
 
+bool Settings::GetOverrideAttackSlots()
+{
+    return GetSettingBool("AttackSlotsOverride");
+}
+
+void Settings::SetOverrideAttackSlots(bool value)
+{
+    SetSettingBool("AttackSlotsOverride", value);
+}
+
 // -1 = use mod value
 int Settings::GetMaxFactionSize()
 {
@@ -444,6 +458,16 @@ int Settings::GetMaxFactionSize()
 void Settings::SetMaxFactionSize(int num)
 {
     SetSettingInt("MaxFactionSize", num);
+}
+
+bool Settings::GetOverrideMaxFactionSize()
+{
+    return GetSettingBool("MaxFactionSizeOverride");
+}
+
+void Settings::SetOverrideMaxFactionSize(bool value)
+{
+    SetSettingBool("MaxFactionSizeOverride", value);
 }
 
 // -1 = use mod value
@@ -457,6 +481,16 @@ void Settings::SetMaxSquadSize(int num)
     SetSettingInt("MaxSquadSize", num);
 }
 
+bool Settings::GetOverrideMaxSquadSize()
+{
+    return GetSettingBool("MaxSquadSizeOverride");
+}
+
+void Settings::SetOverrideMaxSquadSize(bool value)
+{
+    SetSettingBool("MaxSquadSizeOverride", value);
+}
+
 // -1 = use mod value
 int Settings::GetMaxSquads()
 {
@@ -466,6 +500,16 @@ int Settings::GetMaxSquads()
 void Settings::SetMaxSquads(int num)
 {
     SetSettingInt("MaxSquads", num);
+}
+
+bool Settings::GetOverrideMaxSquads()
+{
+    return GetSettingBool("MaxSquadsOverride");
+}
+
+void Settings::SetOverrideMaxSquads(bool value)
+{
+    SetSettingBool("MaxSquadsOverride", value);
 }
 
 bool Settings::GetIncreaseMaxCameraDistance()

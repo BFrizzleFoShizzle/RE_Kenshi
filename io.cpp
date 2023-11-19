@@ -18,6 +18,52 @@ static std::unordered_map<char, IO::DriveType> typeCache;
 static boost::mutex driveTypeMtx;
 static bool securityIsInitialized = false;
 
+// sets up COM stuff, which has to be done ASAP
+// TODO this would be safer to do in a hook
+void IO::Init()
+{
+    boost::lock_guard<boost::mutex> lock(driveTypeMtx);
+    // NOTE: The rest of this function is very slow, takes maybe 250ms
+    HRESULT hres;
+
+    // Step 1: --------------------------------------------------
+    // Initialize COM. ------------------------------------------
+
+    hres = CoInitializeEx(0, COINIT_MULTITHREADED);
+
+    // Step 2: --------------------------------------------------
+    // Set general COM security levels --------------------------
+    // NOTE: this has to be called GLOBALLY AT MOST ONCE FOR A PROCESS
+    // DOUBLE NOTE: if you don't do this early enough, combase will call it for you and cause problems
+    if (!securityIsInitialized)
+    {
+        hres = CoInitializeSecurity(
+            NULL,
+            -1,                          // COM authentication
+            NULL,                        // Authentication services
+            NULL,                        // Reserved
+            RPC_C_AUTHN_LEVEL_DEFAULT,   // Default authentication 
+            RPC_C_IMP_LEVEL_IMPERSONATE, // Default Impersonation  
+            NULL,                        // Authentication info
+            EOAC_NONE,                   // Additional capabilities 
+            NULL                         // Reserved
+        );
+
+        if (FAILED(hres))
+        {
+            std::stringstream error;
+            error << "Failed to initialize security. Error code = 0x"
+                << std::hex << hres;
+            ErrorLog(error.str());
+            CoUninitialize();
+            return;                    // Program has failed.
+        }
+        securityIsInitialized = true;
+    }
+
+    CoUninitialize();
+}
+
 // inspired by https://learn.microsoft.com/en-us/windows/win32/wmisdk/example--getting-wmi-data-from-the-local-computer
 // this function is really unsafe and problematic, but the main body is currnently only used ONCE for ONE FILE, so hopefully it shouldn't cause problems
 IO::DriveType IO::GetDriveStorageType(std::string path)
@@ -46,6 +92,7 @@ IO::DriveType IO::GetDriveStorageType(std::string path)
     // Step 2: --------------------------------------------------
     // Set general COM security levels --------------------------
     // NOTE: this has to be called GLOBALLY AT MOST ONCE FOR A PROCESS
+    // DOUBLE NOTE: if you don't do this early enough, combase will call it for you and cause problems
     if (!securityIsInitialized)
     {
         hres = CoInitializeSecurity(
