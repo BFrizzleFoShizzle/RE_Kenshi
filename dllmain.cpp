@@ -512,25 +512,6 @@ void EnableSliderToggle(MyGUI::WidgetPtr sender)
             ErrorLog("Can't find panel");
     }
 }
-/*
-void SetSliderEnabled(MyGUI::WidgetPtr slider, bool enabled)
-{
-    std::string prefix = slider->getName().substr(0, slider->getName().size() - strlen("SliderRoot"));
-    MyGUI::WidgetPtr sliderPanel = slider->findWidget(prefix + "ScalableSliderPanel");
-    MyGUI::ButtonPtr button = slider->findWidget(prefix + "EnableButton")->castType<MyGUI::Button>(false);
-    button->setStateSelected(enabled);
-    if (enabled)
-    {
-        sliderPanel->setAlpha(1.0f);
-        sliderPanel->setEnabled(true);
-    }
-    else
-    {
-        sliderPanel->setAlpha(0.5f);
-        sliderPanel->setEnabled(false);
-    }
-}
-*/
 // Root widget name will be "[namePrefix]SliderRoot"
 MyGUI::WidgetPtr CreateSlider(MyGUI::WidgetPtr parent, int x, int y, int w, int h, std::string namePrefix, SliderButton buttonType)
 {
@@ -645,31 +626,7 @@ private:
     MyGUI::WidgetPtr slider;
     MyGUI::ScrollBar* scrollBar;
 };
-/*
-MyGUI::WidgetPtr CreateSlider(MyGUI::WidgetPtr parent, int x, int y, int w, int h, std::string namePrefix, SliderButton buttonType, std::string label, bool readOnlyText, std::string defaultValue, int defaultPosition, int scrollRange)
-{
-    MyGUI::WidgetPtr slider = CreateSlider(parent, x, y, w, h, namePrefix, buttonType);
-    MyGUI::TextBox* elementText = slider->findWidget(namePrefix + "ElementText")->castType<MyGUI::TextBox>();
-    elementText->setCaption(label);
-    MyGUI::EditBox* numberText = slider->findWidget(namePrefix + "NumberText")->castType<MyGUI::EditBox>();
-    numberText->setEditStatic(readOnlyText);
-    numberText->setCaption(defaultValue);
-    // grow input box size if needed
-    int sizeDelta = (numberText->getTextSize().height - numberText->getHeight());
-    // padding
-    sizeDelta += std::max(0, -numberText->getClientWidget()->getCoord().top) * 2;
-    sizeDelta = std::max(sizeDelta, elementText->getTextSize().height - elementText->getTextRegion().height);
 
-    if (sizeDelta > 0)
-        slider->setSize(slider->getWidth(), slider->getHeight() + sizeDelta);
-
-    MyGUI::ScrollBar* scrollBar = slider->findWidget(namePrefix + "Slider")->castType<MyGUI::ScrollBar>();
-    scrollBar->setScrollRange(scrollRange);
-    scrollBar->setScrollPosition(defaultPosition);
-    
-    return slider;
-}
-*/
 void GameSpeedScroll(MyGUI::ScrollBar *scrollBar, size_t newPos)
 {
     // nonlinear scaling to add more resolution to low game speeds
@@ -757,8 +714,6 @@ void RedrawGameSpeedSettings()
         // 0...range-1 = 0...1000
         Slider* slider = new Slider(gameSpeedPanel, 2, positionY, canvasWidth - 4, 40 * scale, nameStr.str(), SliderButton::CLOSE, label.str(),
             false, value.str(), UnscaleGameSpeed(gameSpeeds[i]), 1001);
-        //MyGUI::WidgetPtr slider = CreateSlider(gameSpeedPanel, 2, positionY, canvasWidth - 4, 40 * scale, nameStr.str(), SliderButton::CLOSE, label.str(),
-        //    false, value.str(), UnscaleGameSpeed(gameSpeeds[i]), 1001);
         MyGUI::ScrollBar* scrollBar = slider->GetWidget()->findWidget(nameStr.str() + "Slider")->castType<MyGUI::ScrollBar>();
         if (!scrollBar)
             ErrorLog("ScrollBar not found!");
@@ -960,40 +915,6 @@ void ButtonToggleSetting(MyGUI::WidgetPtr sender)
     F(newState);
 }
 
-/*
-// HACK not a real widgit...
-// have HAS to be a better way of doing this...
-// this class has helper methods for attaching one setting to the slider/scroll + another to the checkbox
-class CheckSlider
-{
-public:
-    CheckSlider(MyGUI::WidgetPtr parent, int x, int y, int w, int h, std::string namePrefix, std::string label, bool readOnlyText, std::string defaultValue, int defaultPosition, int scrollRange)
-    {
-        MyGUI::WidgetPtr slider = CreateSlider(parent, x, y, w, h, namePrefix, SliderButton::CHECK,
-            label, readOnlyText, defaultValue, defaultPosition, scrollRange);
-        SetSliderEnabled(slider, Settings::GetOverrideAttackSlots());
-        MyGUI::ButtonPtr checkBtn = slider->findWidget(namePrefix + "EnableButton")->castType<MyGUI::Button>(false);
-        checkBtn->eventMouseButtonClick += MyGUI::newDelegate()
-        MyGUI::ScrollBar* scrollBar = slider->findWidget(namePrefix + "Slider")->castType<MyGUI::ScrollBar>();
-        scrollBar->eventScrollChangePosition += MyGUI::newDelegate(AttackSlotScroll);
-        
-    }
-    void SetEnabled(bool val)
-    {
-
-    }
-private:
-    void CheckSliderToggle(MyGUI::WidgetPtr sender)
-    {
-        MyGUI::ButtonPtr button = sender->castType<MyGUI::Button>();
-        bool newState = button->getStateSelected();
-
-        // Update settings + hooks
-        F(newState);
-    }
-    void setBool;
-};
-*/
 void NoDelegate(MyGUI::WidgetPtr) {};
 // NOTE: this re-sizes the height so the text isn't clipped
 template<void F(MyGUI::WidgetPtr)>
@@ -1019,17 +940,6 @@ MyGUI::ButtonPtr CreateStandardTickButton(MyGUI::WidgetPtr parent, std::string c
     checkButton->eventMouseButtonClick += MyGUI::newDelegate(TickButtonBehaviourClick);
     checkButton->eventMouseButtonClick += MyGUI::newDelegate(F);
 
-    /*
-    MyGUI::ButtonPtr newToggle = parent->createWidget<MyGUI::Button>("Kenshi_TickButton1", left, top, width, minHeight, MyGUI::Align::Top | MyGUI::Align::HStretch, name);
-    newToggle->setStateSelected(initialState);
-    newToggle->setCaption(caption);
-    int minHeightToNotLookBad = newToggle->getTextSize().height + 4;
-    // auto-resize to avoid clipping
-    if (minHeightToNotLookBad > minHeight)
-        newToggle->setSize(width, minHeightToNotLookBad);
-    newToggle->eventMouseButtonClick += MyGUI::newDelegate(TickButtonBehaviourClick);
-    newToggle->eventMouseButtonClick += MyGUI::newDelegate(F);
-    */
     return checkButton;
 }
 
@@ -1118,21 +1028,7 @@ void CreateBugReportWindow(MyGUI::Gui* gui, float scale)
     bugReportWindow->setCaption(boost::locale::gettext("RE_Kenshi Bug Report"));
     bugReportWindow->eventWindowButtonPressed += MyGUI::newDelegate(debugMenuButtonPress);
     int panelWidth = bugReportWindow->getClientCoord().width;
-    // Only edit boxes support word wrap?
-    /*
-    MyGUI::TextBox* sliderLabel = root->createWidget<MyGUI::TextBox>("Kenshi_GenericTextBoxFlat", 0, 0, buttonStart - 4, minHeight, MyGUI::Align::Left | MyGUI::Align::VStretch, namePrefix + "Label");
-    sliderLabel->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
-    sliderLabel->setCaption(caption);
-    int sizeDelta = sliderLabel->getTextSize().height - sliderLabel->getTextRegion().height;
-    if (sizeDelta > 0)
-    {
-        root->setSize(root->getWidth(), root->getHeight() + sizeDelta);
-        // update after scaling
-        minHeight = root->getHeight();
-        buttonStart = (width - minHeight);
-        sliderLabel->setSize(buttonStart - 4, sliderLabel->getHeight());
-    }
-    */
+    // Only edit boxes support word wrap
     MyGUI::EditBox* infoText = bugReportWindow->getClientWidget()->createWidget<MyGUI::EditBox>("Kenshi_GenericTextBoxFlat", 2, 2, panelWidth - 4, height * 0.4f, MyGUI::Align::Top | MyGUI::Align::Left, "BugReportInfo");
     infoText->setTextAlign(MyGUI::Align::Left | MyGUI::Align::Top);
     infoText->setEditMultiLine(true);
@@ -1316,9 +1212,7 @@ void InitGUI()
         generalScroll->setCanvasSize(generalScroll->getWidth() - 20, generalScroll->getHeight() - 20);
         gameplayScroll->setCanvasSize(gameplayScroll->getWidth() - 20, gameplayScroll->getHeight() - 20);
         performanceScroll->setCanvasSize(performanceScroll->getWidth() - 20, performanceScroll->getHeight() - 20);
-        //miscScroll->setCanvasSize(miscScroll->getWidth() - 20, miscScroll->getHeight() - 20);
         debugLogScrollView->setCanvasSize(debugLogScrollView->getWidth() - 20, debugLogScrollView->getHeight() - 20);
-        //debugLogScrollView->setCanvasSize(debugLogScrollView->getWidth(), DEBUG_WINDOW_HEIGHT / 2);
 
         int canvasWidth = generalScroll->getWidth() - 20;
 
@@ -1372,12 +1266,7 @@ void InitGUI()
         std::string attackSlotsLabelTxt = boost::locale::gettext("Attack slots (") + std::to_string((long long)defaultAttackSlots) + "):";
         Slider* attackSlotsSlider = new Slider(gameplayScroll, 2, positionY, canvasWidth - 4, 40 * scale, "AttackSlotsSlider_", SliderButton::CHECK,
             attackSlotsLabelTxt, true, attackSlotsValue.str(), numAttackSlots, 6, MyGUI::newDelegate(ButtonToggleSetting<Settings::SetOverrideAttackSlots>));
-        //MyGUI::WidgetPtr attackSlotsSlider = CreateSlider(gameplayScroll, 2, positionY, canvasWidth - 4, 40 * scale, "AttackSlotsSlider_", SliderButton::CHECK,
-        //    attackSlotsLabel, true, attackSlotsValue.str(), numAttackSlots, 6);
         attackSlotsSlider->SetEnabled(attackSlotsOverrideEnabled);
-        //SetSliderEnabled(attackSlotsSlider, attackSlotsOverrideEnabled);
-        //MyGUI::ButtonPtr checkBtn = attackSlotsSlider->GetWidget()->findWidget("AttackSlotsSlider_EnableButton")->castType<MyGUI::Button>(false);
-        //checkBtn->eventMouseButtonClick += MyGUI::newDelegate(ButtonToggleSetting<Settings::SetOverrideAttackSlots>);
         MyGUI::ScrollBar* attackSlotsScrollBar = attackSlotsSlider->GetWidget()->findWidget("AttackSlotsSlider_Slider")->castType<MyGUI::ScrollBar>();
         attackSlotsScrollBar->eventScrollChangePosition += MyGUI::newDelegate(AttackSlotScroll);
         MyGUI::TextBox* attackSlotsLabel = attackSlotsSlider->GetWidget()->findWidget("AttackSlotsSlider_ElementText")->castType<MyGUI::TextBox>();
@@ -1404,9 +1293,6 @@ void InitGUI()
         Slider* maxFactionSizeSlider = new Slider(gameplayScroll, 2, positionY, canvasWidth - 4, 40 * scale, "MaxFactionSizeSlider_", SliderButton::CHECK,
             maxFactionSizeLabelTxt, false, maxFactionSizeValue.str(), maxFactionSize, 1001, MyGUI::newDelegate(ButtonToggleSetting<Settings::SetOverrideMaxFactionSize>));
         maxFactionSizeSlider->SetEnabled(Settings::GetOverrideMaxFactionSize());
-        //MyGUI::WidgetPtr maxFactionSizeSlider = CreateSlider(gameplayScroll, 2, positionY, canvasWidth - 4, 40 * scale, "MaxFactionSizeSlider_", SliderButton::CHECK,
-        //    maxFactionSizeLabelTxt, false, maxFactionSizeValue.str(), maxFactionSize, 1001);
-        //SetSliderEnabled(maxFactionSizeSlider, Settings::GetOverrideMaxFactionSize());
         MyGUI::ScrollBar* maxFactionSizeScrollBar = maxFactionSizeSlider->GetWidget()->findWidget("MaxFactionSizeSlider_Slider")->castType<MyGUI::ScrollBar>();
         maxFactionSizeScrollBar->eventScrollChangePosition += MyGUI::newDelegate(MaxFactionSizeScroll);
         MyGUI::EditBox* valueText = maxFactionSizeSlider->GetWidget()->findWidget("MaxFactionSizeSlider_NumberText")->castType<MyGUI::EditBox>();
@@ -1435,11 +1321,6 @@ void InitGUI()
         Slider* maxSquadSizeSlider = new Slider(gameplayScroll, 2, positionY, canvasWidth - 4, 40 * scale, "MaxSquadSizeSlider_", SliderButton::CHECK,
             maxSquadSizeLabelTxt, false, maxSquadSizeValue.str(), maxSquadSize, 1001, MyGUI::newDelegate(ButtonToggleSetting<Settings::SetOverrideMaxSquadSize>));
         maxSquadSizeSlider->SetEnabled(Settings::GetOverrideMaxSquadSize());
-        //MyGUI::WidgetPtr maxSquadSizeSlider = CreateSlider(gameplayScroll, 2, positionY, canvasWidth - 4, 40 * scale, "MaxSquadSizeSlider_", SliderButton::CHECK,
-        //    maxSquadSizeLabelTxt, false, maxSquadSizeValue.str(), maxSquadSize, 1001);
-        //SetSliderEnabled(maxSquadSizeSlider, Settings::GetOverrideMaxSquadSize());
-        //MyGUI::WidgetPtr checkBtn = maxSquadSizeSlider->findWidget("MaxSquadSizeSlider_EnableButton")->castType<MyGUI::Button>(false);
-        //checkBtn->eventMouseButtonClick += MyGUI::newDelegate(ButtonToggleSetting<Settings::SetOverrideMaxSquadSize>);
         MyGUI::ScrollBar* maxSquadSizeScrollBar = maxSquadSizeSlider->GetWidget()->findWidget("MaxSquadSizeSlider_Slider")->castType<MyGUI::ScrollBar>();
         maxSquadSizeScrollBar->eventScrollChangePosition += MyGUI::newDelegate(MaxSquadSizeScroll);
         valueText = maxSquadSizeSlider->GetWidget()->findWidget("MaxSquadSizeSlider_NumberText")->castType<MyGUI::EditBox>();
@@ -1468,11 +1349,6 @@ void InitGUI()
         Slider* maxSquadsSlider = new Slider(gameplayScroll, 2, positionY, canvasWidth - 4, 40 * scale, "MaxSquadsSlider_", SliderButton::CHECK,
             maxSquadsLabeltxt, false, maxSquadsValue.str(), maxSquads, 1001, MyGUI::newDelegate(ButtonToggleSetting<Settings::SetOverrideMaxSquads>));
         maxSquadsSlider->SetEnabled(Settings::GetOverrideMaxSquads());
-        //MyGUI::WidgetPtr maxSquadsSlider = CreateSlider(gameplayScroll, 2, positionY, canvasWidth - 4, 40 * scale, "MaxSquadsSlider_", SliderButton::CHECK,
-        //    maxSquadsLabeltxt, false, maxSquadsValue.str(), maxSquads, 1001);
-        //SetSliderEnabled(maxSquadsSlider, Settings::GetOverrideMaxSquads());
-        //checkBtn = maxSquadsSlider->findWidget("MaxSquadsSlider_EnableButton")->castType<MyGUI::Button>(false);
-        //checkBtn->eventMouseButtonClick += MyGUI::newDelegate(ButtonToggleSetting<Settings::SetOverrideMaxSquads>);
         MyGUI::ScrollBar* maxSquadsScrollBar = maxSquadsSlider->GetWidget()->findWidget("MaxSquadsSlider_Slider")->castType<MyGUI::ScrollBar>();
         maxSquadsScrollBar->eventScrollChangePosition += MyGUI::newDelegate(MaxSquadsScroll);
         valueText = maxSquadsSlider->GetWidget()->findWidget("MaxSquadsSlider_NumberText")->castType<MyGUI::EditBox>();
@@ -1541,7 +1417,7 @@ void InitGUI()
             positionY += noCompressedHeightmapLabel->getTextSize().height + 4;
         }
         positionY += 10;
-        MyGUI::WidgetPtr performanceTextPanel = performanceScroll->createWidget<MyGUI::Widget>("Kenshi_GenericTextBox", 0, performanceTextStart, canvasWidth, (positionY - performanceTextStart) - pad, MyGUI::Align::VStretch | MyGUI::Align::Left, "TEST");
+        MyGUI::WidgetPtr performanceTextPanel = performanceScroll->createWidget<MyGUI::Widget>("Kenshi_GenericTextBox", 0, performanceTextStart, canvasWidth, (positionY - performanceTextStart) - pad, MyGUI::Align::VStretch | MyGUI::Align::Left, "PerformanceTextPanel");
 
         std::string compressedHeighmapTip = "";
         std::string fastUncompressedHeighmapTip = "";
@@ -1660,17 +1536,13 @@ void ReHookTimeButtons()
         gameSpeedText = timeMoneyPanel->createWidgetReal<MyGUI::TextBox>("Kenshi_TextboxStandardText", gameSpeedCoord, MyGUI::Align::Center, "GameSpeedText");
         // HACK use same code as play button hook to display current in-game speed + current modified speed
         playButtonHook(nullptr);
-        //gameSpeedText->setCaption("1");
         gameSpeedText->setTextAlign(MyGUI::Align::Center);
 
-        //MessageBoxA(0, "Clearing...", "Debug", MB_OK);
         speedButton3->eventMouseButtonClick.clear();
         speedButton4->eventMouseButtonClick.clear();
-        //MessageBoxA(0, "Cleared.", "Debug", MB_OK);
         speedButton2->eventMouseButtonClick += MyGUI::newDelegate(playButtonHook);
         speedButton3->eventMouseButtonClick += MyGUI::newDelegate(decreaseSpeed);
         speedButton4->eventMouseButtonClick += MyGUI::newDelegate(increaseSpeed);
-        //MessageBoxA(0, "Delegated.", "Debug", MB_OK);
     }
     catch (MyGUI::Exception e)
     {
