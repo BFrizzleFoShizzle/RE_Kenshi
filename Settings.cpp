@@ -93,7 +93,8 @@ void AddDefaultSettings(rapidjson::Document &document)
         {
             DebugLog("Adding default setting...");
             DebugLog(srcIt->name.GetString());
-            rapidjson::Value &val = document.AddMember(srcIt->name, srcIt->value, document.GetAllocator());
+            // we need to use CopyFrom() so array sub-values won't be GC'd when defaultSettings falls out of scope
+            rapidjson::Value &val = document.AddMember(srcIt->name, rapidjson::Value().CopyFrom(srcIt->value, document.GetAllocator()), document.GetAllocator());
         }
         if (!document.HasMember(srcIt->name))
         {
@@ -105,7 +106,8 @@ void AddDefaultSettings(rapidjson::Document &document)
             std::stringstream str;
             str << defaultType << " " << document[srcIt->name].GetType();
             DebugLog(str.str());
-            document[srcIt->name] = defaultSettings[srcIt->name];
+            // we need to use CopyFrom() so values won't be GC'd when defaultSettings falls out of scope
+            document[srcIt->name].CopyFrom(defaultSettings[srcIt->name], document.GetAllocator());
         }
     }
 }
