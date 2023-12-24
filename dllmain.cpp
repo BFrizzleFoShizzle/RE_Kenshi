@@ -1673,6 +1673,22 @@ void WaitForModSetup()
     }
 }
 
+// has to be done on the GUI thread
+void DisplayVersionError(float timeDelta)
+{
+    MyGUI::Gui* gui = MyGUI::Gui::getInstancePtr();
+
+    MyGUI::TextBox* versionText = Kenshi::FindWidget(gui->getEnumerator(), "VersionText")->castType<MyGUI::TextBox>(false);
+    if (versionText != nullptr)
+    {
+        MyGUI::UString version = versionText->getCaption();
+        if (version == "")
+            ErrorLog("Version text has unexpected value");
+        versionText->setCaption("RE_Kenshi " + Version::GetDisplayVersion() + " (ERROR) - " + version + boost::locale::gettext(" - [NOT SUPPORTED, MOD DISABLED]"));
+        gui->eventFrameStart -= MyGUI::newDelegate(DisplayVersionError);
+    }
+}
+
 void dllmain()
 {
     DebugLog("RE_Kenshi " + Version::GetDisplayVersion());
@@ -1746,14 +1762,9 @@ void dllmain()
         DebugLog("Steam 1.0.55, 1.0.62, 1.0.64");
         DebugLog("RE_Kenshi initialization aborted!");
 
-        // display error in version text
-        // this *probably* won't crash new versions
-        MyGUI::TextBox* versionText = Kenshi::FindWidget(gui->getEnumerator(), "VersionText")->castType<MyGUI::TextBox>();
-        if (versionText != nullptr)
-        {
-            MyGUI::UString version = versionText->getCaption();
-            versionText->setCaption("RE_Kenshi " + Version::GetDisplayVersion() + " (ERROR) - " + version + boost::locale::gettext(" - [NOT SUPPORTED, MOD DISABLED]"));
-        }
+        // doing this on our thread is unsafe, need to do it on the GUI thread so we don't access UI elements as the game creates them
+        // if we try to read + modify the version text on our current thread, the code fails about 50% of the time
+        gui->eventFrameStart += MyGUI::newDelegate(DisplayVersionError);
     }
 }
 
