@@ -389,7 +389,7 @@ MyGUI::WidgetPtr gameSpeedPanel = nullptr;
 MyGUI::ButtonPtr sendUUIDToggle = nullptr;
 
 const uint32_t DEBUG_WINDOW_WIDTH = 500;
-const uint32_t DEBUG_WINDOW_HEIGHT = 450;
+const uint32_t DEBUG_WINDOW_HEIGHT = 500;
 
 void TickButtonBehaviourClick(MyGUI::WidgetPtr sender)
 {
