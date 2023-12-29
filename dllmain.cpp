@@ -774,7 +774,7 @@ void AttackSlotScroll(MyGUI::ScrollBar* scrollBar, size_t newPos)
 
     // update stored setting
     if (newPos > 0)
-        Kenshi::GetNumAttackSlots() = newPos;
+        Settings::SetAttackSlots(newPos);
     else
         Settings::SetAttackSlots(-1);
 }
@@ -787,12 +787,11 @@ void MaxFactionSizeScroll(MyGUI::ScrollBar* scrollBar, size_t newPos)
     // Update number text
     MyGUI::EditBox* numberText = scrollBar->getParent()->findWidget("MaxFactionSizeSlider_NumberText")->castType<MyGUI::EditBox>();
 
-    if (newPos > 0)
+    if (Settings::GetOverrideMaxFactionSize() &&  newPos > 0)
     {
         std::stringstream str;
         str << newPos;
         numberText->setCaption(str.str());
-        Settings::SetMaxFactionSize(newPos);
         // TODO this sometimes causes a crash if Kenshi is unpaused
         Kenshi::GetMaxFactionSize() = newPos;
     }
@@ -801,9 +800,14 @@ void MaxFactionSizeScroll(MyGUI::ScrollBar* scrollBar, size_t newPos)
         std::stringstream str;
         str << "(" << defaultMaxFactionSize << ")";
         numberText->setCaption(str.str());
-        Settings::SetMaxFactionSize(-1);
         Kenshi::GetMaxFactionSize() = defaultMaxFactionSize;
     }
+
+    // update stored setting
+    if (newPos > 0)
+        Settings::SetMaxFactionSize(newPos);
+    else
+        Settings::SetMaxFactionSize(-1);
 }
 
 void MaxFactionSizeSliderTextChange(MyGUI::EditBox* editBox)
@@ -829,12 +833,11 @@ void MaxSquadSizeScroll(MyGUI::ScrollBar* scrollBar, size_t newPos)
     // Update number text
     MyGUI::EditBox* numberText = scrollBar->getParent()->findWidget("MaxSquadSizeSlider_NumberText")->castType<MyGUI::EditBox>();
 
-    if (newPos > 0)
+    if (Settings::GetOverrideMaxSquadSize() && newPos > 0)
     {
         std::stringstream str;
         str << newPos;
         numberText->setCaption(str.str());
-        Settings::SetMaxSquadSize(newPos);
         // TODO this sometimes causes a crash if Kenshi is unpaused
         Kenshi::GetMaxSquadSize() = newPos;
     }
@@ -843,9 +846,14 @@ void MaxSquadSizeScroll(MyGUI::ScrollBar* scrollBar, size_t newPos)
         std::stringstream str;
         str << "(" << defaultMaxSquadSize << ")";
         numberText->setCaption(str.str());
-        Settings::SetMaxSquadSize(-1);
         Kenshi::GetMaxSquadSize() = defaultMaxSquadSize;
     }
+
+    // update stored setting
+    if (newPos > 0)
+        Settings::SetMaxSquadSize(newPos);
+    else
+        Settings::SetMaxSquadSize(-1);
 }
 
 void MaxSquadSizeSliderTextChange(MyGUI::EditBox* editBox)
@@ -871,12 +879,11 @@ void MaxSquadsScroll(MyGUI::ScrollBar* scrollBar, size_t newPos)
     // Update number text
     MyGUI::EditBox* numberText = scrollBar->getParent()->findWidget("MaxSquadsSlider_NumberText")->castType<MyGUI::EditBox>();
 
-    if (newPos > 0)
+    if (Settings::GetOverrideMaxSquads() && newPos > 0)
     {
         std::stringstream str;
         str << newPos;
         numberText->setCaption(str.str());
-        Settings::SetMaxSquads(newPos);
         // TODO this sometimes causes a crash if Kenshi is unpaused
         Kenshi::GetMaxSquads() = newPos;
     }
@@ -885,9 +892,14 @@ void MaxSquadsScroll(MyGUI::ScrollBar* scrollBar, size_t newPos)
         std::stringstream str;
         str << "(" << defaultMaxSquads << ")";
         numberText->setCaption(str.str());
-        Settings::SetMaxSquads(-1);
         Kenshi::GetMaxSquads() = defaultMaxSquads;
     }
+
+    // update stored setting
+    if (newPos > 0)
+        Settings::SetMaxSquads(newPos);
+    else
+        Settings::SetMaxSquads(-1);
 }
 
 void MaxSquadsSliderTextChange(MyGUI::EditBox* editBox)
@@ -1253,25 +1265,22 @@ void InitGUI()
 
         // Attack slots
         defaultAttackSlots = Kenshi::GetNumAttackSlots();
-        int numAttackSlots = Settings::GetAttackSlots();
-        bool attackSlotsOverrideEnabled = Settings::GetOverrideAttackSlots();
+        const int numAttackSlotsSetting = Settings::GetAttackSlots();
         // Apply settings
-        if (attackSlotsOverrideEnabled && numAttackSlots > 0)
-            Kenshi::GetNumAttackSlots() = numAttackSlots;
         std::stringstream attackSlotsValue;
-        if (numAttackSlots > 0)
+        if (Settings::GetOverrideAttackSlots() && numAttackSlotsSetting > 0)
         {
-            attackSlotsValue << numAttackSlots;
+            Kenshi::GetNumAttackSlots() = numAttackSlotsSetting;
+            attackSlotsValue << numAttackSlotsSetting;
         }
         else
         {
             attackSlotsValue << "(" << defaultAttackSlots << ")";
-            numAttackSlots = 0;
         }
         std::string attackSlotsLabelTxt = boost::locale::gettext("Attack slots (") + std::to_string((long long)defaultAttackSlots) + "):";
         Slider* attackSlotsSlider = new Slider(gameplayScroll, 2, positionY, canvasWidth - 4, 35 * scale, "AttackSlotsSlider_", SliderButton::CHECK,
-            attackSlotsLabelTxt, true, attackSlotsValue.str(), numAttackSlots, 6, MyGUI::newDelegate(ButtonToggleSetting<Settings::SetOverrideAttackSlots>));
-        attackSlotsSlider->SetEnabled(attackSlotsOverrideEnabled);
+            attackSlotsLabelTxt, true, attackSlotsValue.str(), numAttackSlotsSetting, 6, MyGUI::newDelegate(ButtonToggleSetting<Settings::SetOverrideAttackSlots>));
+        attackSlotsSlider->SetEnabled(Settings::GetOverrideAttackSlots());
         MyGUI::ScrollBar* attackSlotsScrollBar = attackSlotsSlider->GetWidget()->findWidget("AttackSlotsSlider_Slider")->castType<MyGUI::ScrollBar>();
         attackSlotsScrollBar->eventScrollChangePosition += MyGUI::newDelegate(AttackSlotScroll);
         MyGUI::TextBox* attackSlotsLabel = attackSlotsSlider->GetWidget()->findWidget("AttackSlotsSlider_ElementText")->castType<MyGUI::TextBox>();
@@ -1280,23 +1289,21 @@ void InitGUI()
 
         // max faction size
         defaultMaxFactionSize = Kenshi::GetMaxFactionSize();
-        int maxFactionSize = Settings::GetMaxFactionSize();
+        const int maxFactionSizeSetting = Settings::GetMaxFactionSize();
         // Apply settings
-        if (maxFactionSize > 0)
-            Kenshi::GetMaxFactionSize() = maxFactionSize;
         std::stringstream maxFactionSizeValue;
-        if (maxFactionSize > 0)
+        if (Settings::GetOverrideMaxFactionSize() && maxFactionSizeSetting > 0)
         {
-            maxFactionSizeValue << maxFactionSize;
+            Kenshi::GetMaxFactionSize() = maxFactionSizeSetting;
+            maxFactionSizeValue << maxFactionSizeSetting;
         }
         else
         {
             maxFactionSizeValue << "(" << defaultMaxFactionSize << ")";
-            maxFactionSize = 0;
         }
         std::string maxFactionSizeLabelTxt = boost::locale::gettext("Max. faction size (") + std::to_string((long long)defaultMaxFactionSize) + "):";
         Slider* maxFactionSizeSlider = new Slider(gameplayScroll, 2, positionY, canvasWidth - 4, 35 * scale, "MaxFactionSizeSlider_", SliderButton::CHECK,
-            maxFactionSizeLabelTxt, false, maxFactionSizeValue.str(), maxFactionSize, 1001, MyGUI::newDelegate(ButtonToggleSetting<Settings::SetOverrideMaxFactionSize>));
+            maxFactionSizeLabelTxt, false, maxFactionSizeValue.str(), maxFactionSizeSetting, 1001, MyGUI::newDelegate(ButtonToggleSetting<Settings::SetOverrideMaxFactionSize>));
         maxFactionSizeSlider->SetEnabled(Settings::GetOverrideMaxFactionSize());
         MyGUI::ScrollBar* maxFactionSizeScrollBar = maxFactionSizeSlider->GetWidget()->findWidget("MaxFactionSizeSlider_Slider")->castType<MyGUI::ScrollBar>();
         maxFactionSizeScrollBar->eventScrollChangePosition += MyGUI::newDelegate(MaxFactionSizeScroll);
@@ -1308,23 +1315,21 @@ void InitGUI()
 
         // max squad size
         defaultMaxSquadSize = Kenshi::GetMaxSquadSize();
-        int maxSquadSize = Settings::GetMaxSquadSize();
+        const int maxSquadSizeSetting = Settings::GetMaxSquadSize();
         // Apply settings
-        if (maxSquadSize > 0)
-            Kenshi::GetMaxSquadSize() = maxSquadSize;
         std::stringstream maxSquadSizeValue;
-        if (maxSquadSize > 0)
+        if (Settings::GetOverrideMaxSquadSize() && maxSquadSizeSetting > 0)
         {
-            maxSquadSizeValue << maxSquadSize;
+            Kenshi::GetMaxSquadSize() = maxSquadSizeSetting;
+            maxSquadSizeValue << maxSquadSizeSetting;
         }
         else
         {
             maxSquadSizeValue << "(" << defaultMaxSquadSize << ")";
-            maxSquadSize = 0;
         }
         std::string maxSquadSizeLabelTxt = boost::locale::gettext("Max. squad size (") + std::to_string((long long)defaultMaxSquadSize) + "):";
         Slider* maxSquadSizeSlider = new Slider(gameplayScroll, 2, positionY, canvasWidth - 4, 35 * scale, "MaxSquadSizeSlider_", SliderButton::CHECK,
-            maxSquadSizeLabelTxt, false, maxSquadSizeValue.str(), maxSquadSize, 1001, MyGUI::newDelegate(ButtonToggleSetting<Settings::SetOverrideMaxSquadSize>));
+            maxSquadSizeLabelTxt, false, maxSquadSizeValue.str(), maxSquadSizeSetting, 1001, MyGUI::newDelegate(ButtonToggleSetting<Settings::SetOverrideMaxSquadSize>));
         maxSquadSizeSlider->SetEnabled(Settings::GetOverrideMaxSquadSize());
         MyGUI::ScrollBar* maxSquadSizeScrollBar = maxSquadSizeSlider->GetWidget()->findWidget("MaxSquadSizeSlider_Slider")->castType<MyGUI::ScrollBar>();
         maxSquadSizeScrollBar->eventScrollChangePosition += MyGUI::newDelegate(MaxSquadSizeScroll);
@@ -1336,23 +1341,21 @@ void InitGUI()
 
         // max squads
         defaultMaxSquads = Kenshi::GetMaxSquads();
-        int maxSquads = Settings::GetMaxSquads();
+        const int maxSquadsSetting = Settings::GetMaxSquads();
         // Apply settings
-        if (maxSquads > 0)
-            Kenshi::GetMaxSquads() = maxSquads;
         std::stringstream maxSquadsValue;
-        if (maxSquads > 0)
+        if (Settings::GetOverrideMaxSquads() && maxSquadsSetting > 0)
         {
-            maxSquadsValue << maxSquads;
+            Kenshi::GetMaxSquads() = maxSquadsSetting;
+            maxSquadsValue << maxSquadsSetting;
         }
         else
         {
             maxSquadsValue << "(" << defaultMaxSquads << ")";
-            maxSquads = 0;
         }
         std::string maxSquadsLabeltxt = boost::locale::gettext("Max. squads (") + std::to_string((long long)defaultMaxSquads) + "):";
         Slider* maxSquadsSlider = new Slider(gameplayScroll, 2, positionY, canvasWidth - 4, 35 * scale, "MaxSquadsSlider_", SliderButton::CHECK,
-            maxSquadsLabeltxt, false, maxSquadsValue.str(), maxSquads, 1001, MyGUI::newDelegate(ButtonToggleSetting<Settings::SetOverrideMaxSquads>));
+            maxSquadsLabeltxt, false, maxSquadsValue.str(), maxSquadsSetting, 1001, MyGUI::newDelegate(ButtonToggleSetting<Settings::SetOverrideMaxSquads>));
         maxSquadsSlider->SetEnabled(Settings::GetOverrideMaxSquads());
         MyGUI::ScrollBar* maxSquadsScrollBar = maxSquadsSlider->GetWidget()->findWidget("MaxSquadsSlider_Slider")->castType<MyGUI::ScrollBar>();
         maxSquadsScrollBar->eventScrollChangePosition += MyGUI::newDelegate(MaxSquadsScroll);
