@@ -560,6 +560,16 @@ MyGUI::WidgetPtr CreateSlider(MyGUI::WidgetPtr parent, int x, int y, int w, int 
     valueText->getClientWidget()->setAlign(MyGUI::Align::Stretch);
     valueText->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
 
+    // stops all non-interactive parts from eating up scrolling events
+    sliderRoot->setInheritsPick(true);
+    sliderRoot->setNeedMouseFocus(false);
+    staticScaledRoot->setInheritsPick(true);
+    staticScaledRoot->setNeedMouseFocus(false);
+    sliderLabel->setEnabled(false);
+    // disable mousewheel scrolling as it's annoyingly easy to do accidentally
+    // unfortunately, this doesn't fix the ScrollView not scrolling, which is convoluted to fix
+    scrollBar->setScrollWheelPage(0);
+
     return sliderRoot;
 }
 
@@ -933,10 +943,16 @@ template<void F(MyGUI::WidgetPtr)>
 MyGUI::ButtonPtr CreateStandardTickButton(MyGUI::WidgetPtr parent, std::string caption, int left, int top, int width, int minHeight, std::string namePrefix, bool initialState)
 {
     MyGUI::WidgetPtr root = parent->createWidget<MyGUI::Widget>("PanelEmpty", left, top, width, minHeight, MyGUI::Align::Top | MyGUI::Align::HStretch, namePrefix + "TickRoot");
+    // stops the button panel from eating up scrolling events without breaking the checkbox
+    root->setInheritsPick(true);
+    root->setNeedMouseFocus(false);
     int buttonStart = (width - minHeight);
+    
     MyGUI::TextBox* sliderLabel = root->createWidget<MyGUI::TextBox>("Kenshi_GenericTextBoxFlat", 0, 0, buttonStart - 4, minHeight, MyGUI::Align::Stretch, namePrefix + "Label");
     sliderLabel->setTextAlign(MyGUI::Align::Left | MyGUI::Align::VCenter);
     sliderLabel->setCaption(caption);
+    // stops the label from eating up scrolling events
+    sliderLabel->setEnabled(false);
     int sizeDelta = sliderLabel->getTextSize().height - sliderLabel->getTextRegion().height;
     if (sizeDelta > 0)
     {
@@ -1382,9 +1398,14 @@ void InitGUI()
 
         gameSpeedPanel = gameplayScroll->createWidget<MyGUI::Widget>("", 0, positionY, canvasWidth - 4, 100, MyGUI::Align::Top | MyGUI::Align::Left, "GameSpeedPanel");
         gameSpeedPanel->setVisible(Settings::GetUseCustomGameSpeeds());
+        // stop the panel from interfering with the ScrollView
+        gameSpeedPanel->setInheritsPick(true);
+        gameSpeedPanel->setNeedMouseFocus(false);
 
         MyGUI::TextBox* gameSpeedsLabel = gameSpeedPanel->createWidget<MyGUI::TextBox>("Kenshi_GenericTextBoxFlat", 2, 0, canvasWidth * 0.35, 30 * scale, MyGUI::Align::Top | MyGUI::Align::Left, "GameSpeedsLabel");
         gameSpeedsLabel->setCaption(boost::locale::gettext("Game speeds"));
+        // fix scrolling
+        gameSpeedsLabel->setEnabled(false);
         int heightDelta = gameSpeedsLabel->getTextSize().height - gameSpeedsLabel->getTextRegion().height;
         MyGUI::ButtonPtr addGameSpeed = gameSpeedPanel->createWidget<MyGUI::Button>("Kenshi_Button1", ((canvasWidth * 0.35) + 10) - 2, 0, canvasWidth - ((canvasWidth * 0.35) + 10), 30 * scale, MyGUI::Align::Top | MyGUI::Align::Right, "AddGameSpeedBtn");
         addGameSpeed->setCaption(boost::locale::gettext("Add game speed"));
@@ -1463,6 +1484,7 @@ void InitGUI()
         positionY += lodAudioButton->getHeight() + pad;
 
         MyGUI::TextBox* debugOut = debugLogScrollView->createWidget<MyGUI::TextBox>("Kenshi_GenericTextBox", 0, positionY, canvasWidth, 100, MyGUI::Align::Stretch, "DebugPrint");
+        debugOut->setEnabled(false);
     }
 }
 
