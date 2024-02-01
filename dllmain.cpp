@@ -19,9 +19,9 @@
 
 #include <iomanip>
 
-#include "kenshi/Kenshi.h"
-#include "kenshi/GameWorld.h"
-#include "Kenshi/KeyBind.h"
+#include <kenshi/Kenshi.h>
+#include <kenshi/GameWorld.h>
+#include <Kenshi/InputHandler.h> 
 
 #include "FSHook.h"
 #include "HeightmapHook.h"
@@ -101,7 +101,7 @@ void SetSpeed1()
 
         Kenshi::GameWorld& gameWorld = Kenshi::GetGameWorld();
         if(gameSpeedText)
-            gameSpeedText->setCaption(std::to_string((long double)gameWorld.gameSpeed) + "x");
+            gameSpeedText->setCaption(std::to_string((long double)gameWorld.frameSpeedMult) + "x");
     }
     else
     {
@@ -113,8 +113,8 @@ void SetSpeed1()
         // Kenshi will probably set game speed to 1, next time speed3 or speed4 buttons are clicked, will revert to modified game speed...
         // TODO how to handle this better?
         Kenshi::GameWorld& gameWorld = Kenshi::GetGameWorld();
-        std::string gameSpeedMessage = std::to_string((long double)gameWorld.gameSpeed) + "x";
-        if (gameWorld.gameSpeed != gameSpeedValues[gameSpeedIdx])
+        std::string gameSpeedMessage = std::to_string((long double)gameWorld.frameSpeedMult) + "x";
+        if (gameWorld.frameSpeedMult != gameSpeedValues[gameSpeedIdx])
             gameSpeedMessage += " (" + std::to_string((long double)gameSpeedValues[gameSpeedIdx]) + "x)";
         //gameSpeedMessage += " (" + std::to_string((unsigned long long)fileCount) + ")";
 
@@ -129,12 +129,12 @@ void SetSpeed2()
     {
         // vanilla - reimplement
         Kenshi::GameWorld& gameWorld = Kenshi::GetGameWorld();
-        gameWorld.gameSpeed = 2;
+        gameWorld.frameSpeedMult = 2;
 
         HighlightSpeedButton(3);
 
         if (gameSpeedText)
-            gameSpeedText->setCaption(std::to_string((long double)gameWorld.gameSpeed) + "x");
+            gameSpeedText->setCaption(std::to_string((long double)gameWorld.frameSpeedMult) + "x");
     }
     else
     {
@@ -144,9 +144,9 @@ void SetSpeed2()
         gameSpeedIdx = std::min(gameSpeedIdx, (int)gameSpeedValues.size() - 1);
         gameSpeedIdx = std::max(gameSpeedIdx, 0);
         Kenshi::GameWorld& gameWorld = Kenshi::GetGameWorld();
-        gameWorld.gameSpeed = gameSpeedValues[gameSpeedIdx];
+        gameWorld.frameSpeedMult = gameSpeedValues[gameSpeedIdx];
         if (gameSpeedText)
-            gameSpeedText->setCaption(std::to_string((long double)gameWorld.gameSpeed) + "x");
+            gameSpeedText->setCaption(std::to_string((long double)gameWorld.frameSpeedMult) + "x");
     }
     
 }
@@ -157,12 +157,12 @@ void SetSpeed3()
     {
         // vanilla - reimplement
         Kenshi::GameWorld& gameWorld = Kenshi::GetGameWorld();
-        gameWorld.gameSpeed = 5;
+        gameWorld.frameSpeedMult = 5;
 
         HighlightSpeedButton(4);
 
         if (gameSpeedText)
-            gameSpeedText->setCaption(std::to_string((long double)gameWorld.gameSpeed) + "x");
+            gameSpeedText->setCaption(std::to_string((long double)gameWorld.frameSpeedMult) + "x");
     }
     else
     {
@@ -172,10 +172,10 @@ void SetSpeed3()
         gameSpeedIdx = std::min(gameSpeedIdx, (int)gameSpeedValues.size() - 1);
         gameSpeedIdx = std::max(gameSpeedIdx, 0);
         Kenshi::GameWorld& gameWorld = Kenshi::GetGameWorld();
-        gameWorld.gameSpeed = gameSpeedValues[gameSpeedIdx];
+        gameWorld.frameSpeedMult = gameSpeedValues[gameSpeedIdx];
 
         if (gameSpeedText)
-            gameSpeedText->setCaption(std::to_string((long double)gameWorld.gameSpeed) + "x");
+            gameSpeedText->setCaption(std::to_string((long double)gameWorld.frameSpeedMult) + "x");
     }
 }
 // Used to re-overwrite Kenshi's value when required
@@ -188,61 +188,11 @@ void ForceWriteSpeed()
         // Clamp
         gameSpeedIdx = std::min(gameSpeedIdx, (int)gameSpeedValues.size() - 1);
         gameSpeedIdx = std::max(gameSpeedIdx, 0);
-        gameWorld.gameSpeed = gameSpeedValues[gameSpeedIdx];
+        gameWorld.frameSpeedMult = gameSpeedValues[gameSpeedIdx];
     }
 
     if (gameSpeedText)
-        gameSpeedText->setCaption(std::to_string((long double)gameWorld.gameSpeed) + "x");
-}
-
-// reversed from game
-Kenshi::KeyBind* FindBindingForKey(uint32_t keyCode, Kenshi::KeyBind* rootBind)
-{
-    Kenshi::KeyBind* high = rootBind;
-    Kenshi::KeyBind* low = rootBind->ptr2;
-    int i = 0;
-    while (low->isLeaf == false)
-    {
-        if (low->keyCode < keyCode)
-        {
-            low = low->ptr3;
-        }
-        else
-        {
-            high = low;
-            low = low->ptr1;
-        }
-        ++i;
-        if (i > 100)
-        {
-            ErrorLog("Could not find key binding!");
-            break;
-        }
-    }
-    if (high->keyCode == keyCode)
-    {
-        return high;
-    }
-    else
-    {
-        return nullptr;
-    }
-}
-
-std::string FindEventNameForKey(uint32_t keyCode, Kenshi::KeyBind* rootBind)
-{
-    Kenshi::KeyBind* keyBind = FindBindingForKey(keyCode, rootBind);
-    if (keyBind != nullptr && keyBind->keyEvent != nullptr)
-        return keyBind->keyEvent->eventName;
-    return "ERROR";
-}
-
-uint32_t FindEventCodeForKey(uint32_t keyCode, Kenshi::KeyBind* rootBind)
-{
-    Kenshi::KeyBind* keyBind = FindBindingForKey(keyCode, rootBind);
-    if (keyBind != nullptr && keyBind->keyEvent != nullptr)
-        return keyBind->keyEvent->eventCode;
-    return -1;
+        gameSpeedText->setCaption(std::to_string((long double)gameWorld.frameSpeedMult) + "x");
 }
 
 class KeyboardHook : public OIS::KeyListener
@@ -262,7 +212,8 @@ public:
     {
         Kenshi::InputHandler& inputHandler = Kenshi::GetInputHandler();
         // Game speed hooks - runs after game listener so we can overwrite values
-        std::string eventName = FindEventNameForKey(arg.key, inputHandler.keyBindingsStart);
+        Kenshi::InputHandler::Command* command = inputHandler.map[arg.key];
+        std::string &eventName = command->name;
         bool output = kenshiKeyListener->keyPressed(arg);
         // TODO pause?
         if (eventName == "speed_1")
@@ -285,7 +236,8 @@ public:
     {
         Kenshi::InputHandler& inputHandler = Kenshi::GetInputHandler();
         // Game speed hooks - runs after game listener so we can overwrite values
-        std::string eventName = FindEventNameForKey(arg.key, inputHandler.keyBindingsStart);
+        Kenshi::InputHandler::Command* command = inputHandler.map[arg.key];
+        std::string& eventName = command->name;
         bool output = kenshiKeyListener->keyReleased(arg);
         // TODO pause?
         if (eventName == "speed_1")
@@ -1774,8 +1726,8 @@ void dllmain()
         if (!keyboardHook)
         {
             Kenshi::InputHandler& inputHandler = Kenshi::GetInputHandler();
-            keyboardHook = std::make_shared<KeyboardHook>(inputHandler.keyboardInput->getEventCallback());
-            inputHandler.keyboardInput->setEventCallback(keyboardHook.get());
+            keyboardHook = std::make_shared<KeyboardHook>(inputHandler.keyboard->getEventCallback());
+            inputHandler.keyboard->setEventCallback(keyboardHook.get());
         }
     }
     else

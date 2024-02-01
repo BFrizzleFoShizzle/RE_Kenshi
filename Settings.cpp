@@ -182,13 +182,13 @@ std::string ParsePath(std::string path)
             std::string modName = path.substr(nameStart, nameEnd - nameStart);
 
             // find mod
-            Kenshi::lektor<Kenshi::ModInfo*> &loadedMods = Kenshi::GetGameWorld().loadedMods;
+            Kenshi::lektor<Kenshi::ModInfo*> &loadedMods = Kenshi::GetGameWorld().activeMods;
             for (int i = 0; i < loadedMods.size(); ++i)
             {
-                if (loadedMods[i]->modName == modName)
+                if (loadedMods[i]->name == modName)
                 {
                     // mod found, insert into path
-                    return path.substr(0, namePos) + loadedMods[i]->fileDir + path.substr(nameEnd + 2);
+                    return path.substr(0, namePos) + loadedMods[i]->path + path.substr(nameEnd + 2);
                 }
             }
             ErrorLog("Path override modroot not found: \"" + modName + "\"");
@@ -207,18 +207,18 @@ static bool modOverridesLoaded = false;
 // Load settings from mods
 void Settings::LoadModOverrides()
 {
-    Kenshi::lektor<Kenshi::ModInfo*>& loadedMods = Kenshi::GetGameWorld().loadedMods;
+    Kenshi::lektor<Kenshi::ModInfo*>& loadedMods = Kenshi::GetGameWorld().activeMods;
     for (int i = 0; i < loadedMods.size(); ++i)
     {
         // attempt to load RE_Kenshi settings from mod dir
-        std::string settingsPath = loadedMods[i]->fileDir + "\\RE_Kenshi.json";
+        std::string settingsPath = loadedMods[i]->path + "\\RE_Kenshi.json";
         std::ifstream settingsFile(settingsPath);
 
         // skip if settings file doesn't exist
         if (!settingsFile.is_open())
             continue;
 
-        DebugLog("Loading mod overrides from \"" + loadedMods[i]->modName + "\"...");
+        DebugLog("Loading mod overrides from \"" + loadedMods[i]->name + "\"...");
         rapidjson::IStreamWrapper isw(settingsFile);
         rapidjson::Document modDOM;
         if (modDOM.ParseStream(isw).HasParseError())

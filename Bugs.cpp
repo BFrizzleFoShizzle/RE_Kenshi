@@ -448,12 +448,12 @@ void LogManager_destructor_hook(void* thisptr)
 
 				int emergencySaveNum = 0;
 				for (; emergencySaveNum < 10000; ++emergencySaveNum)
-					if (!boost::filesystem::exists(saveManager->saveWriteDir + "emergency_save_" + std::to_string((uint64_t)emergencySaveNum)))
+					if (!boost::filesystem::exists(saveManager->location + "emergency_save_" + std::to_string((uint64_t)emergencySaveNum)))
 						break;
 
 				if (emergencySaveNum < 10000)
 				{
-					if (!SaveManager_saveGame(saveManager, saveManager->saveWriteDir, "emergency_save_" + std::to_string((uint64_t)emergencySaveNum)))
+					if (!SaveManager_saveGame(saveManager, saveManager->location, "emergency_save_" + std::to_string((uint64_t)emergencySaveNum)))
 					{
 						Kenshi::SaveFileSystem* saveFileSystem = Kenshi::GetSaveFileSystem();
 						WaitForSingleObject(saveFileSystem->threadHandle, INFINITE);
