@@ -22,6 +22,7 @@
 #include <kenshi/Kenshi.h>
 #include <kenshi/GameWorld.h>
 #include <Kenshi/InputHandler.h> 
+#include <kenshi/GlobalConstants.h>
 
 #include "FSHook.h"
 #include "HeightmapHook.h"
@@ -723,7 +724,7 @@ void AttackSlotScroll(MyGUI::ScrollBar* scrollBar, size_t newPos)
         str << newPos;
         numberText->setCaption(str.str());
         // TODO this sometimes causes a crash if Kenshi is unpaused
-        Kenshi::GetNumAttackSlots() = newPos;
+        Kenshi::GetCon()->MAX_NUM_ATTACK_SLOTS = newPos;
     }
     else
     {
@@ -731,7 +732,7 @@ void AttackSlotScroll(MyGUI::ScrollBar* scrollBar, size_t newPos)
         std::stringstream str;
         str << "(" << defaultAttackSlots << ")";
         numberText->setCaption(str.str());
-        Kenshi::GetNumAttackSlots() = defaultAttackSlots;
+        Kenshi::GetCon()->MAX_NUM_ATTACK_SLOTS = defaultAttackSlots;
     }
 
     // update stored setting
@@ -755,14 +756,14 @@ void MaxFactionSizeScroll(MyGUI::ScrollBar* scrollBar, size_t newPos)
         str << newPos;
         numberText->setCaption(str.str());
         // TODO this sometimes causes a crash if Kenshi is unpaused
-        Kenshi::GetMaxFactionSize() = newPos;
+        Kenshi::GetCon()->MAX_FACTION_SIZE = newPos;
     }
     else
     {
         std::stringstream str;
         str << "(" << defaultMaxFactionSize << ")";
         numberText->setCaption(str.str());
-        Kenshi::GetMaxFactionSize() = defaultMaxFactionSize;
+        Kenshi::GetCon()->MAX_FACTION_SIZE = defaultMaxFactionSize;
     }
 
     // update stored setting
@@ -801,14 +802,14 @@ void MaxSquadSizeScroll(MyGUI::ScrollBar* scrollBar, size_t newPos)
         str << newPos;
         numberText->setCaption(str.str());
         // TODO this sometimes causes a crash if Kenshi is unpaused
-        Kenshi::GetMaxSquadSize() = newPos;
+        Kenshi::GetCon()->MAX_SQUAD_SIZE = newPos;
     }
     else
     {
         std::stringstream str;
         str << "(" << defaultMaxSquadSize << ")";
         numberText->setCaption(str.str());
-        Kenshi::GetMaxSquadSize() = defaultMaxSquadSize;
+        Kenshi::GetCon()->MAX_SQUAD_SIZE = defaultMaxSquadSize;
     }
 
     // update stored setting
@@ -847,14 +848,14 @@ void MaxSquadsScroll(MyGUI::ScrollBar* scrollBar, size_t newPos)
         str << newPos;
         numberText->setCaption(str.str());
         // TODO this sometimes causes a crash if Kenshi is unpaused
-        Kenshi::GetMaxSquads() = newPos;
+        Kenshi::GetCon()->MAX_SQUADS = newPos;
     }
     else
     {
         std::stringstream str;
         str << "(" << defaultMaxSquads << ")";
         numberText->setCaption(str.str());
-        Kenshi::GetMaxSquads() = defaultMaxSquads;
+        Kenshi::GetCon()->MAX_SQUADS = defaultMaxSquads;
     }
 
     // update stored setting
@@ -1232,13 +1233,13 @@ void InitGUI()
         positionY += increaseMaxCameraDistanceButton->getHeight() + pad;
 
         // Attack slots
-        defaultAttackSlots = Kenshi::GetNumAttackSlots();
+        defaultAttackSlots = Kenshi::GetCon()->MAX_NUM_ATTACK_SLOTS;
         const int numAttackSlotsSetting = Settings::GetAttackSlots();
         // Apply settings
         std::stringstream attackSlotsValue;
         if (Settings::GetOverrideAttackSlots() && numAttackSlotsSetting > 0)
         {
-            Kenshi::GetNumAttackSlots() = numAttackSlotsSetting;
+            Kenshi::GetCon()->MAX_NUM_ATTACK_SLOTS = numAttackSlotsSetting;
             attackSlotsValue << numAttackSlotsSetting;
         }
         else
@@ -1256,13 +1257,13 @@ void InitGUI()
         positionY += attackSlotsSlider->GetWidget()->getHeight() + pad;
 
         // max faction size
-        defaultMaxFactionSize = Kenshi::GetMaxFactionSize();
+        defaultMaxFactionSize = Kenshi::GetCon()->MAX_FACTION_SIZE;
         const int maxFactionSizeSetting = Settings::GetMaxFactionSize();
         // Apply settings
         std::stringstream maxFactionSizeValue;
         if (Settings::GetOverrideMaxFactionSize() && maxFactionSizeSetting > 0)
         {
-            Kenshi::GetMaxFactionSize() = maxFactionSizeSetting;
+            Kenshi::GetCon()->MAX_FACTION_SIZE = maxFactionSizeSetting;
             maxFactionSizeValue << maxFactionSizeSetting;
         }
         else
@@ -1282,13 +1283,13 @@ void InitGUI()
         positionY += maxFactionSizeSlider->GetWidget()->getHeight() + pad;
 
         // max squad size
-        defaultMaxSquadSize = Kenshi::GetMaxSquadSize();
+        defaultMaxSquadSize = Kenshi::GetCon()->MAX_SQUAD_SIZE;
         const int maxSquadSizeSetting = Settings::GetMaxSquadSize();
         // Apply settings
         std::stringstream maxSquadSizeValue;
         if (Settings::GetOverrideMaxSquadSize() && maxSquadSizeSetting > 0)
         {
-            Kenshi::GetMaxSquadSize() = maxSquadSizeSetting;
+            Kenshi::GetCon()->MAX_SQUAD_SIZE = maxSquadSizeSetting;
             maxSquadSizeValue << maxSquadSizeSetting;
         }
         else
@@ -1308,13 +1309,13 @@ void InitGUI()
         positionY += maxSquadSizeSlider->GetWidget()->getHeight() + pad;
 
         // max squads
-        defaultMaxSquads = Kenshi::GetMaxSquads();
+        defaultMaxSquads = Kenshi::GetCon()->MAX_SQUADS;
         const int maxSquadsSetting = Settings::GetMaxSquads();
         // Apply settings
         std::stringstream maxSquadsValue;
         if (Settings::GetOverrideMaxSquads() && maxSquadsSetting > 0)
         {
-            Kenshi::GetMaxSquads() = maxSquadsSetting;
+            Kenshi::GetCon()->MAX_SQUADS = maxSquadsSetting;
             maxSquadsValue << maxSquadsSetting;
         }
         else
