@@ -7,6 +7,8 @@
 #include "Escort.h"
 #include "Settings.h"
 #include <kenshi/Kenshi.h>
+#include <kenshi/Globals.h>
+#include <kenshi/util/functions.h>
 #include <boost/locale/message.hpp>
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
@@ -443,8 +445,7 @@ void LogManager_destructor_hook(void* thisptr)
 			try
 			{
 				DebugLog("Attempting emergency save...");
-				Kenshi::SaveManager* saveManager = Kenshi::GetSaveManager();
-				Kenshi::SaveGameFunc* SaveManager_saveGame = Kenshi::GetSaveManagerSaveGameFunction();
+				SaveManager* saveManager = Kenshi::GetSaveManager();
 
 				int emergencySaveNum = 0;
 				for (; emergencySaveNum < 10000; ++emergencySaveNum)
@@ -453,9 +454,9 @@ void LogManager_destructor_hook(void* thisptr)
 
 				if (emergencySaveNum < 10000)
 				{
-					if (!SaveManager_saveGame(saveManager, saveManager->location, "emergency_save_" + std::to_string((uint64_t)emergencySaveNum)))
+					if (!saveManager->saveGame(saveManager->location, "emergency_save_" + std::to_string((uint64_t)emergencySaveNum)))
 					{
-						Kenshi::SaveFileSystem* saveFileSystem = Kenshi::GetSaveFileSystem();
+						SaveFileSystem* saveFileSystem = Kenshi::GetSaveFileSystem();
 						WaitForSingleObject(saveFileSystem->threadHandle, INFINITE);
 
 						// success? update continue save
@@ -506,7 +507,7 @@ void Bugs::Init()
 	if (discordID == "PUT_YOUR_ID_HERE")
 		MessageBoxA(NULL, "Discord setup error", "Add your info to \"Discord.h\" and recompile to fix bug reporting", MB_ICONWARNING);
 	
-	CrashReport_orig = Escort::JmpReplaceHook<void*(void*, void*)>(Kenshi::GetCrashReporterFunction(), &CrashReport_hook, 10);
+	CrashReport_orig = Escort::JmpReplaceHook<void*(void*, void*)>(GetRealFunction(showErrorMessage), &CrashReport_hook, 10);
 
 	// I tried a few ways of hooking the root crash function
 	// Kenshi's exception handler runs before the UnhandledExceptionFilter

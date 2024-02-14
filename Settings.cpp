@@ -182,7 +182,7 @@ std::string ParsePath(std::string path)
             std::string modName = path.substr(nameStart, nameEnd - nameStart);
 
             // find mod
-            Kenshi::lektor<Kenshi::ModInfo*> &loadedMods = Kenshi::GetGameWorld().activeMods;
+            lektor<ModInfo*> &loadedMods = Kenshi::GetGameWorld().activeMods;
             for (int i = 0; i < loadedMods.size(); ++i)
             {
                 if (loadedMods[i]->name == modName)
@@ -207,7 +207,7 @@ static bool modOverridesLoaded = false;
 // Load settings from mods
 void Settings::LoadModOverrides()
 {
-    Kenshi::lektor<Kenshi::ModInfo*>& loadedMods = Kenshi::GetGameWorld().activeMods;
+    lektor<ModInfo*>& loadedMods = Kenshi::GetGameWorld().activeMods;
     for (int i = 0; i < loadedMods.size(); ++i)
     {
         // attempt to load RE_Kenshi settings from mod dir

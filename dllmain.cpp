@@ -23,6 +23,7 @@
 #include <kenshi/GameWorld.h>
 #include <Kenshi/InputHandler.h> 
 #include <kenshi/GlobalConstants.h>
+#include <kenshi/util/functions.h>
 
 #include "FSHook.h"
 #include "HeightmapHook.h"
@@ -100,7 +101,7 @@ void SetSpeed1()
 
         // TODO test keyboard bindings
 
-        Kenshi::GameWorld& gameWorld = Kenshi::GetGameWorld();
+        GameWorld& gameWorld = Kenshi::GetGameWorld();
         if(gameSpeedText)
             gameSpeedText->setCaption(std::to_string((long double)gameWorld.frameSpeedMult) + "x");
     }
@@ -113,7 +114,7 @@ void SetSpeed1()
 
         // Kenshi will probably set game speed to 1, next time speed3 or speed4 buttons are clicked, will revert to modified game speed...
         // TODO how to handle this better?
-        Kenshi::GameWorld& gameWorld = Kenshi::GetGameWorld();
+        GameWorld& gameWorld = Kenshi::GetGameWorld();
         std::string gameSpeedMessage = std::to_string((long double)gameWorld.frameSpeedMult) + "x";
         if (gameWorld.frameSpeedMult != gameSpeedValues[gameSpeedIdx])
             gameSpeedMessage += " (" + std::to_string((long double)gameSpeedValues[gameSpeedIdx]) + "x)";
@@ -129,7 +130,7 @@ void SetSpeed2()
     if (!Settings::GetUseCustomGameSpeeds())
     {
         // vanilla - reimplement
-        Kenshi::GameWorld& gameWorld = Kenshi::GetGameWorld();
+        GameWorld& gameWorld = Kenshi::GetGameWorld();
         gameWorld.frameSpeedMult = 2;
 
         HighlightSpeedButton(3);
@@ -144,7 +145,7 @@ void SetSpeed2()
         // Clamp
         gameSpeedIdx = std::min(gameSpeedIdx, (int)gameSpeedValues.size() - 1);
         gameSpeedIdx = std::max(gameSpeedIdx, 0);
-        Kenshi::GameWorld& gameWorld = Kenshi::GetGameWorld();
+        GameWorld& gameWorld = Kenshi::GetGameWorld();
         gameWorld.frameSpeedMult = gameSpeedValues[gameSpeedIdx];
         if (gameSpeedText)
             gameSpeedText->setCaption(std::to_string((long double)gameWorld.frameSpeedMult) + "x");
@@ -157,7 +158,7 @@ void SetSpeed3()
     if (!Settings::GetUseCustomGameSpeeds())
     {
         // vanilla - reimplement
-        Kenshi::GameWorld& gameWorld = Kenshi::GetGameWorld();
+        GameWorld& gameWorld = Kenshi::GetGameWorld();
         gameWorld.frameSpeedMult = 5;
 
         HighlightSpeedButton(4);
@@ -172,7 +173,7 @@ void SetSpeed3()
         // Clamp
         gameSpeedIdx = std::min(gameSpeedIdx, (int)gameSpeedValues.size() - 1);
         gameSpeedIdx = std::max(gameSpeedIdx, 0);
-        Kenshi::GameWorld& gameWorld = Kenshi::GetGameWorld();
+        GameWorld& gameWorld = Kenshi::GetGameWorld();
         gameWorld.frameSpeedMult = gameSpeedValues[gameSpeedIdx];
 
         if (gameSpeedText)
@@ -182,7 +183,7 @@ void SetSpeed3()
 // Used to re-overwrite Kenshi's value when required
 void ForceWriteSpeed()
 {
-    Kenshi::GameWorld& gameWorld = Kenshi::GetGameWorld();
+    GameWorld& gameWorld = Kenshi::GetGameWorld();
     if (Settings::GetUseCustomGameSpeeds())
     {
         std::vector<float> gameSpeedValues = Settings::GetGameSpeeds();
@@ -211,9 +212,9 @@ public:
     }
     bool keyPressed(const OIS::KeyEvent& arg) override
     {
-        Kenshi::InputHandler& inputHandler = Kenshi::GetInputHandler();
+        InputHandler& inputHandler = Kenshi::GetInputHandler();
         // Game speed hooks - runs after game listener so we can overwrite values
-        Kenshi::InputHandler::Command* command = inputHandler.map[arg.key];
+        InputHandler::Command* command = inputHandler.map[arg.key];
         std::string &eventName = command->name;
         bool output = kenshiKeyListener->keyPressed(arg);
         // TODO pause?
@@ -235,9 +236,9 @@ public:
     };
     bool keyReleased(const OIS::KeyEvent& arg) override
     {
-        Kenshi::InputHandler& inputHandler = Kenshi::GetInputHandler();
+        InputHandler& inputHandler = Kenshi::GetInputHandler();
         // Game speed hooks - runs after game listener so we can overwrite values
-        Kenshi::InputHandler::Command* command = inputHandler.map[arg.key];
+        InputHandler::Command* command = inputHandler.map[arg.key];
         std::string& eventName = command->name;
         bool output = kenshiKeyListener->keyReleased(arg);
         // TODO pause?
@@ -1621,14 +1622,14 @@ void GUIUpdate(float timeDelta)
 
 // I haven't reverse-engineered this function, it probably does more than just load mods
 // but we hook it for sync'ing with the mod loader
-void (*LoadMods_orig)(Kenshi::GameWorld* gameWorld);
+void (*LoadMods_orig)(GameWorld* gameWorld);
 
 // used so we can wait for mods to load on the main thread, so we don't have to do post-mod init in LoadMods_hook() directly
 bool setupMods = false;
 boost::mutex modLoadLock;
 boost::condition_variable modLoadCV;
 
-void LoadMods_hook(Kenshi::GameWorld* gameWorld)
+void LoadMods_hook(GameWorld* gameWorld)
 {
     LoadMods_orig(gameWorld);
     if (!setupMods)
@@ -1671,6 +1672,8 @@ void dllmain()
 {
     DebugLog("RE_Kenshi " + Version::GetDisplayVersion());
 
+    Kenshi::Init();
+
     Kenshi::BinaryVersion gameVersion = Kenshi::GetKenshiVersion();
 
     // this has to be done *before* the file I/O hook since that causes settings reads
@@ -1680,7 +1683,7 @@ void dllmain()
     if (gameVersion.GetPlatform() != Kenshi::BinaryVersion::UNKNOWN)
     {
         // hook for loading mod config - has to be done early so we can override certain early I/O operations
-        LoadMods_orig = Escort::JmpReplaceHook<void(Kenshi::GameWorld*)>(Kenshi::GetModLoadFunction(), LoadMods_hook, 6);
+        LoadMods_orig = Escort::JmpReplaceHook<void(GameWorld*)>((void*)GetRealAddress(&GameWorld::initialisationGameData), LoadMods_hook, 6);
 
         FSHook::Init();
     }
@@ -1726,7 +1729,7 @@ void dllmain()
         // Keyboard hooks
         if (!keyboardHook)
         {
-            Kenshi::InputHandler& inputHandler = Kenshi::GetInputHandler();
+            InputHandler& inputHandler = Kenshi::GetInputHandler();
             keyboardHook = std::make_shared<KeyboardHook>(inputHandler.keyboard->getEventCallback());
             inputHandler.keyboard->setEventCallback(keyboardHook.get());
         }
