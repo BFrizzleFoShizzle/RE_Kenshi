@@ -112,10 +112,20 @@ static bool ParseDNGFromMemory(const char* mem, unsigned int size,
 		return false;
 	}
 
-	assert_release(images->size() == 1, "wrong number of images in TIFF");
+	if (images->size() != 1)
+	{
+		ErrorLog("wrong number of images in heightmap TIFF");
+		return false;
+	}
+
 	tinydng::DNGImage* image = &images->at(0);
 	image->bits_per_sample = image->bits_per_sample_original;
-	assert_release(image->bits_per_sample == 16, "wrong number of bits per sample in TIFF");
+
+	if (image->bits_per_sample != 16)
+	{
+		ErrorLog("wrong number of bits per sample in heightmap TIFF");
+		return false;
+	}
 
 	return true;
 }
@@ -125,6 +135,11 @@ static const uint64_t heightmapDim = 16385;
 
 static uint16_t* MMapTIFF(std::string path)
 {
+	if (!boost::filesystem::exists(path))
+	{
+		ErrorLog("Heightmap TIFF file doesn't exist!");
+		return nullptr;
+	}
 	size_t fileSize = boost::filesystem::file_size(path);
 	// TODO is sequential scan useful here?
 	HANDLE hFile = CreateFileA(path.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_NO_BUFFERING | FILE_FLAG_SEQUENTIAL_SCAN, NULL);
@@ -359,7 +374,15 @@ void HeightmapHook::UpdateHeightmapSettings()
 	{
 		DebugLog("Opening fast heightmap...");
 		mappedHeightmapPixels = MMapTIFF(Settings::ResolvePath("data/newland/land/fullmap.tif"));
-		DebugLog("Fast heightmap mapped!");
+		if (mappedHeightmapPixels == nullptr)
+		{
+			ErrorLog("Error initializing fast heightmap loader");
+			Settings::SetHeightmapMode(VANILLA);
+		}
+		else
+		{
+			DebugLog("Fast heightmap mapped!");
+		}
 	}
 
 	// it's now safe to update these as all required files will be open
