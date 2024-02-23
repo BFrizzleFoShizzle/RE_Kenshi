@@ -1736,8 +1736,8 @@ void dllmain()
         DebugLog("ERROR: Game version not recognized.");
         DebugLog("");
         DebugLog("Supported versions:");
-        DebugLog("GOG 1.0.59, 1.0.64");
-        DebugLog("Steam 1.0.55, 1.0.64");
+        DebugLog("GOG 1.0.64");
+        DebugLog("Steam 1.0.55, 1.0.64, 1.0.65");
         DebugLog("RE_Kenshi initialization aborted!");
 
         // doing this on our thread is unsafe, need to do it on the GUI thread so we don't access UI elements as the game creates them

@@ -11,9 +11,7 @@ void MyGUIHooks::InitMainMenu()
 	
 	// this has to be done *after* the UI is created
 	// bug is patched in 1.0.60
-	if ((Kenshi::GetKenshiVersion() == Kenshi::BinaryVersion(Kenshi::BinaryVersion::STEAM, "1.0.55") 
-		|| Kenshi::GetKenshiVersion() == Kenshi::BinaryVersion(Kenshi::BinaryVersion::GOG, "1.0.59"))
-		&& Settings::GetFixFontSize())
+	if (Kenshi::GetKenshiVersion() == Kenshi::BinaryVersion(Kenshi::BinaryVersion::STEAM, "1.0.55") && Settings::GetFixFontSize())
 	{
 		DebugLog("Fixing fonts...");
 		Kenshi::GetCurrentFontSize() = 16;

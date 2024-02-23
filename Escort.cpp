@@ -297,7 +297,8 @@ void* Escort::AllocateRWXPageNear(void* targetAddr, size_t allocSize)
 			}
 
 			// HACK
-			if (i > 100)
+			// For whatever reason, the number of iterations needed here went up an order of magnitude in 1.0.65
+			if (i > 1000)
 				break;
 
 			if ((uint8_t*)output.BaseAddress + output.RegionSize == 0)
