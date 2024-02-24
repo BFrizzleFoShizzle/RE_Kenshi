@@ -212,51 +212,60 @@ public:
     bool keyPressed(const OIS::KeyEvent& arg) override
     {
         Kenshi::InputHandler& inputHandler = Kenshi::GetInputHandler();
-        // Game speed hooks - runs after game listener so we can overwrite values
-        Kenshi::InputHandler::Command* command = inputHandler.map[arg.key];
-        std::string &eventName = command->name;
         bool output = kenshiKeyListener->keyPressed(arg);
-        // TODO pause?
-        if (eventName == "speed_1")
+
+        // Game speed hooks - runs after game listener so we can overwrite values
+        if (inputHandler.map.find(arg.key) != inputHandler.map.end())
         {
-            SetSpeed1();
-        }
-        else if (eventName == "speed_2")
-        {
-            // decrement on press
-            SetSpeed2();
-        }
-        else if (eventName == "speed_3")
-        {
-            // increment on press
-            SetSpeed3();
+            Kenshi::InputHandler::Command* command = inputHandler.map[arg.key];
+            std::string& eventName = command->name;
+
+            // TODO pause?
+            if (eventName == "speed_1")
+            {
+                SetSpeed1();
+            }
+            else if (eventName == "speed_2")
+            {
+                // decrement on press
+                SetSpeed2();
+            }
+            else if (eventName == "speed_3")
+            {
+                // increment on press
+                SetSpeed3();
+            }
         }
         return output;
     };
     bool keyReleased(const OIS::KeyEvent& arg) override
     {
         Kenshi::InputHandler& inputHandler = Kenshi::GetInputHandler();
-        // Game speed hooks - runs after game listener so we can overwrite values
-        Kenshi::InputHandler::Command* command = inputHandler.map[arg.key];
-        std::string& eventName = command->name;
         bool output = kenshiKeyListener->keyReleased(arg);
-        // TODO pause?
-        if (eventName == "speed_1")
+
+        // Game speed hooks - runs after game listener so we can overwrite values
+        if (inputHandler.map.find(arg.key) != inputHandler.map.end())
         {
-            SetSpeed1();
+            Kenshi::InputHandler::Command* command = inputHandler.map[arg.key];
+            std::string& eventName = command->name;
+
+            // TODO pause?
+            if (eventName == "speed_1")
+            {
+                SetSpeed1();
+            }
+            else if (eventName == "speed_2")
+            {
+                // update on release
+                ForceWriteSpeed();
+            }
+            else if (eventName == "speed_3")
+            {
+                // update on release
+                ForceWriteSpeed();
+            }
         }
-        else if (eventName == "speed_2")
-        {
-            // update on release
-            ForceWriteSpeed();
-        }
-        else if (eventName == "speed_3")
-        {
-            // update on release
-            ForceWriteSpeed();
-        }
-        return output;
-    };
+    }
 private:
     // Games key listener
     OIS::KeyListener* kenshiKeyListener;
