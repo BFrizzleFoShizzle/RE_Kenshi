@@ -4,7 +4,7 @@ This project uses Git submodules. To automatically clone submodules:
 
 # Compiling
 Install Visual Studio 2019  
-Install the Windows SDK v7.1  
+Install the Windows SDK v7.1 - The official installer no longer works on Windows 10+, but the instructions here may work: https://github.com/allenk/WinSDK71_VisualStudio2019  
 Install the DirectX June 2010 SDK https://www.microsoft.com/en-us/download/details.aspx?id=6812  
 Install Boost 1.60.0 https://www.boost.org/users/history/version_1_60_0.html  
 Clone the repo (make sure submodules are cloned too)  
