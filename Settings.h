@@ -19,6 +19,8 @@ namespace Settings
 	bool PreloadHeightmap();
 	void SetProfileLoads(bool value);
 	bool GetProfileLoads();
+	void SetIgnoreHashCheck(bool value);
+	bool GetIgnoreHashCheck();
 	int GetAttackSlots();
 	void SetAttackSlots(int num);
 	bool GetOverrideAttackSlots();

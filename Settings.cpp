@@ -58,6 +58,7 @@ rapidjson::Document GenerateDefaultSettings()
     defaultSettings.AddMember("OpenSettingOnStart", true, defaultSettings.GetAllocator());
     defaultSettings.AddMember("LogAudio", false, defaultSettings.GetAllocator());
     defaultSettings.AddMember("ProfileLoads", false, defaultSettings.GetAllocator());
+    defaultSettings.AddMember("IgnoreHash", false, defaultSettings.GetAllocator());
     defaultSettings.AddMember("EnableEmergencySaves", true, defaultSettings.GetAllocator());
     defaultSettings.AddMember("IncreaseMaxCameraDistance", false, defaultSettings.GetAllocator());
     rapidjson::Value gameSpeeds(rapidjson::kArrayType);
@@ -405,6 +406,15 @@ void Settings::SetProfileLoads(bool value)
 bool Settings::GetProfileLoads()
 {
     return GetSettingBool("ProfileLoads");
+}
+
+void Settings::SetIgnoreHashCheck(bool value)
+{
+    SetSettingBool("IgnoreHash", value);
+}
+bool Settings::GetIgnoreHashCheck()
+{
+    return GetSettingBool("IgnoreHash");
 }
 
 bool Settings::GetFixRNG()

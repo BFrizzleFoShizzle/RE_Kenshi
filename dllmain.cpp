@@ -1679,6 +1679,57 @@ void DisplayVersionError(float timeDelta)
 // for anything that doesn't have to be done synchronously with Kenshi's initialization
 DWORD WINAPI InitThread(LPVOID param)
 {
+    // version check bypass if enabled
+    if (Settings::GetIgnoreHashCheck() && Kenshi::GetKenshiVersion().GetPlatform() == Kenshi::BinaryVersion::UNKNOWN)
+    {
+        DebugLog("Hash doesn't match but hash check bypass is enabled, reading version from file");
+        std::ifstream versionFile("currentVersion.txt");
+        if (versionFile.good())
+        {
+            std::string versionText;
+            std::getline(versionFile, versionText);
+            // expected format: "Kenshi x.x.x - x64 (Newland)"
+            std::string numberText = versionText.substr(7, versionText.find(" ", 7) - 7);
+            std::string versionTrailing = versionText.substr(7 + numberText.length());
+            if (versionText.substr(0, 7) == "Kenshi " && versionTrailing == " - x64 (Newland)")
+            {
+                // deduce Steam/GOG via the executable's name
+                CHAR path[MAX_PATH];
+                GetModuleFileNameA(NULL, path, MAX_PATH);
+                CHAR* moduleName = strrchr(path, '\\') + 1;
+
+                Kenshi::BinaryVersion::KenshiPlatform platform = Kenshi::BinaryVersion::UNKNOWN;
+                if (strcmp(moduleName, "kenshi_GOG_x64.exe") == 0)
+                    platform = Kenshi::BinaryVersion::GOG;
+                else if (strcmp(moduleName, "kenshi_x64.exe") == 0)
+                    platform = Kenshi::BinaryVersion::STEAM;
+
+                if (platform != Kenshi::BinaryVersion::UNKNOWN)
+                {
+                    DebugLog("Got version: " + Kenshi::BinaryVersion(platform, numberText).ToString());
+                    if (Kenshi::OverrideKenshiVersion(Kenshi::BinaryVersion(platform, numberText)))
+                        DebugLog("Version override success");
+                    else
+                        ErrorLog("Version override failed");
+                }
+                else
+                {
+                    ErrorLog("Could not recognize game platform from binary name");
+                    ErrorLog("expected \"kenshi_x64.exe\" or \"kenshi_GOG_x64.exe\" but got \"" + std::string(moduleName) + "\"");
+                }
+            }
+            else
+            {
+                ErrorLog("currentVersion.txt is incorrectly formatted, version cannot be recognized");
+                DebugLog(versionText);
+            }
+        }
+        else
+        {
+            ErrorLog("currentVersion.txt couldn't be opened - try re-running the game.");
+        }
+    }
+
     Kenshi::BinaryVersion gameVersion = Kenshi::GetKenshiVersion();
 
     // TODO refactor these branches
