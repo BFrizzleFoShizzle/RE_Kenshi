@@ -37,9 +37,6 @@ namespace Settings
 	void SetOverrideMaxSquads(bool value);
 	bool GetFixRNG();
 	void SetFixRNG(bool value);
-	// TODO remove after dropping support for old versions
-	bool GetFixFontSize();
-	void SetFixFontSize(bool value);
 	void SetLogFileIO(bool value);
 	bool GetLogFileIO();
 	bool GetCheckUpdates();

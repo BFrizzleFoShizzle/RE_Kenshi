@@ -1676,14 +1676,10 @@ void DisplayVersionError(float timeDelta)
     }
 }
 
-void dllmain()
+// for anything that doesn't have to be done synchronously with Kenshi's initialization
+DWORD WINAPI InitThread(LPVOID param)
 {
-    DebugLog("RE_Kenshi " + Version::GetDisplayVersion());
-
     Kenshi::BinaryVersion gameVersion = Kenshi::GetKenshiVersion();
-
-    // this has to be done *before* the file I/O hook since that causes settings reads
-    Settings::Init();
 
     // TODO refactor these branches
     if (gameVersion.GetPlatform() != Kenshi::BinaryVersion::UNKNOWN)
@@ -1745,28 +1741,29 @@ void dllmain()
         DebugLog("ERROR: Game version not recognized.");
         DebugLog("");
         DebugLog("Supported versions:");
-        DebugLog("GOG 1.0.64");
-        DebugLog("Steam 1.0.55, 1.0.64, 1.0.65");
+        DebugLog("GOG 1.0.64, 1.0.65");
+        DebugLog("Steam 1.0.64, 1.0.65, 1.0.68");
         DebugLog("RE_Kenshi initialization aborted!");
 
         // doing this on our thread is unsafe, need to do it on the GUI thread so we don't access UI elements as the game creates them
         // if we try to read + modify the version text on our current thread, the code fails about 50% of the time
         gui->eventFrameStart += MyGUI::newDelegate(DisplayVersionError);
     }
-}
 
-DWORD WINAPI threadWrapper(LPVOID param)
-{
-    dllmain();
     return 0;
 }
 
 // Ogre plugin export
 extern "C" void __declspec(dllexport) dllStartPlugin(void)
 {
-
     // HACK this has to be done BEFORE switching to (non-borderless) fullscreen or bad things happen
     // it should really be run in a hook
     IO::Init();
-    CreateThread(NULL, 0, threadWrapper, 0, 0, 0);
+    DebugLog("RE_Kenshi " + Version::GetDisplayVersion());
+
+    // this has to be done *before* the file I/O hook since that causes settings reads
+    Settings::Init();
+    // Escort has to be initialized BEFORE any hooks are installed
+    Escort::Init();
+    CreateThread(NULL, 0, InitThread, 0, 0, 0);
 }
