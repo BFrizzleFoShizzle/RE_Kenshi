@@ -1,5 +1,8 @@
-// Taken from https://blog.talosintelligence.com/2014/06/exceptional-behavior-windows-81-x64-seh.html
+#pragma once
 
+// Taken from https://blog.talosintelligence.com/2014/06/exceptional-behavior-windows-81-x64-seh.html
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
 #include <Windows.h>
 
 #include <stdint.h>
