@@ -62,9 +62,6 @@ static SYSTEM_INFO sysInfo;
 /////////////////////////
 
 void Escort::Init() {
-	// page size: 0x1000 
-	// min addr: 0x10000 max addr: 0x7FFFFFFEFFFF
-	// alloc granularity: 0x10000
 	GetSystemInfo(&sysInfo);
 
 	// https://stackoverflow.com/questions/8696653/dynamically-load-a-function-from-a-dll
@@ -81,100 +78,6 @@ void Escort::Init() {
 	VirtualAlloc2Ptr = (VirtualAlloc2Type*)GetProcAddress(hGetProcIDDLL, "VirtualAlloc2");
 	if (VirtualAlloc2Ptr != nullptr) {
 		DebugLog("VirtualAlloc2 found.");
-#if 0
-		/* Backup of working code
-		
-		MEM_ADDRESS_REQUIREMENTS addressReqs = { 0 };
-		MEM_EXTENDED_PARAMETER param = { 0 };
-
-		addressReqs.Alignment = allocationGranularity;
-		addressReqs.HighestEndingAddress = (PVOID)(ULONG_PTR)0x7fffffff;
-
-		param.Type = MemExtendedParameterAddressRequirements;
-		param.Pointer = &addressReqs;
-
-		void* alloc = VirtualAlloc2Ptr(
-			nullptr, nullptr,
-			allocationGranularity,
-			MEM_RESERVE | MEM_COMMIT,
-			PAGE_READWRITE,
-			&param, 1);
-			*/
-		
-		// TODO REMOVE
-		MEM_ADDRESS_REQUIREMENTS addressReqs = { 0 };
-		MEM_EXTENDED_PARAMETER param = { 0 };
-
-		/*
-		ULONG_PTR maxTestAddr = (ULONG_PTR)sysInfo.lpMaximumApplicationAddress - sysInfo.dwPageSize;
-		ULONG_PTR minTestAddr = (ULONG_PTR)sysInfo.lpMinimumApplicationAddress;
-		minTestAddr += (sysInfo.dwAllocationGranularity) >>1
-		std::stringstream sstr;
-		sstr << "Max: " << std::hex << maxTestAddr;
-		DebugLog(sstr.str());
-		sstr.str("");
-		sstr << "Min: " << std::hex << minTestAddr;
-		DebugLog(sstr.str());
-
-		ULONG_PTR testAlignment = sysInfo.dwAllocationGranularity;
-		sstr.str("");
-		sstr << "Align: " << std::hex << testAlignment;
-		DebugLog(sstr.str());
-		*/
-
-		// Microsofts docs for some of these are a bit suspicious, so I manually tested to see what the exact requirements of these are
-		// (as of 2 March 2024)
-		// alignment has to be a multiple of dwAllocationGranularity
-		// set alignment to 0 for auto which should default to dwAllocationGranularity (AKA the minimum supported alignment)
-		addressReqs.Alignment = 0;
-		// Low address has to be above lpMinimumApplicationAddress and rounded to a multiple of dwAllocationGranularity
-		addressReqs.LowestStartingAddress = (PVOID)0x7ff6cee30000;
-		//addressReqs.LowestStartingAddress = (PVOID)sysInfo.lpMinimumApplicationAddress;
-		// High address has to be below lpMaximumApplicationAddress and rounded to a multiple of dwPageSize
-		addressReqs.HighestEndingAddress =  (PVOID)0x7ff8aee30FFF;// sysInfo.lpMaximumApplicationAddress;
-		//addressReqs.HighestEndingAddress = (PVOID)sysInfo.lpMaximumApplicationAddress;
-		param.Type = MemExtendedParameterAddressRequirements;
-		param.Pointer = &addressReqs;
-
-		ULONG_PTR allocateSize = sysInfo.dwPageSize;//1;// sysInfo.dwAllocationGranularity >> 2;
-
-		void* alloc = VirtualAlloc2Ptr(
-			nullptr, nullptr,
-			// TODO should we allocate dwAllocationGranularity? read up on committing vs reserving and whether the OS actually allocates all pages in our allocated block
-			// ^ looking at the raw memory, unallocated pages within the allocation granularity aren't actually mapped, so maybe it's not a problem?
-			// Value has to be >= 1, but will be rounded up to a multiple of dwPageSize
-			allocateSize,
-			MEM_RESERVE | MEM_COMMIT,
-			PAGE_EXECUTE_READWRITE,
-			&param, 1);
-
-		std::stringstream sstr;
-		sstr << "Alloc1: " << std::hex << (ULONG_PTR)alloc;
-		DebugLog(sstr.str());
-
-
-		/*
-		* 
-		VirtualAlloc2Ptr(
-		nullptr, nullptr,
-		paddedSize,
-		MEM_RESERVE | MEM_COMMIT,
-		PAGE_EXECUTE_READWRITE,
-		&param, 1);
-		*/
-		if (alloc == nullptr)
-		{
-			ErrorLog("TEST FAILED");
-			DebugLog(GetLastErrorStdStr());
-		}
-		else
-		{
-			sstr.str("");
-			sstr << "Addr: " << std::hex << (ULONG_PTR)alloc;
-			DebugLog(sstr.str());
-			DebugLog("TEST SUCCEEDED!!!!");
-		}
-#endif
 		return;
 	}
 	else
@@ -182,9 +85,7 @@ void Escort::Init() {
 		// else, need to use old implementation
 		DebugLog("Warning: could not load `VirtualAlloc2()` - old memory allocator must be used");
 	}
-
 }
-
 
 // Returns true if we can do a relative jmp between
 inline bool Escort::IsNear(void* ptr1, void* ptr2)
@@ -216,15 +117,6 @@ static void* VirtualAllocNear(void* target, size_t allocSize)
 	// handle overflow
 	if (highestAddr < targetAddr || highestAddr > (ULONG_PTR)sysInfo.lpMaximumApplicationAddress)
 		highestAddr = (ULONG_PTR)sysInfo.lpMaximumApplicationAddress;
-	/*
-	if (highestAddr > (ULONG_PTR)sysInfo.lpMaximumApplicationAddress)
-		ErrorLog("HIGHEST ADDR TOO HIGH");
-	if (lowestAddr < (ULONG_PTR)sysInfo.lpMinimumApplicationAddress)
-		ErrorLog("LOWEST ADDR TOO LOW");
-	std::stringstream sstr;
-	sstr << "alloc size: " << allocSize << " target: " << std::hex << targetAddr << " lowest: " << lowestAddr << " highest: " << highestAddr;
-	DebugLog(sstr.str());
-		*/
 
 	// Microsofts docs for some of these are a bit suspicious, so I manually tested to see what the exact requirements/restrictions these have
 	// (as of 2 March 2024)
@@ -252,60 +144,8 @@ static void* VirtualAllocNear(void* target, size_t allocSize)
 	{
 		ErrorLog("VirtualAlloc2: " + GetLastErrorStdStr());
 	}
+
 	return addr;
-
-	/* wokring
-		MEM_ADDRESS_REQUIREMENTS addressReqs = { 0 };
-		MEM_EXTENDED_PARAMETER param = { 0 };
-
-		addressReqs.Alignment = allocationGranularity;
-		addressReqs.HighestEndingAddress = (PVOID)(ULONG_PTR)0x7fffffff;
-
-		param.Type = MemExtendedParameterAddressRequirements;
-		param.Pointer = &addressReqs;
-
-		void* alloc = VirtualAlloc2Ptr(
-			nullptr, nullptr,
-			allocationGranularity,
-			MEM_RESERVE | MEM_COMMIT,
-			PAGE_EXECUTE_READWRITE,
-			&param, 1);
-			*/
-
-	/*
-	MEM_ADDRESS_REQUIREMENTS addressReqs = { 0 };
-	MEM_EXTENDED_PARAMETER param = { 0 };
-	// +-2GB so we can use relative 32-bit jmps
-	ULONG_PTR targetAddr = (ULONG_PTR)target;
-	ULONG_PTR lowestAddr = (targetAddr-0x7F000000ull);
-	// handle underflow
-	if (lowestAddr > targetAddr)
-		lowestAddr = 0;
-	ULONG_PTR highestAddr = (targetAddr+0x7F000000ull);
-	// handle overflow
-	if (highestAddr < targetAddr)
-		highestAddr = std::numeric_limits<ULONG_PTR>::max();
-	//addressReqs.LowestStartingAddress = (PVOID)lowestAddr;
-	addressReqs.HighestEndingAddress = (PVOID)highestAddr;
-	// TODO is this supposed to be dwAllocationGranularity or dwPageSize ?
-	addressReqs.Alignment = sysInfo.dwAllocationGranularity;
-
-	param.Type = MemExtendedParameterAddressRequirements;
-	param.Pointer = &addressReqs;
-
-	size_t paddedSize = sysInfo.dwAllocationGranularity;// roundUp(allocSize, allocationGranularity);
-	std::stringstream sstr;
-	sstr << "Alloc start: " << std::hex << lowestAddr
-		<< " Alloc end: " << std::hex << highestAddr
-		<< " Padded size: " << paddedSize;
-	DebugLog(sstr.str());
-	return VirtualAlloc2Ptr(
-		nullptr, nullptr,
-		paddedSize,
-		MEM_RESERVE | MEM_COMMIT,
-		PAGE_EXECUTE_READWRITE,
-		&param, 1);
-		*/
 }
 
 // Internal function for allocating RWX memory within 2GB of an address so you can use 32-bit jmp/call/etc instructions at the target location
@@ -333,7 +173,7 @@ void* Escort::AllocateRWXPageNear(void* targetAddr, size_t allocSize)
 		}
 	}
 
-	// THis is the painful branch...
+	// This is the painful branch...
 	// HACK there's a race condition with this - I think if the game allocates a block 
 	// of memory while this is running, it breaks
 	for (int attempts = 0; attempts < 10; ++attempts)
@@ -434,8 +274,6 @@ void* Escort::AllocateRWXPageNear(void* targetAddr, size_t allocSize)
 void* Escort::GetFuncAddress(std::string moduleName, std::string functionName)
 {
 	HMODULE hMod = GetModuleHandleA(moduleName.c_str());
-	std::string debugStr = "DLL handle: " + std::to_string((uint64_t)hMod);
-	//MessageBoxA(0, debugStr.c_str(), "Debug", MB_OK);
 	return GetProcAddress(hMod, functionName.c_str());
 }
 
