@@ -229,9 +229,9 @@ float Terrain_getHeight_hook(Terrain* thisPtr, class Ogre::Vector3 const& vec, i
 	int pixelY = int(z_transformed);
 
 	// in-game bounds checks
-	// TODO is it L or LE
-	if (pixelX <= thisPtr->bounds->mapMaxX
-		&& pixelY <= thisPtr->bounds->mapMaxY
+	// Tested: DEFINITELY L/G NOT LE/GE
+	if (pixelX < thisPtr->bounds->mapMaxX
+		&& pixelY < thisPtr->bounds->mapMaxY
 		&& pixelX >= 0
 		&& pixelY >= 0)
 	{
@@ -251,8 +251,9 @@ float Terrain_getHeight_hook(Terrain* thisPtr, class Ogre::Vector3 const& vec, i
 	}
 	else
 	{
-		// TODO
-		return 0 * thisPtr->heightScale;
+		// from my tests, this always returns 0
+		// TODO re-check why the function call here is broken
+		return 0.0f;// Terrain_getHeight_orig(thisPtr, vec, unk);
 	}
 }
 
@@ -271,6 +272,12 @@ unsigned __int64 Terrain_getRawData_hook(Terrain* thisPtr, int x, int y, int w, 
 
 	uint16_t *shortPtr = reinterpret_cast<uint16_t*>(out);
 	uint64_t written = 0;
+	// I've checked this is correct at the top + bottom of the map
+	// - number of bytes written is correct + contents of "out" is byte-for-byte identical vs vanilla
+	x = std::max(0, x);
+	y = std::max(0, y);
+	w = std::min(w, thisPtr->bounds->mapMaxX - x);
+	h = std::min(h, thisPtr->bounds->mapMaxY - y);
 	for (int i = 0; i < h; ++i)
 	{
 		for (int j = 0; j < w; ++j)
