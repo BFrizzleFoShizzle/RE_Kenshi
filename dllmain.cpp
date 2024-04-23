@@ -1792,7 +1792,7 @@ DWORD WINAPI InitThread(LPVOID param)
         DebugLog("ERROR: Game version not recognized.");
         DebugLog("");
         DebugLog("Supported versions:");
-        DebugLog("GOG 1.0.64, 1.0.65");
+        DebugLog("GOG 1.0.64, 1.0.65, 1.0.68");
         DebugLog("Steam 1.0.64, 1.0.65, 1.0.68");
         DebugLog("RE_Kenshi initialization aborted!");
 
