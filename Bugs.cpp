@@ -119,7 +119,7 @@ bool Bugs::ReportCrash(std::string description, std::string crashDumpName, std::
 	}
 
 	WinHttpClient client(modCrashDiscordWebHookURL);
-	std::string message = "<@" + discordID + ">\nRE_Kenshi " + Version::GetDisplayVersion() + " / Kenshi " + Kenshi::GetKenshiVersion().ToString();
+	std::string message = "\nRE_Kenshi " + Version::GetDisplayVersion() + " / Kenshi " + Kenshi::GetKenshiVersion().ToString();
 	if (uuidHash != "")
 		message += "\nUUID: " + uuidHash;
 	message += " crash:\n" + description;
