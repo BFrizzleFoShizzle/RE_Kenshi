@@ -10,7 +10,7 @@
 
 #include <boost/locale.hpp>
 
-std::string version = "0.2.13";
+std::string version = "0.2.14";
 std::string latestVersionCache = "0.0.0";
 const bool isPrerelease = true;
 
