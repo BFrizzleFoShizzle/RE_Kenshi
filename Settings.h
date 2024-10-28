@@ -39,6 +39,8 @@ namespace Settings
 	void SetOverrideMaxSquads(bool value);
 	bool GetFixRNG();
 	void SetFixRNG(bool value);
+	bool GetFixModListScroll();
+	void SetFixModListScroll(bool value);
 	void SetLogFileIO(bool value);
 	bool GetLogFileIO();
 	bool GetCheckUpdates();

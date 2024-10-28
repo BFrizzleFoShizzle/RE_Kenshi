@@ -1,4 +1,5 @@
 
+#include <kenshi/GameLauncher.h>
 #include "MiscHooks.h"
 
 #include "kenshi/Kenshi.h"
@@ -9,6 +10,35 @@
 #include <stdlib.h>
 #include <ctime>
 
+// launcher mod tab scroll bugfix
+void (*TabMods_updateModsList_orig)(Kenshi::GameLauncher::TabMods* thisptr, bool validate);
+void TabMods_updateModsList_hook(Kenshi::GameLauncher::TabMods* thisptr, bool validate)
+{
+	if (Settings::GetFixModListScroll())
+	{
+		// stop Kenshi from scrolling to the top of the mod list
+		int topIndex = thisptr->clListMods.GetTopIndex();
+		int caretIndex = thisptr->clListMods.GetCaretIndex();
+		TabMods_updateModsList_orig(thisptr, validate);
+		thisptr->clListMods.SetCaretIndex(caretIndex);
+		thisptr->clListMods.SetTopIndex(topIndex);
+	}
+	else
+	{
+		TabMods_updateModsList_orig(thisptr, validate);
+	}
+}
+/*
+void (*TabMods_onCheckListChanged_orig)(Kenshi::GameLauncher::TabMods* thisptr);
+void TabMods_onCheckListChanged_hook(Kenshi::GameLauncher::TabMods* thisptr)
+{
+	int topIndex = thisptr->clListMods.GetTopIndex();
+	int caretIndex = thisptr->clListMods.GetCaretIndex();
+	TabMods_onCheckListChanged_orig(thisptr);
+	thisptr->clListMods.SetTopIndex(std::max(0, topIndex));
+	thisptr->clListMods.SetCaretIndex(std::max(0, caretIndex));
+}
+*/
 // Dummy function to stop Kenshi calling srand()
 void srand_hook(int val) {
 	return;
@@ -107,4 +137,6 @@ void MiscHooks::Init()
 	// (ShowCursor is a wrapper for NtUserShowCursor)
 	void* NtUserShowCursor = Escort::GetFuncAddress("win32u.dll", "NtUserShowCursor");
 	ShowCursor_orig = Escort::JmpReplaceHook<int(bool)>(NtUserShowCursor, ShowCursor_hook, 8);
+	TabMods_updateModsList_orig = Escort::JmpReplaceHook<void(Kenshi::GameLauncher::TabMods*, bool)>(Kenshi::GetTabModsUpdateModsListFunction(), TabMods_updateModsList_hook, 6);
+	//TabMods_onCheckListChanged_orig = Escort::JmpReplaceHook<void(Kenshi::GameLauncher::TabMods*)>(Kenshi::GetTabModsOnCheckListChangeFunction(), TabMods_onCheckListChanged_hook, 6);
 }

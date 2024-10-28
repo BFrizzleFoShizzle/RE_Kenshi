@@ -46,6 +46,8 @@
 #include <boost/locale.hpp>
 #include <boost/thread/condition_variable.hpp>
 
+extern "C" { int __afxForceUSRDLL; }
+
 float gameSpeed = 1.0f;
 MyGUI::TextBox* gameSpeedText = nullptr;
 
@@ -1792,8 +1794,8 @@ DWORD WINAPI InitThread(LPVOID param)
         DebugLog("ERROR: Game version not recognized.");
         DebugLog("");
         DebugLog("Supported versions:");
-        DebugLog("GOG 1.0.64, 1.0.65, 1.0.68");
-        DebugLog("Steam 1.0.64, 1.0.65, 1.0.68");
+        DebugLog("GOG 1.0.65, 1.0.68");
+        DebugLog("Steam 1.0.65, 1.0.68");
         DebugLog("RE_Kenshi initialization aborted!");
 
         // doing this on our thread is unsafe, need to do it on the GUI thread so we don't access UI elements as the game creates them

@@ -51,6 +51,7 @@ rapidjson::Document GenerateDefaultSettings()
     defaultSettings.AddMember("MaxSquads", -1, defaultSettings.GetAllocator());
     defaultSettings.AddMember("MaxSquadsOverride", false, defaultSettings.GetAllocator());
     defaultSettings.AddMember("FixRNG", true, defaultSettings.GetAllocator());
+    defaultSettings.AddMember("FixModListScroll", true, defaultSettings.GetAllocator());
     defaultSettings.AddMember("CacheShaders", true, defaultSettings.GetAllocator());
     defaultSettings.AddMember("LogFileIO", false, defaultSettings.GetAllocator());
     defaultSettings.AddMember("CheckUpdates", true, defaultSettings.GetAllocator());
@@ -425,6 +426,16 @@ bool Settings::GetFixRNG()
 void Settings::SetFixRNG(bool value)
 {
     SetSettingBool("FixRNG", value);
+}
+
+bool Settings::GetFixModListScroll()
+{
+    return GetSettingBool("FixModListScroll");
+}
+
+void Settings::SetFixModListScroll(bool value)
+{
+    SetSettingBool("FixModListScroll", value);
 }
 
 // -1 = use mod value
