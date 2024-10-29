@@ -274,16 +274,14 @@ unsigned __int64 Terrain_getRawData_hook(Terrain* thisPtr, int x, int y, int w, 
 	uint64_t written = 0;
 	// I've checked this is correct at the top + bottom of the map
 	// - number of bytes written is correct + contents of "out" is byte-for-byte identical vs vanilla
-	x = std::max(0, x);
-	y = std::max(0, y);
-	w = std::min(w, thisPtr->bounds->mapMaxX - x);
-	h = std::min(h, thisPtr->bounds->mapMaxY - y);
+	const int mapXBound = thisPtr->bounds->mapMaxX;
+	const int mapYBound = thisPtr->bounds->mapMaxY;
 	for (int i = 0; i < h; ++i)
 	{
 		for (int j = 0; j < w; ++j)
 		{
-			int pixelX = x + j;
-			int pixelY = y + i;
+			const int pixelX = std::min(std::max(0, x + j), mapXBound);
+			const int pixelY = std::min(std::max(0, y + i), mapYBound);
 			uint16_t height = 0;
 			// Note: using useCompressedHeightmapCache directly here would be unsafe if the setting is 
 			// toggled part-way through the function and UseFastUncompressedHeightmap() is false
