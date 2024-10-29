@@ -6,9 +6,21 @@
 
 #include "Escort.h"
 #include "Settings.h"
+#include "TLS.h"
 
 #include <stdlib.h>
 #include <ctime>
+#include <crtdefs.h>
+
+#include <boost/random/mersenne_twister.hpp>
+#include <boost/random/random_device.hpp>
+
+// bootleg hack so we can switch between seeded rand() and true random
+typedef TLS::TLSSlot<TLS::GCTLSObj> TLSRandFlag;
+DWORD TLSRandFlag::TLSSlotIndex = TLS_OUT_OF_INDEXES;
+
+boost::random_device rd;
+boost::mt19937 trueRandom(rd);
 
 // launcher mod tab scroll bugfix
 void (*TabMods_updateModsList_orig)(Kenshi::GameLauncher::TabMods* thisptr, bool validate);
@@ -29,8 +41,33 @@ void TabMods_updateModsList_hook(Kenshi::GameLauncher::TabMods* thisptr, bool va
 	}
 }
 
+// taken from https://stackoverflow.com/questions/6793065/understanding-the-algorithm-of-visual-cs-rand-function
+// seems to be correct based on disassembly
+unsigned long srand_state = 0;
+void __cdecl srand_copy(unsigned int seed)
+{
+	srand_state = (unsigned long)seed;
+}
+
+int __cdecl rand_copy(void)
+{
+	return (((srand_state = srand_state * 214013L + 2531011L) >> 16) & 0x7fff);
+}
+
+int (*rand_orig)();
+int rand_hook()
+{
+	if (TLSRandFlag::GetPtr() == 0)
+		// true random
+		return trueRandom() % RAND_MAX;
+	else
+		// return seeded random
+		return rand_copy();
+}
+
 // Dummy function to stop Kenshi calling srand()
 void srand_hook(int val) {
+	srand_copy(val);
 	return;
 }
 
@@ -38,9 +75,103 @@ void srand_hook(int val) {
 uint8_t srand_old[15];
 
 bool rngHooksInstalled = false;
+/*
+// patch for foliage, which needs deterministic seeds
+int randomInt_reimplement(int lo, int hi)
+{
+	// multiply with double precision, then convert to single
+	float randVal = rand() * -0.000030517578125;
+	// convert range to single precision
+	float range = hi - lo;
+	// multiply as singles, convert to int, subtract from hi
+	return std::min(hi, std::max(lo, hi - (int)(randVal * range)));
+}
+*/
+int (*randomInt_orig)(int lo, int hi);
+int randomInt_hook(int lo, int hi)
+{
+	if (Settings::GetFixRNG())
+	{
+		TLSRandFlag::SetPtr((TLS::GCTLSObj*)1);
+		int val = randomInt_orig(lo, hi);
+		TLSRandFlag::SetPtr((TLS::GCTLSObj*)0);
+		return val;
+	}
+	else
+	{
+		return randomInt_orig(lo, hi);
+	}
+}
+
+float (*random_orig)(float lo, float hi);
+float random_hook(float lo, float hi)
+{
+	if (Settings::GetFixRNG())
+	{
+		TLSRandFlag::SetPtr((TLS::GCTLSObj*)1);
+		int val = random_orig(lo, hi);
+		TLSRandFlag::SetPtr((TLS::GCTLSObj*)0);
+		return val;
+	}
+	else
+	{
+		return random_orig(lo, hi);
+	}
+}
+
+namespace FoliageSystem
+{
+	class EntData;
+}
+void (*getFoliageRotation_orig)(FoliageSystem::EntData* data, float x, float z, Ogre::Quaternion& rotation);
+void getFoliageRotation_hook(FoliageSystem::EntData* data, float x, float z, Ogre::Quaternion& rotation)
+{
+	if (Settings::GetFixRNG())
+	{
+		TLSRandFlag::SetPtr((TLS::GCTLSObj*)1);
+		getFoliageRotation_orig(data, x, z, rotation);
+		TLSRandFlag::SetPtr((TLS::GCTLSObj*)0);
+	}
+	else
+	{
+		getFoliageRotation_orig(data, x, z, rotation);
+	}
+}
+
+// TODO move to Escort?
+void CallOverwrite(void* writeAddress, void* target)
+{
+	// call (32) -> jmp (64) in near page -> function
+	std::vector<uint8_t> bytes;
+	Escort::JmpAbsPtr(bytes, 6);
+	uint8_t* rwx = (uint8_t*)Escort::AllocateRWXNear(writeAddress, bytes.size() + 8);
+	// write absolute jmp
+	memcpy(rwx, &bytes[0], bytes.size());
+	uint64_t offset = ((uint64_t)target) - ((uint64_t)(rwx + bytes.size()));
+	memcpy(rwx + bytes.size(), &target, 8);
+	// hook up call
+	bytes.clear();
+	offset = ((uint64_t)rwx) - ((uint64_t)writeAddress);
+	Escort::CallRel(bytes, offset);
+	Escort::WriteProtected(writeAddress, &bytes[0], bytes.size());
+}
 
 void EnableFixRNG()
 {
+	// default to trueRandom()
+	TLSRandFlag::SetPtr((TLS::GCTLSObj*)0);
+	// Note: rand() can't be  wrapper hooked because it has problematic instructions
+	// we bork the function and just reimplement it entirely
+	void* randPtr = Escort::GetFuncAddress("MSVCR100.dll", "rand");
+	rand_orig = Escort::JmpReplaceHook<int()>(randPtr, rand_hook, 9);
+	getFoliageRotation_orig = Escort::JmpReplaceHook<void(FoliageSystem::EntData*, float, float, Ogre::Quaternion&)>(Kenshi::GetGetFoliageRotationFunction(), getFoliageRotation_hook, 9);
+	randomInt_orig = (int(*)(int,int))Kenshi::GetUtilityTRandomIntFunction();
+	random_orig = (float(*)(float, float))Kenshi::GetUtilityTRandomFunction();
+	uint8_t* buildingSelectPartsPtr = (uint8_t*)Kenshi::GetBuildingSelectPartsFunction();
+	// call to UtilityT::randomInt
+	CallOverwrite(buildingSelectPartsPtr + 0x113, randomInt_hook);
+	CallOverwrite(buildingSelectPartsPtr + 0x26D, random_hook);
+	// call to UtilityT::random
 	void* srandPtr = Escort::GetFuncAddress("MSVCR100.dll", "srand");
 	// backup bytes
 	memcpy(srand_old, srandPtr, 15);
@@ -52,8 +183,10 @@ void DisableFixRNG()
 {
 	void* srandPtr = Escort::GetFuncAddress("MSVCR100.dll", "srand");
 	// Restore backup
-	Escort::WriteProtected(srand_old, srandPtr, 15);
+	//Escort::WriteProtected(srand_old, srandPtr, 15);
 	rngHooksInstalled = false;
+	// default to rand()
+	TLSRandFlag::SetPtr((TLS::GCTLSObj*)1);
 }
 
 // bugfix for Kenshi's RNG initialization
