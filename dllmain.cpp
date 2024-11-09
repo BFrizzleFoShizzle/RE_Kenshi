@@ -1073,6 +1073,16 @@ void InitGUI()
     {
         DebugLog("Version supported.");
 
+        // sometimes we hit here when the main menu isn't initialized properly and accessing the version text causes a crash
+        MyGUI::Gui* gui = MyGUI::Gui::getInstancePtr();
+        MyGUI::WidgetPtr versionTextWidg = Kenshi::FindWidget(gui->getEnumerator(), "VersionText");
+        // defer to next frame on failiure
+        if (!versionTextWidg)
+            return;
+        MyGUI::TextBox* versionText = versionTextWidg->castType<MyGUI::TextBox>(false);
+        if (!versionText)
+            return;
+
         // can't seem to find where the language is kept in memory...
         // I've found the std::locale - but it doesn't work for some reason?
         // Also found the boost::locale::generator but that isn't really useful
@@ -1090,9 +1100,7 @@ void InitGUI()
         gen.add_messages_domain("re_kenshi");
         // extend Kenshi's existing locale with our own
         std::locale::global(gen.generate(std::locale(), language + ".UTF-8"));
-        MyGUI::Gui* gui = MyGUI::Gui::getInstancePtr();
 
-        MyGUI::TextBox* versionText = Kenshi::FindWidget(gui->getEnumerator(), "VersionText")->castType<MyGUI::TextBox>();
         MyGUI::UString version = versionText->getCaption();
         DebugLog(version);
 
