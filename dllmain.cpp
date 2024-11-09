@@ -1678,9 +1678,18 @@ void DisplayVersionError(float timeDelta)
     }
 }
 
-// for anything that doesn't have to be done synchronously with Kenshi's initialization
-DWORD WINAPI InitThread(LPVOID param)
+// For stuff that should be done ASAP
+void SyncronousInit()
 {
+    // this has to be done BEFORE switching to (non-borderless) fullscreen or bad things happen
+    IO::Init();
+
+    // this has to be done *before* the file I/O hook since that causes settings reads
+    Settings::Init();
+
+    // Escort has to be initialized BEFORE any hooks are installed
+    Escort::Init();
+
     // version check bypass if enabled
     if (Settings::GetIgnoreHashCheck() && Kenshi::GetKenshiVersion().GetPlatform() == Kenshi::BinaryVersion::UNKNOWN)
     {
@@ -1746,17 +1755,39 @@ DWORD WINAPI InitThread(LPVOID param)
     {
         DebugLog("Error: Unsupported Kenshi version. Hooks disabled.");
     }
-    
-    Version::Init();
 
     if (gameVersion.GetPlatform() != Kenshi::BinaryVersion::UNKNOWN)
     {
-        Bugs::Init();
+        Bugs::InitMenu();
         ShaderCache::Init();
         HeightmapHook::Preload();
         MiscHooks::Init();
         Sound::Init();
+    }
+}
 
+// workaround for exceptions on the dllStartPlugin thread not triggering UnhandledException and try/catch
+bool syncInit = false;
+boost::mutex syncInitLock;
+boost::condition_variable syncInitCV;
+
+DWORD WINAPI InitThread(LPVOID param)
+{
+    // Anything that could cause a race condition with the game (e.g. hook installation)
+    SyncronousInit();
+    DebugLog("Finished synchronous init stage");
+    {
+        boost::lock_guard<boost::mutex> lock(syncInitLock);
+        syncInit = true;
+        syncInitCV.notify_all();
+    }
+
+    // RE_Kenshi version manager
+    Version::Init();
+
+    Kenshi::BinaryVersion gameVersion = Kenshi::GetKenshiVersion();
+    if (gameVersion.GetPlatform() != Kenshi::BinaryVersion::UNKNOWN)
+    {
         DebugLog("Waiting for mod setup.");
         WaitForModSetup();
 
@@ -1809,14 +1840,20 @@ DWORD WINAPI InitThread(LPVOID param)
 // Ogre plugin export
 extern "C" void __declspec(dllexport) dllStartPlugin(void)
 {
-    // HACK this has to be done BEFORE switching to (non-borderless) fullscreen or bad things happen
-    // it should really be run in a hook
-    IO::Init();
     DebugLog("RE_Kenshi " + Version::GetDisplayVersion());
 
-    // this has to be done *before* the file I/O hook since that causes settings reads
-    Settings::Init();
-    // Escort has to be initialized BEFORE any hooks are installed
-    Escort::Init();
+    // hook unhandled exception filter function before doing anything else so we can catch 
+    // any weird exceptions before Kenshi sets up their own
+    Bugs::Init();
+
+    // NOTE: exceptions triggered in THIS FUNCTION don't get caught by the error handler (there might be a try/catch above this?)
+    // so ALL INIT should be done on a thread so that failiures trigger the global exception handler
     CreateThread(NULL, 0, InitThread, 0, 0, 0);
+
+    // Wait for sync init to finish
+    boost::unique_lock<boost::mutex> lock(syncInitLock);
+    while (!syncInit)
+    {
+        syncInitCV.wait(lock);
+    }
 }

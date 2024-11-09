@@ -169,7 +169,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
       <AdditionalLibraryDirectories>KenshiLib/Libraries/mygui;$(DXSDK_DIR)\Lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>libboost_system-vc100-mt-1_60.lib;CompressToolsLib.lib;KenshiLib.lib;MyGUIEngine_x64.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libboost_system-vc100-mt-1_60.lib;CompressToolsLib.lib;KenshiLib.lib;MyGUIEngine_x64.lib;d3dcompiler.lib;dbghelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -180,6 +180,7 @@
     <ClCompile Include="HeightmapHook.cpp" />
     <ClCompile Include="io.cpp" />
     <ClCompile Include="KenshiLib\Source\core\md5.cpp" />
+    <ClCompile Include="miniz.c" />
     <ClCompile Include="MiscHooks.cpp" />
     <ClCompile Include="MyGUIHooks.cpp" />
     <ClCompile Include="Settings.cpp" />
@@ -197,6 +198,7 @@
     <ClInclude Include="HeightmapHook.h" />
     <ClInclude Include="io.h" />
     <ClInclude Include="KenshiLib\Include\core\md5.h" />
+    <ClInclude Include="miniz.h" />
     <ClInclude Include="MiscHooks.h" />
     <ClInclude Include="MyGUIHooks.h" />
     <ClInclude Include="Settings.h" />

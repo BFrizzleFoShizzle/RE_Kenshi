@@ -4,8 +4,10 @@
 
 namespace Bugs
 {
-	// Hooks Kenshi's crash report function
+	// Hooks globally uncaught exceptions that occur before Kenshi's crash handler is set up
 	void Init();
+	// Hooks Kenshi's crash report function
+	void InitMenu();
 	std::string GetUUIDHash();
 	// manual bug reporting
 	bool ReportUserBug(std::string description, std::string uuidHash = "");

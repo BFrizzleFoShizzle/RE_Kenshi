@@ -12,13 +12,17 @@
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/atomic/atomic.hpp>
 #include <sstream>
 #include <iomanip>
 #include <core/md5.h>
 #include <windowsx.h>
+#include <dbghelp.h>
 
 #include <kenshi/SaveManager.h>
 #include <ogre/OgreConfigFile.h>
+
+#include "miniz.h"
 
 static std::string GetUUID()
 {
@@ -414,6 +418,78 @@ static void CreateCrashReportWindow()
 		MessageBoxA(NULL, boost::locale::gettext("Crash report failed to send").c_str(), boost::locale::gettext("Error").c_str(), MB_OK | MB_SYSTEMMODAL | MB_ICONERROR);
 }
 
+// probably doesn't need to be atomic but who cares
+static boost::atomic_bool crashHandlerExecuted(false);
+static boost::recursive_mutex unhandledExceptionMx;
+static LPTOP_LEVEL_EXCEPTION_FILTER vanillaFilter;
+static LONG WINAPI UnhandledException(EXCEPTION_POINTERS* excpInfo = NULL)
+{
+	boost::recursive_mutex::scoped_lock lock(unhandledExceptionMx);
+	DebugLog("Unhandled Exception Filter called");
+	if (!crashHandlerExecuted)
+	{
+		crashHandlerExecuted = true;
+		ErrorLog("Main crash handler did not pick up exception");
+
+		// Generate crash dump
+		std::string dumpFileName = "crashDump" + Kenshi::GetKenshiVersion().GetVersion() + "_x64";
+		std::string zipName = dumpFileName;
+		if (Kenshi::GetKenshiVersion().GetPlatform() == Kenshi::BinaryVersion::GOG)
+			zipName += "_ns";
+		dumpFileName += ".dmp";
+		zipName += ".zip";
+		HANDLE hFile = CreateFileA(dumpFileName.c_str(), GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+		MINIDUMP_EXCEPTION_INFORMATION mdei;
+		mdei.ClientPointers = FALSE;
+		mdei.ThreadId = GetCurrentThreadId();
+		mdei.ExceptionPointers = excpInfo;
+		bool minidumpCreated = MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), hFile, MiniDumpNormal, (excpInfo != 0) ? &mdei : 0, 0, 0);
+		if (!minidumpCreated)
+			ErrorLog("Couldn't create minidump");
+		CloseHandle(hFile);
+
+		// package zip
+		DebugLog("Dump written, packaging...");
+		mz_zip_archive archive;
+		if (mz_zip_writer_init_file(&archive, zipName.c_str(), 0))
+		{
+			if (boost::filesystem::exists(dumpFileName))
+				mz_zip_writer_add_file(&archive, dumpFileName.c_str(), dumpFileName.c_str(), NULL, 0, MZ_BEST_COMPRESSION);
+			if (boost::filesystem::exists("save.log"))
+				mz_zip_writer_add_file(&archive, "save.log", "save.log", NULL, 0, MZ_BEST_COMPRESSION);
+			if (boost::filesystem::exists("MyGUI.log"))
+				mz_zip_writer_add_file(&archive, "MyGUI.log", "MyGUI.log", NULL, 0, MZ_BEST_COMPRESSION);
+			// pretty sure Kenshi's logging destructors need to be called for these two files to be readable or something
+			if (boost::filesystem::exists("kenshi_info.log"))
+				mz_zip_writer_add_file(&archive, "kenshi_info.log", "kenshi_info.log", NULL, 0, MZ_BEST_COMPRESSION);
+			if (boost::filesystem::exists("kenshi.log"))
+				mz_zip_writer_add_file(&archive, "kenshi.log", "kenshi.log", NULL, 0, MZ_BEST_COMPRESSION);
+			if (boost::filesystem::exists("kenshi.cfg"))
+				mz_zip_writer_add_file(&archive, "kenshi.cfg", "kenshi.cfg", NULL, 0, MZ_BEST_COMPRESSION);
+			if (boost::filesystem::exists("Havok.log"))
+				mz_zip_writer_add_file(&archive, "Havok.log", "Havok.log", NULL, 0, MZ_BEST_COMPRESSION);
+			if (boost::filesystem::exists("audio.log"))
+				mz_zip_writer_add_file(&archive, "audio.log", "audio.log", NULL, 0, MZ_BEST_COMPRESSION);
+
+			mz_zip_writer_finalize_archive(&archive);
+			mz_zip_writer_end(&archive);
+		}
+		else
+		{
+			// TODO fail creating zip
+			ErrorLog("Couldn't create dump .zip");
+		}
+
+		// trigger crashdump handler
+		CreateCrashReportWindow();
+	}
+	// NOTE: the game doesn't appear to have a proper filter, so this actually causes a crash
+	// but that is the CORRECT behaviour and will be forward-compatible if Lo-Fi ever change that
+	vanillaFilter(excpInfo);
+	return 0;
+}
+
+// called AFTER the game saves the crash dump
 void* (*CrashReport_orig)(void* arg1, void* arg2);
 static void* CrashReport_hook(void* arg1, void* arg2)
 {
@@ -424,10 +500,15 @@ static void* CrashReport_hook(void* arg1, void* arg2)
 	return CrashReport_orig(arg1, arg2);
 }
 
+// called BEFORE the game saves the crash dump
 void (*LogManager_destructor_orig)(void* thisptr);
 void LogManager_destructor_hook(void* thisptr)
 {
+	boost::recursive_mutex::scoped_lock lock(unhandledExceptionMx);
 	DebugLog("Log manager destructor, probably crashing");
+
+	// stop the UnhandledExceptionFilter handler from double-executing crash handler stuff
+	crashHandlerExecuted = true;
 
 	if (Settings::GetEnableEmergencySaves())
 	{
@@ -501,15 +582,35 @@ void LogManager_destructor_hook(void* thisptr)
 	LogManager_destructor_orig(thisptr);
 }
 
+// catches bugs that occur before Kenshi's crash handler gets set up
 void Bugs::Init()
 {
 	if (discordID == "PUT_YOUR_ID_HERE")
 		MessageBoxA(NULL, "Discord setup error", "Add your info to \"Discord.h\" and recompile to fix bug reporting", MB_ICONWARNING);
-	
-	CrashReport_orig = Escort::JmpReplaceHook<void*(void*, void*)>(Kenshi::GetCrashReporterFunction(), &CrashReport_hook, 10);
 
+	// https://stackoverflow.com/questions/13591334/what-actions-do-i-need-to-take-to-get-a-crash-dump-in-all-error-scenarios
+	// disable Windows default error handling behaviour
+	SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
+	// register our error handler
+	vanillaFilter = SetUnhandledExceptionFilter(UnhandledException);
+	if (vanillaFilter == nullptr)
+	{
+		ErrorLog("Expected a dummy UnhandledExceptionFilter but got NULL");
+	}
+	else
+	{
+		DebugLog("UEF registered successfully");
+	}
+
+	CrashReport_orig = Escort::JmpReplaceHook<void* (void*, void*)>(Kenshi::GetCrashReporterFunction(), &CrashReport_hook, 10);
+}
+
+void Bugs::InitMenu()
+{
 	// I tried a few ways of hooking the root crash function
-	// Kenshi's exception handler runs before the UnhandledExceptionFilter
+	// Kenshi's exception handler runs before the UnhandledExceptionFilter (probably implemented as a try/catch)
+	// Other useless APIs: _set_invalid_parameter_handler, set_terminate, set_unexpected
+	// Also VEH hooks get triggered by a bunch of non-crashing events, so AddVectoredExceptionHandler is also useless
 	// When an unhandled exception occurs, execution jumps directly to an address inside the body of a function, 
 	// meaning we can't use a regular function hook
 	// The first thing the game's exception handler does is call the LogManager destructor, so we hook that instead
