@@ -14,6 +14,8 @@
 
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/random_device.hpp>
+#include <boost/thread/mutex.hpp>
+#include <boost/thread/lock_guard.hpp>
 
 // bootleg hack so we can switch between seeded rand() and true random
 // we use thread-local storage so we can switch rand() behaviour based on what function is executing
@@ -23,6 +25,7 @@ DWORD TLSRandFlag::TLSSlotIndex = TLS_OUT_OF_INDEXES;
 
 boost::random_device rd;
 boost::mt19937 trueRandom(rd);
+boost::mutex randMutex;
 
 // launcher mod tab scroll bugfix
 void (*TabMods_updateModsList_orig)(Kenshi::GameLauncher::TabMods* thisptr, bool validate);
@@ -57,8 +60,11 @@ void srand_hook(int val)
 int rand_hook()
 {
 	if (TLSRandFlag::GetPtr() == 0)
+	{
 		// true random
+		boost::lock_guard<boost::mutex> lock(randMutex);
 		return trueRandom() % RAND_MAX;
+	}
 	else
 		// return seeded random (this should be identical to rand())
 		return (((srand_state = srand_state * 214013L + 2531011L) >> 16) & 0x7fff);
@@ -101,7 +107,7 @@ namespace FoliageSystem
 {
 	class EntData;
 }
-void (*getFoliageRotation_orig)(FoliageSystem::EntData* data, float x, float z, Ogre::Quaternion& rotation);
+void (*getFoliageRotation_orig)(FoliageSystem::EntData* data, float x, float z, Ogre::Quaternion& rotation) = nullptr;
 void getFoliageRotation_hook(FoliageSystem::EntData* data, float x, float z, Ogre::Quaternion& rotation)
 {
 	if (Settings::GetFixRNG())
@@ -142,7 +148,8 @@ void EnableFixRNG()
 	// we bork the function and just reimplement it entirely
 	void* randPtr = Escort::GetFuncAddress("MSVCR100.dll", "rand");
 	Escort::JmpReplaceHook<int()>(randPtr, rand_hook, 9);
-	getFoliageRotation_orig = Escort::JmpReplaceHook<void(FoliageSystem::EntData*, float, float, Ogre::Quaternion&)>(Kenshi::GetGetFoliageRotationFunction(), getFoliageRotation_hook, 9);
+	if(getFoliageRotation_orig == nullptr)
+		getFoliageRotation_orig = Escort::JmpReplaceHook<void(FoliageSystem::EntData*, float, float, Ogre::Quaternion&)>(Kenshi::GetGetFoliageRotationFunction(), getFoliageRotation_hook, 9);
 	randomInt_orig = (int(*)(int,int))Kenshi::GetUtilityTRandomIntFunction();
 	random_orig = (float(*)(float, float))Kenshi::GetUtilityTRandomFunction();
 	uint8_t* buildingSelectPartsPtr = (uint8_t*)Kenshi::GetBuildingSelectPartsFunction();
