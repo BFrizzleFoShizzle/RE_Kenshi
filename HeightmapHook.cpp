@@ -272,10 +272,9 @@ unsigned __int64 Terrain_getRawData_hook(Terrain* thisPtr, int x, int y, int w, 
 
 	uint16_t *shortPtr = reinterpret_cast<uint16_t*>(out);
 	uint64_t written = 0;
-	// I've checked this is correct at the top + bottom of the map
-	// - number of bytes written is correct + contents of "out" is byte-for-byte identical vs vanilla
-	const int mapXBound = thisPtr->bounds->mapMaxX;
-	const int mapYBound = thisPtr->bounds->mapMaxY;
+
+	const int mapXBound = thisPtr->bounds->mapMaxX - 1;
+	const int mapYBound = thisPtr->bounds->mapMaxY - 1;
 	for (int i = 0; i < h; ++i)
 	{
 		for (int j = 0; j < w; ++j)
