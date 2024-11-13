@@ -108,18 +108,29 @@ std::string EscapeJson(const std::string& s) {
 	return o.str();
 }
 
+char* pZipBuff = nullptr;
+size_t zipBuffSize = 0;
+
 // report /w crashdump
 bool Bugs::ReportCrash(std::string description, std::string crashDumpName, std::string uuidHash)
 {
-
-	std::vector<char> dumpBytes;
-	std::ifstream crashDumpFile(crashDumpName, std::ifstream::binary | std::ifstream::ate);
-	if (!crashDumpFile.fail())
+	if (pZipBuff != nullptr && zipBuffSize > 0)
 	{
-		size_t size = crashDumpFile.tellg();
-		crashDumpFile.seekg(0);
-		dumpBytes.resize(size);
-		crashDumpFile.read(&dumpBytes[0], size);
+		// send zip from RAM
+		DebugLog("Sending RAM zip");
+	}
+	else
+	{
+		DebugLog("Sending disk zip");
+		// send zip from disk
+		std::ifstream crashDumpFile(crashDumpName, std::ifstream::binary | std::ifstream::ate);
+		if (!crashDumpFile.fail())
+		{
+			zipBuffSize = crashDumpFile.tellg();
+			pZipBuff = new char[zipBuffSize];
+			crashDumpFile.seekg(0);
+			crashDumpFile.read(&pZipBuff[0], zipBuffSize);
+		}
 	}
 
 	WinHttpClient client(modCrashDiscordWebHookURL);
@@ -138,16 +149,36 @@ bool Bugs::ReportCrash(std::string description, std::string crashDumpName, std::
 		+ "\r\n"
 		+ "{\"content\": \"" + message + "\"}\r\n"
 		+ "--" + to_string(uuid) + "\r\n";
-	if (dumpBytes.size() > 0)
+	if (zipBuffSize > 0)
 	{
 		body += "Content-Disposition: form-data; name=\"file1\"; filename=\"" + crashDumpName + "\"\r\n"
 			+ "Content-Type: application/octet-stream\r\n"
 			+ "\r\n"
-			+ std::string(&dumpBytes[0], dumpBytes.size())
+			+ std::string(&pZipBuff[0], zipBuffSize)
 			+ "\r\n"
 			+ "--" + to_string(uuid) + "\r\n";
 	}
-	body += std::string("Content-Disposition: form-data; name=\"file2\"; filename=\"") + "RE_Kenshi_log.txt" + "\"\r\n"
+	try
+	{
+		std::ifstream settingsFile("RE_Kenshi.ini", std::ifstream::ate);
+		size_t size = settingsFile.tellg();
+		std::vector<char> settingsBytes;
+		settingsBytes.resize(size);
+		settingsFile.seekg(0);
+		settingsFile.read(&settingsBytes[0], size);
+		body += std::string("Content-Disposition: form-data; name=\"file2\"; filename=\"") + "RE_Kenshi.ini" + "\"\r\n"
+			+ "Content-Type: application/octet-stream\r\n"
+			+ "\r\n"
+			+ &settingsBytes[0]
+			+ "\r\n"
+			+ "--" + to_string(uuid) + "\r\n";
+		settingsFile.close();
+	}
+	catch (std::exception e)
+	{
+		ErrorLog("Error opening settings file for report");
+	}
+	body += std::string("Content-Disposition: form-data; name=\"file3\"; filename=\"") + "RE_Kenshi_log.txt" + "\"\r\n"
 		+ "Content-Type: application/octet-stream\r\n"
 		+ "\r\n"
 		+ GetDebugLog()
@@ -241,6 +272,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 				+ boost::locale::gettext("\n\nRE_Kenshi version: ") + Version::GetDisplayVersion()
 				+ boost::locale::gettext("\nKenshi version: ") + Kenshi::GetKenshiVersion().ToString()
 				+ boost::locale::gettext("\nUUID hash: ") + Bugs::GetUUIDHash() + boost::locale::gettext(" (optional - allows the developer to know all your reports come from the same machine)")
+				+ boost::locale::gettext("\nRE_Kenshi settings") + " (RE_Kenshi.ini)"
 				+ boost::locale::gettext("\nRE_Kenshi's log") + " (RE_Kenshi_log.txt)";
 
 			WIN32_FIND_DATAA foundCrashDump;
@@ -439,20 +471,30 @@ static LONG WINAPI UnhandledException(EXCEPTION_POINTERS* excpInfo = NULL)
 		dumpFileName += ".dmp";
 		zipName += ".zip";
 		HANDLE hFile = CreateFileA(dumpFileName.c_str(), GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-		MINIDUMP_EXCEPTION_INFORMATION mdei;
-		mdei.ClientPointers = FALSE;
-		mdei.ThreadId = GetCurrentThreadId();
-		mdei.ExceptionPointers = excpInfo;
-		bool minidumpCreated = MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), hFile, MiniDumpNormal, (excpInfo != 0) ? &mdei : 0, 0, 0);
-		if (!minidumpCreated)
-			ErrorLog("Couldn't create minidump");
-		CloseHandle(hFile);
+		if (hFile != INVALID_HANDLE_VALUE)
+		{
+			// TODO figure out correct _MINIDUMP_TYPE flags
+			MINIDUMP_EXCEPTION_INFORMATION mdei;
+			mdei.ClientPointers = FALSE;
+			mdei.ThreadId = GetCurrentThreadId();
+			mdei.ExceptionPointers = excpInfo;
+			bool minidumpCreated = MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), hFile, MiniDumpNormal, (excpInfo != 0) ? &mdei : 0, 0, 0);
+			if (!minidumpCreated)
+				ErrorLog("Couldn't write minidump");
+			CloseHandle(hFile);
+		}
+		else
+		{
+			ErrorLog("Error creating minidump file");
+		}
 
 		// package zip
-		DebugLog("Dump written, packaging...");
+		DebugLog("Packaging crash info...");
+
 		mz_zip_archive archive;
-		if (mz_zip_writer_init_file(&archive, zipName.c_str(), 0))
+		if(mz_zip_writer_init_heap(&archive, 1024 * 1024, 0))
 		{
+			// Note: some of these may not send, probably because the logging pipes haven't been flushed
 			if (boost::filesystem::exists(dumpFileName))
 				mz_zip_writer_add_file(&archive, dumpFileName.c_str(), dumpFileName.c_str(), NULL, 0, MZ_BEST_COMPRESSION);
 			if (boost::filesystem::exists("save.log"))
@@ -471,7 +513,7 @@ static LONG WINAPI UnhandledException(EXCEPTION_POINTERS* excpInfo = NULL)
 			if (boost::filesystem::exists("audio.log"))
 				mz_zip_writer_add_file(&archive, "audio.log", "audio.log", NULL, 0, MZ_BEST_COMPRESSION);
 
-			mz_zip_writer_finalize_archive(&archive);
+			mz_zip_writer_finalize_heap_archive(&archive, (void**)&pZipBuff, &zipBuffSize);
 			mz_zip_writer_end(&archive);
 		}
 		else
