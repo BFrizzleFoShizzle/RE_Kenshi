@@ -1842,6 +1842,10 @@ DWORD WINAPI InitThread(LPVOID param)
         gui->eventFrameStart += MyGUI::newDelegate(DisplayVersionError);
     }
 
+    // disable global crash handler so crashes are handled by Kenshi's
+    // this has to happen at the bottom of this function because Kenshi doesn't pick up exceptions on this thread (???)
+    Bugs::InitInGame();
+
     return 0;
 }
 

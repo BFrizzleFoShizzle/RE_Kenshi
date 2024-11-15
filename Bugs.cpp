@@ -492,6 +492,7 @@ static LONG WINAPI UnhandledException(EXCEPTION_POINTERS* excpInfo = NULL)
 		DebugLog("Packaging crash info...");
 
 		mz_zip_archive archive;
+		memset(&archive, 0, sizeof(mz_zip_archive));
 		if(mz_zip_writer_init_heap(&archive, 1024 * 1024, 0))
 		{
 			// Note: some of these may not send, probably because the logging pipes haven't been flushed
@@ -542,6 +543,8 @@ static void* CrashReport_hook(void* arg1, void* arg2)
 	return CrashReport_orig(arg1, arg2);
 }
 
+bool inGame = false;
+
 // called BEFORE the game saves the crash dump
 void (*LogManager_destructor_orig)(void* thisptr);
 void LogManager_destructor_hook(void* thisptr)
@@ -552,7 +555,7 @@ void LogManager_destructor_hook(void* thisptr)
 	// stop the UnhandledExceptionFilter handler from double-executing crash handler stuff
 	crashHandlerExecuted = true;
 
-	if (Settings::GetEnableEmergencySaves())
+	if (inGame && Settings::GetEnableEmergencySaves())
 	{
 		// force cursor to be shown
 		ShowCursor(true);
@@ -673,4 +676,12 @@ void Bugs::InitMenu()
 	// find target of jmp
 	uint8_t* LogManagerDestructor_body_ptr = LogManagerDestructor_jmp_ptr + *offsetPtr + 5;
 	LogManager_destructor_orig = Escort::JmpReplaceHook<void (void*)>(LogManagerDestructor_body_ptr, &LogManager_destructor_hook, 6);
+}
+
+void Bugs::InitInGame()
+{
+	// disable global crash handler so only crashes that trigger ~LogManager() are hooked
+	SetUnhandledExceptionFilter(vanillaFilter);
+	DebugLog("UEF unregistered.");
+	inGame = true;
 }
