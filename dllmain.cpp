@@ -36,6 +36,7 @@
 #include "Bugs.h"
 #include "Escort.h"
 #include "ShaderCache.h"
+#include "OgreSICCodec.h"
 
 #include <ogre/OgrePrerequisites.h>
 #include <ogre/OgreResourceGroupManager.h>
@@ -1758,6 +1759,7 @@ void SyncronousInit()
         LoadMods_orig = Escort::JmpReplaceHook<void(Kenshi::GameWorld*)>(Kenshi::GetModLoadFunction(), LoadMods_hook, 6);
 
         FSHook::Init();
+        Ogre::SICCodec::startup();
     }
     else
     {

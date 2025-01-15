@@ -85,7 +85,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <LibraryPath>$(BOOST_INCLUDE_PATH)\stage\lib;$(SolutionDir)$(Platform)\$(Configuration)\;$(LibraryPath)</LibraryPath>
-    <IncludePath>$(DXSDK_DIR)Include;CompressTools;KenshiLib/Include/ois;KenshiLib/Include;$(VC_IncludePath);$(WindowsSDK_IncludePath);rapidjson\include;3rdparty/;$(IncludePath)</IncludePath>
+    <IncludePath>$(DXSDK_DIR)Include;thirdparty;CompressTools;KenshiLib/Include/ois;KenshiLib/Include;$(VC_IncludePath);$(WindowsSDK_IncludePath);thirdparty/rapidjson\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -180,12 +180,14 @@
     <ClCompile Include="HeightmapHook.cpp" />
     <ClCompile Include="io.cpp" />
     <ClCompile Include="KenshiLib\Source\core\md5.cpp" />
-    <ClCompile Include="miniz.c" />
     <ClCompile Include="MiscHooks.cpp" />
     <ClCompile Include="MyGUIHooks.cpp" />
+    <ClCompile Include="OgreSICCodec.cpp" />
     <ClCompile Include="Settings.cpp" />
     <ClCompile Include="ShaderCache.cpp" />
+    <ClCompile Include="SIC.cpp" />
     <ClCompile Include="Sound.cpp" />
+    <ClCompile Include="thirdparty\miniz.c" />
     <ClCompile Include="TLS.cpp" />
     <ClCompile Include="Version.cpp" />
     <ClCompile Include="WinHttpClient.cpp" />
@@ -198,14 +200,16 @@
     <ClInclude Include="HeightmapHook.h" />
     <ClInclude Include="io.h" />
     <ClInclude Include="KenshiLib\Include\core\md5.h" />
-    <ClInclude Include="miniz.h" />
     <ClInclude Include="MiscHooks.h" />
     <ClInclude Include="MyGUIHooks.h" />
+    <ClInclude Include="OgreSICCodec.h" />
     <ClInclude Include="Settings.h" />
     <ClInclude Include="ShaderCache.h" />
+    <ClInclude Include="SIC.h" />
     <ClInclude Include="Sound.h" />
-    <ClInclude Include="stb_image.h" />
-    <ClInclude Include="tiny_dng_loader.h" />
+    <ClInclude Include="thirdparty\miniz.h" />
+    <ClInclude Include="thirdparty\stb_image.h" />
+    <ClInclude Include="thirdparty\tiny_dng_loader.h" />
     <ClInclude Include="TLS.h" />
     <ClInclude Include="UnwindCode.h" />
     <ClInclude Include="Version.h" />

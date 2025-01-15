@@ -57,10 +57,16 @@
     <ClCompile Include="io.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="miniz.c">
+    <ClCompile Include="TLS.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="TLS.cpp">
+    <ClCompile Include="SIC.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="OgreSICCodec.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\miniz.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -107,19 +113,25 @@
     <ClInclude Include="KenshiLib\Include\core\md5.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="stb_image.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="tiny_dng_loader.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="io.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="miniz.h">
+    <ClInclude Include="TLS.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="TLS.h">
+    <ClInclude Include="SIC.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="OgreSICCodec.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\miniz.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\stb_image.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\tiny_dng_loader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
