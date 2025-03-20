@@ -69,6 +69,12 @@
     <ClCompile Include="thirdparty\miniz.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="OgreHooks.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="OgreDDSCodec2.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Escort.h">
@@ -132,6 +138,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="thirdparty\tiny_dng_loader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="OgreHooks.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="OgreDDSCodec2.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

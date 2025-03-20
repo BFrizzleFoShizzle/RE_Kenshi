@@ -606,6 +606,16 @@ void Settings::SetCacheShaders(bool value)
     SetSettingBool("CacheShaders", value);
 }
 
+void Settings::SetSkipUnusedMipmapReads(bool value)
+{
+    SetSettingBool("SkipUnusedMipReads", value);
+}
+
+bool Settings::GetSkipUnusedMipmapReads()
+{
+    return GetSettingBool("SkipUnusedMipReads");
+}
+
 void Settings::SetLogFileIO(bool value)
 {
     SetSettingBool("LogFileIO", value);

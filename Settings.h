@@ -53,6 +53,8 @@ namespace Settings
 	void SetIncreaseMaxCameraDistance(bool value);
 	bool GetCacheShaders();
 	void SetCacheShaders(bool value);
+	void SetSkipUnusedMipmapReads(bool value);
+	bool GetSkipUnusedMipmapReads();
 	bool GetLogAudio();
 	void SetLogAudio(bool value);
 	bool GetEnableEmergencySaves();

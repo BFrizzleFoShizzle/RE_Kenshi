@@ -37,6 +37,8 @@
 #include "Escort.h"
 #include "ShaderCache.h"
 #include "OgreSICCodec.h"
+#include "OgreDDSCodec2.h"
+#include "OgreHooks.h"
 
 #include <ogre/OgrePrerequisites.h>
 #include <ogre/OgreResourceGroupManager.h>
@@ -1399,6 +1401,10 @@ void InitGUI()
             boost::locale::gettext("Cache shaders"), 2, positionY, canvasWidth - 4, 26 * scale, "CacheShadersToggle", Settings::GetCacheShaders());
         positionY += cacheShadersButton->getHeight() + pad;
 
+        MyGUI::ButtonPtr skipMipsButton = CreateStandardTickButton<ButtonToggleSetting<Settings::SetSkipUnusedMipmapReads>>(performanceScroll,
+            boost::locale::gettext("[Experimental] Skip unused mipmap reads"), 2, positionY, canvasWidth - 4, 26 * scale, "SkipMips" , Settings::GetSkipUnusedMipmapReads());
+        positionY += skipMipsButton->getHeight() + pad;
+
         int performanceTextStart = positionY;
         positionY += 10;
         std::string heightmapRecommendationText = boost::locale::gettext("Fast uncompressed heightmap should be faster on SSDs\nCompressed heightmap should be faster on HDDs");
@@ -1760,6 +1766,7 @@ void SyncronousInit()
 
         FSHook::Init();
         Ogre::SICCodec::startup();
+        Ogre::DDSCodec2::startup();
     }
     else
     {
@@ -1773,6 +1780,7 @@ void SyncronousInit()
         HeightmapHook::Preload();
         MiscHooks::Init();
         Sound::Init();
+        OgreHooks::Init();
     }
 }
 
@@ -1801,6 +1809,7 @@ DWORD WINAPI InitThread(LPVOID param)
         DebugLog("Waiting for mod setup.");
         WaitForModSetup();
 
+        OgreHooks::InitFinalizeMods();
         Settings::LoadModOverrides();
         Sound::TryLoadQueuedBanks();
         HeightmapHook::Init();
