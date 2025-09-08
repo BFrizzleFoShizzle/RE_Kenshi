@@ -53,6 +53,8 @@ rapidjson::Document GenerateDefaultSettings()
     defaultSettings.AddMember("FixRNG", true, defaultSettings.GetAllocator());
     defaultSettings.AddMember("FixModListScroll", true, defaultSettings.GetAllocator());
     defaultSettings.AddMember("CacheShaders", true, defaultSettings.GetAllocator());
+    defaultSettings.AddMember("CachePhysXColliders", true, defaultSettings.GetAllocator());
+    defaultSettings.AddMember("SkipUnusedMipReads", true, defaultSettings.GetAllocator());
     defaultSettings.AddMember("LogFileIO", false, defaultSettings.GetAllocator());
     defaultSettings.AddMember("CheckUpdates", true, defaultSettings.GetAllocator());
     defaultSettings.AddMember("SkippedVersion", "", defaultSettings.GetAllocator());
@@ -604,6 +606,16 @@ bool Settings::GetCacheShaders()
 void Settings::SetCacheShaders(bool value)
 {
     SetSettingBool("CacheShaders", value);
+}
+
+void Settings::SetCachePhysXColliders(bool value)
+{
+    SetSettingBool("CachePhysXColliders", value);
+}
+
+bool Settings::GetCachePhysXColliders()
+{
+    return GetSettingBool("CachePhysXColliders");
 }
 
 void Settings::SetSkipUnusedMipmapReads(bool value)

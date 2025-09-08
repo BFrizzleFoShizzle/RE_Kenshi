@@ -85,7 +85,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <LibraryPath>$(BOOST_INCLUDE_PATH)\stage\lib;$(SolutionDir)$(Platform)\$(Configuration)\;$(LibraryPath)</LibraryPath>
-    <IncludePath>$(DXSDK_DIR)Include;thirdparty;CompressTools;KenshiLib/Include/ois;KenshiLib/Include;$(VC_IncludePath);$(WindowsSDK_IncludePath);thirdparty/rapidjson\include;$(IncludePath)</IncludePath>
+    <IncludePath>$(DXSDK_DIR)Include;thirdparty;CompressTools;KenshiLib/Include/ois;KenshiLib/Include;$(VC_IncludePath);$(WindowsSDK_IncludePath);thirdparty/rapidjson\include;KenshiLib/Include/ogre;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -185,6 +185,7 @@
     <ClCompile Include="OgreDDSCodec2.cpp" />
     <ClCompile Include="OgreHooks.cpp" />
     <ClCompile Include="OgreSICCodec.cpp" />
+    <ClCompile Include="PhysicsHooks.cpp" />
     <ClCompile Include="Settings.cpp" />
     <ClCompile Include="ShaderCache.cpp" />
     <ClCompile Include="SIC.cpp" />
@@ -207,6 +208,7 @@
     <ClInclude Include="OgreDDSCodec2.h" />
     <ClInclude Include="OgreHooks.h" />
     <ClInclude Include="OgreSICCodec.h" />
+    <ClInclude Include="PhysicsHooks.h" />
     <ClInclude Include="Settings.h" />
     <ClInclude Include="ShaderCache.h" />
     <ClInclude Include="SIC.h" />

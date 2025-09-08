@@ -39,6 +39,7 @@
 #include "OgreSICCodec.h"
 #include "OgreDDSCodec2.h"
 #include "OgreHooks.h"
+#include "PhysicsHooks.h"
 
 #include <ogre/OgrePrerequisites.h>
 #include <ogre/OgreResourceGroupManager.h>
@@ -1781,6 +1782,7 @@ void SyncronousInit()
         MiscHooks::Init();
         Sound::Init();
         OgreHooks::Init();
+        PhysicsHooks::Init();
     }
 }
 
