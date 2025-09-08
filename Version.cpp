@@ -2,7 +2,8 @@
 
 #include <vector>
 #include <sstream>
-#include <rapidjson/document.h>
+
+#include "rapidjson/document.h"
 
 #include "WinHttpClient.h"
 #include "Debug.h"
@@ -87,6 +88,17 @@ DWORD WINAPI checkVersionThread(LPVOID param)
         document.Parse(responseStr.c_str());
         // "tag_name" is version of release
         // "vx.x.x"
+        if (document.HasParseError())
+        {
+            ErrorLog("Error parsing latest release: " + responseStr);
+            ErrorLog("Parse error: " + std::to_string((uint64_t)document.GetParseError()));
+            return 0;
+        }
+        if (!document.HasMember("tag_name"))
+        {
+            ErrorLog("Missing version tag name: " + responseStr);
+            return 0;
+        }
         latestVersionCache = document["tag_name"].GetString();
         DebugLog("Latest public release: " + latestVersionCache);
         if (Settings::GetSkippedVersion() == latestVersionCache)
