@@ -985,7 +985,7 @@ void SendBugPress(MyGUI::WidgetPtr sender)
     if (sendUUIDToggle->getStateSelected())
         uuid = Bugs::GetUUIDHash();
     Bugs::ReportUserBug(description->getCaption(), uuid);
-    description->setCaption("Report sent.");
+    description->setCaption(boost::locale::gettext("Report sent."));
     bugReportWindow->setVisible(false);
 }
 
@@ -1086,24 +1086,6 @@ void InitGUI()
         MyGUI::TextBox* versionText = versionTextWidg->castType<MyGUI::TextBox>(false);
         if (!versionText)
             return;
-
-        // can't seem to find where the language is kept in memory...
-        // I've found the std::locale - but it doesn't work for some reason?
-        // Also found the boost::locale::generator but that isn't really useful
-        // unless you know the locale string... and std::locale::name/c_str 
-        // returns "*". Also, generator::generate seems to be called before 
-        // RE_Kenshi is loaded, so we can't hook that either...
-        // So we pick up langauge settings from the config file after
-        // the game is started
-        Ogre::ConfigFile config;
-        config.load("settings.cfg");
-        std::string language = config.getSetting("language");
-
-        boost::locale::generator gen;
-        gen.add_messages_path("RE_Kenshi/locale");
-        gen.add_messages_domain("re_kenshi");
-        // extend Kenshi's existing locale with our own
-        std::locale::global(gen.generate(std::locale(), language + ".UTF-8"));
 
         MyGUI::UString version = versionText->getCaption();
         DebugLog(version);
@@ -1403,7 +1385,7 @@ void InitGUI()
         positionY += cacheShadersButton->getHeight() + pad;
 
         MyGUI::ButtonPtr skipMipsButton = CreateStandardTickButton<ButtonToggleSetting<Settings::SetSkipUnusedMipmapReads>>(performanceScroll,
-            boost::locale::gettext("[Experimental] Skip unused mipmap reads"), 2, positionY, canvasWidth - 4, 26 * scale, "SkipMips" , Settings::GetSkipUnusedMipmapReads());
+            boost::locale::gettext("[Experimental]") + " " + boost::locale::gettext("Skip unused mipmap reads"), 2, positionY, canvasWidth - 4, 26 * scale, "SkipMips", Settings::GetSkipUnusedMipmapReads());
         positionY += skipMipsButton->getHeight() + pad;
 
         int performanceTextStart = positionY;
@@ -1870,6 +1852,24 @@ extern "C" void __declspec(dllexport) dllStartPlugin(void)
     // hook unhandled exception filter function before doing anything else so we can catch 
     // any weird exceptions before Kenshi sets up their own
     Bugs::Init();
+
+    // can't seem to find where the language is kept in memory...
+    // I've found the std::locale - but it doesn't work for some reason?
+    // Also found the boost::locale::generator but that isn't really useful
+    // unless you know the locale string... and std::locale::name/c_str 
+    // returns "*". Also, generator::generate seems to be called before 
+    // RE_Kenshi is loaded, so we can't hook that either...
+    // TODO find this
+    // language should be loaded ASAP for the crash handler + version checker, so we do it synchronously
+    Ogre::ConfigFile config;
+    config.load("settings.cfg");
+    std::string language = config.getSetting("language");
+
+    boost::locale::generator gen;
+    gen.add_messages_path("RE_Kenshi/locale");
+    gen.add_messages_domain("re_kenshi");
+    // extend Kenshi's existing locale with our own
+    std::locale::global(gen.generate(std::locale(), language + ".UTF-8"));
 
     // NOTE: exceptions triggered in THIS FUNCTION don't get caught by the error handler (there might be a try/catch above this?)
     // so ALL INIT should be done on a thread so that failiures trigger the global exception handler

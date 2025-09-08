@@ -212,8 +212,6 @@ enum BUTTON_ID
 	EDIT_BOX
 };
 
-const std::wstring placeholderText = boost::locale::gettext(L"Describe what caused the crash...");
-
 void CheckFocusAllowed(HWND hwnd, HWND widget)
 {
 	// stop Kenshi's window from getting focus
@@ -233,10 +231,19 @@ void CheckFocusAllowed(HWND hwnd, HWND widget)
 	}
 }
 
+// TODO refactor or something and remove this crap
+static std::wstring to_wstr(const std::string s)
+{
+	return std::wstring(s.begin(), s.end());
+}
+
 // Fugly WINAPI code for making the crash report window, I don't want to add 
 // a UI lib dependency just to make the *ONE* custom window RE_Kenshi needs :/
 static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
+	// this has to be initialized after loading translations...
+	const std::wstring placeholderText = boost::locale::gettext(L"Describe what caused the crash...");
+
 	switch (msg)
 	{
 		case WM_CREATE:
@@ -265,15 +272,14 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 			BITMAP bitmapInfo;
 			GetIconInfo(warningIcon, &iconInfo);
 			GetObject(iconInfo.hbmColor, sizeof(BITMAP), &bitmapInfo);
-
-			std::string errorMessage = boost::locale::gettext("Kenshi has crashed.")
-				+ boost::locale::gettext("\nWould you like to send a crash report to the RE_Kenshi team?")
-				+ boost::locale::gettext("\nYour report will be sent to RE_Kenshi's developer (BFrizzleFoShizzle) with the following information:")
-				+ boost::locale::gettext("\n\nRE_Kenshi version: ") + Version::GetDisplayVersion()
-				+ boost::locale::gettext("\nKenshi version: ") + Kenshi::GetKenshiVersion().ToString()
-				+ boost::locale::gettext("\nUUID hash: ") + Bugs::GetUUIDHash() + boost::locale::gettext(" (optional - allows the developer to know all your reports come from the same machine)")
-				+ boost::locale::gettext("\nRE_Kenshi settings") + " (RE_Kenshi.ini)"
-				+ boost::locale::gettext("\nRE_Kenshi's log") + " (RE_Kenshi_log.txt)";
+			std::wstring errorMessage = boost::locale::gettext(L"Kenshi has crashed.")
+				+ boost::locale::gettext(L"\nWould you like to send a crash report to the RE_Kenshi team?")
+				+ boost::locale::gettext(L"\nYour report will be sent to RE_Kenshi's developer (BFrizzleFoShizzle) with the following information:")
+				+ boost::locale::gettext(L"\n\nRE_Kenshi version: ") + to_wstr(Version::GetDisplayVersion())
+				+ boost::locale::gettext(L"\nKenshi version: ") + to_wstr(Kenshi::GetKenshiVersion().ToString())
+				+ boost::locale::gettext(L"\nUUID hash: ") + to_wstr(Bugs::GetUUIDHash()) + boost::locale::gettext(L" (optional - allows the developer to know all your reports come from the same machine)")
+				+ boost::locale::gettext(L"\nRE_Kenshi settings") + L" (RE_Kenshi.ini)"
+				+ boost::locale::gettext(L"\nRE_Kenshi's log") + L" (RE_Kenshi_log.txt)";
 
 			WIN32_FIND_DATAA foundCrashDump;
 			std::string crashDumpSearchName = "crashDump" + Kenshi::GetKenshiVersion().GetVersion() + "_x64*.zip";
@@ -282,24 +288,24 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 			if (searchHandle != INVALID_HANDLE_VALUE)
 			{
 				crashDumpFileName = foundCrashDump.cFileName;
-				errorMessage += boost::locale::gettext("\nKenshi's crashdump (") + crashDumpFileName + ")";
+				errorMessage += boost::locale::gettext(L"\nKenshi's crashdump (") + to_wstr(crashDumpFileName) + L")";
 			}
 
-			errorMessage += boost::locale::gettext("\nYour bug description")
-				+ boost::locale::gettext("\n\nPlease describe the bug:");
+			errorMessage += boost::locale::gettext(L"\nYour bug description")
+				+ boost::locale::gettext(L"\n\nPlease describe the bug:");
 
 			HWND icon = CreateWindowA("static", "", WS_CHILD | WS_VISIBLE | SS_ICON,
 				20, 20, bitmapInfo.bmWidth, bitmapInfo.bmHeight, hwnd, 0, hInst, NULL);
-			HWND label = CreateWindowA("static", errorMessage.c_str(), WS_CHILD | WS_VISIBLE | SS_LEFT,
+			HWND label = CreateWindowW(L"static", errorMessage.c_str(), WS_CHILD | WS_VISIBLE | SS_LEFT,
 				30 + bitmapInfo.bmWidth, 20, 470 - (30 + bitmapInfo.bmWidth), 240, hwnd, 0, hInst, NULL);
 			editbox = CreateWindow(L"EDIT", placeholderText.c_str(),
 				WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_BORDER | WS_TABSTOP | ES_LEFT | ES_MULTILINE| ES_WANTRETURN | ES_AUTOVSCROLL,
 				20,	250, 455, 150, hwnd, (HMENU)EDIT_BOX, hInst, NULL);
-			uuidCheckbox = CreateWindowA("button", boost::locale::gettext("Include UUID hash").c_str(), WS_VISIBLE | WS_CHILD | WS_TABSTOP | BS_NOTIFY | BS_CHECKBOX,
+			uuidCheckbox = CreateWindowW(L"button", boost::locale::gettext(L"Include UUID hash").c_str(), WS_VISIBLE | WS_CHILD | WS_TABSTOP | BS_NOTIFY | BS_CHECKBOX,
 				20, 410, 150, 20, hwnd, (HMENU)UUID_CHECKBOX, hInst, NULL);
-			yesButton = CreateWindowA("button", boost::locale::gettext("Send").c_str(), WS_VISIBLE | WS_CHILD | WS_TABSTOP | BS_NOTIFY | BS_DEFPUSHBUTTON,
+			yesButton = CreateWindowW(L"button", boost::locale::gettext(L"Send").c_str(), WS_VISIBLE | WS_CHILD | WS_TABSTOP | BS_NOTIFY | BS_DEFPUSHBUTTON,
 				200, 420, 100, 30, hwnd, (HMENU)YES_BTN, hInst, NULL);
-			noButton = CreateWindowA("button", boost::locale::gettext("Don't send").c_str(), WS_VISIBLE | WS_CHILD | WS_TABSTOP | BS_NOTIFY | BS_PUSHBUTTON,
+			noButton = CreateWindowW(L"button", boost::locale::gettext(L"Don't send").c_str(), WS_VISIBLE | WS_CHILD | WS_TABSTOP | BS_NOTIFY | BS_PUSHBUTTON,
 				320, 420, 100, 30, hwnd, (HMENU)NO_BTN, hInst, NULL);
 
 			// update icon
@@ -445,9 +451,9 @@ static void CreateCrashReportWindow()
 	}
 
 	if(crashReportStatus == SUCCESS)
-		MessageBoxA(NULL, boost::locale::gettext("Crash report sent successfully").c_str(), boost::locale::gettext("Success").c_str(), MB_OK | MB_SYSTEMMODAL | MB_ICONINFORMATION);
+		MessageBoxW(NULL, boost::locale::gettext(L"Crash report sent successfully").c_str(), boost::locale::gettext(L"Success").c_str(), MB_OK | MB_SYSTEMMODAL | MB_ICONINFORMATION);
 	else if(crashReportStatus == FAIL)
-		MessageBoxA(NULL, boost::locale::gettext("Crash report failed to send").c_str(), boost::locale::gettext("Error").c_str(), MB_OK | MB_SYSTEMMODAL | MB_ICONERROR);
+		MessageBoxW(NULL, boost::locale::gettext(L"Crash report failed to send").c_str(), boost::locale::gettext(L"Error").c_str(), MB_OK | MB_SYSTEMMODAL | MB_ICONERROR);
 }
 
 // probably doesn't need to be atomic but who cares
@@ -561,8 +567,8 @@ void LogManager_destructor_hook(void* thisptr)
 		ShowCursor(true);
 
 		// emergency save
-		int result = MessageBoxA(NULL, (boost::locale::gettext("Kenshi is probably crashing.")
-			+ "\n" + boost::locale::gettext("Do you want to force Kenshi to save before it crashes?")).c_str(), boost::locale::gettext("RE_Kenshi crash handler").c_str(), MB_YESNO | MB_SYSTEMMODAL | MB_ICONWARNING);
+		int result = MessageBoxW(NULL, (boost::locale::gettext(L"Kenshi is probably crashing.")
+			+ L"\n" + boost::locale::gettext(L"Do you want to force Kenshi to save before it crashes?")).c_str(), boost::locale::gettext(L"RE_Kenshi crash handler").c_str(), MB_YESNO | MB_SYSTEMMODAL | MB_ICONWARNING);
 
 		if (result == IDYES)
 		{
@@ -602,24 +608,24 @@ void LogManager_destructor_hook(void* thisptr)
 						}
 
 						DebugLog("Emergency save completed successfully");
-						MessageBoxA(NULL, boost::locale::gettext("The game has saved successfully and will now crash.").c_str(), boost::locale::gettext("Save success").c_str(), MB_OK | MB_SYSTEMMODAL | MB_ICONINFORMATION);
+						MessageBoxW(NULL, boost::locale::gettext(L"The game has saved successfully and will now crash.").c_str(), boost::locale::gettext(L"Save success").c_str(), MB_OK | MB_SYSTEMMODAL | MB_ICONINFORMATION);
 					}
 					else
 					{
 						ErrorLog("Couldn't create emergency save");
-						MessageBoxA(NULL, boost::locale::gettext("Error creating save file.").c_str(), boost::locale::gettext("Save failed").c_str(), MB_OK | MB_SYSTEMMODAL | MB_ICONERROR);
+						MessageBoxW(NULL, boost::locale::gettext(L"Error creating save file.").c_str(), boost::locale::gettext(L"Save failed").c_str(), MB_OK | MB_SYSTEMMODAL | MB_ICONERROR);
 					}
 				}
 				else
 				{
 					ErrorLog("Error finding unused emergency save slot");
-					MessageBoxA(NULL, boost::locale::gettext("Error finding unused emergency save slot.").c_str(), boost::locale::gettext("Save failed").c_str(), MB_OK | MB_SYSTEMMODAL | MB_ICONERROR);
+					MessageBoxW(NULL, boost::locale::gettext(L"Error finding unused emergency save slot.").c_str(), boost::locale::gettext(L"Save failed").c_str(), MB_OK | MB_SYSTEMMODAL | MB_ICONERROR);
 				}
 			}
 			catch (...)
 			{
 				ErrorLog("Unspecified emergency save error");
-				MessageBoxA(NULL, boost::locale::gettext("An unspecified error occurred while saving.").c_str(), boost::locale::gettext("Save failed").c_str(), MB_OK | MB_SYSTEMMODAL | MB_ICONERROR);
+				MessageBoxW(NULL, boost::locale::gettext(L"An unspecified error occurred while saving.").c_str(), boost::locale::gettext(L"Save failed").c_str(), MB_OK | MB_SYSTEMMODAL | MB_ICONERROR);
 			}
 		}
 	}
