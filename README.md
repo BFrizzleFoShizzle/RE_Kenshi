@@ -18,9 +18,13 @@ In our case we need the **GRMSDKX_EN_DVD.iso. (64bit one)**
 
 **Unselect Visual C++ Compilers, and unselect redistributable Packages.**
 
-## Install [Windows VC 2010 SP1 Update for SDK 7.1 Microsoft Visual C++ 2010 Service Pack 1 Compiler Update for the Windows SDK 7.1 (VC-Compiler-KB2519277.exe).](https://www.microsoft.com/en-US/download/details.aspx?id=4422)
+the corresponding env vars are:
 
-**(T)** *Some versions of RE_Kenshi might need the ammintrin.h which was removed from vs10, i could compile by copying from the community 22 version, but as i see it is not needed in newer commits (master is atm behind the 0.2.12 branch)*
+**WindowsSDK_Include** c:\Program Files\Microsoft SDKs\Windows\v7.1\Include\
+
+**WindowsSDKDir** c:\Program Files\Microsoft SDKs\Windows\v7.1\
+
+## Install [Windows VC 2010 SP1 Update for SDK 7.1 Microsoft Visual C++ 2010 Service Pack 1 Compiler Update for the Windows SDK 7.1 (VC-Compiler-KB2519277.exe).](https://www.microsoft.com/en-US/download/details.aspx?id=4422)
 
 the corresponding env vars are:
 
@@ -64,12 +68,6 @@ Windows Registry Editor Version 5.00
 "CurrentVersion"="7.1.7600.0.30514"
 "CurrentInstallFolder"="C:\\Program Files\\Microsoft SDKs\\Windows\\v7.1"
 ```
-
-the corresponding env vars are:
-
-**WindowsSDK_Include** c:\Program Files\Microsoft SDKs\Windows\v7.1\Include\
-
-**WindowsSDKDir** c:\Program Files\Microsoft SDKs\Windows\v7.1\
 
 ## Install Boost 1.60.0 https://www.boost.org/users/history/version_1_60_0.html  
 If you are following this readme (means you don't have a visual studio 2010 professional or ultimate installed), you are likely to have a few extra steps compiling boost.
