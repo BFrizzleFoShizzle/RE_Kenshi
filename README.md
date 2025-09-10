@@ -127,7 +127,7 @@ pull and checkout that commit above, and configure cmake to use the above mentio
 
 ## RE-Kenshi
 For the newer branch to proceed, you need the **ATL/MFC** header/libs from the **visual studio 2010 Ptofesisonal vs ultimate**, there is no way around this to my knowledge.
-put them into the VS10 include dir: c:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\lib
+put them into the VS10 include dir: c:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\Include
 
 At this point you can open the project and compile.
 
