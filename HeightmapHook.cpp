@@ -365,13 +365,21 @@ void HeightmapHook::UpdateHeightmapSettings()
 
 				DebugLog("Loading compressed heightmap...");
 				heightmapHandle = CompressToolsLib::OpenImage(Settings::ResolvePath("data/newland/land/fullmap.cif").c_str(), mode);
-				DebugLog("Compressed heightmap loaded!");
+				if (!heightmapHandle)
+				{
+					ErrorLog("Could not open compressed heightmap, reverting setting to vanilla");
+					Settings::SetHeightmapMode(HeightmapMode::VANILLA);
+				}
+				else
+				{
+					DebugLog("Compressed heightmap loaded!");
+				}
 			}
 		}
 		else
 		{
 			ErrorLog("Heightmap mode set to compressed, but the compressed heightmap doesn't exist!");
-			newMode = VANILLA;
+			Settings::SetHeightmapMode(VANILLA);
 		}
 	}
 	else if (newMode == FAST_UNCOMPRESSED && mappedHeightmapPixels == nullptr)
