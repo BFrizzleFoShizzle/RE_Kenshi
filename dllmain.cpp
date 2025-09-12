@@ -1401,7 +1401,8 @@ void InitGUI()
         if (!HeightmapHook::CompressedHeightmapFileExists())
         {
             MyGUI::EditBox* noCompressedHeightmapLabel = performanceScroll->createWidget<MyGUI::EditBox>("Kenshi_TextboxStandardText", 15, positionY, canvasWidth - 30 * scale, 30 * scale, MyGUI::Align::VStretch | MyGUI::Align::Left, "NoCompressedHeightmapLabel");
-            noCompressedHeightmapLabel->setFontName("Kenshi_StandardFont_Medium18");
+            // this font causes localization issues
+            //noCompressedHeightmapLabel->setFontName("Kenshi_StandardFont_Medium18");
             noCompressedHeightmapLabel->setCaption(boost::locale::gettext("To enable compressed heightmap, reinstall RE_Kenshi and check \"Compress Heightmap\""));
             noCompressedHeightmapLabel->setEditWordWrap(true);
             noCompressedHeightmapLabel->setSize(noCompressedHeightmapLabel->getWidth(), noCompressedHeightmapLabel->getTextSize().height);
