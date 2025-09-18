@@ -1,0 +1,23 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"title" : "RE_Kenshi mod config",
+	"description" : "A Kenshi mod configuration file for RE_Kenshi extensions.",
+	"type" : "object",
+	"properties": {
+		"FileRebinds" : {
+			"title" : "File rebinds",
+			"description" : "A dictionary containing file paths to be remapped. Paths are case-sensitive and forward/backslash-sensitive.",
+			"type" : "object",
+			"additionalProperties": {"type": "string"}
+		},
+		"SoundBanks" : {
+			"title" : "Sound banks",
+			"description" : "An array of Wwise sound bank (.bnk) files to be loaded.",
+			"type" : "array",
+			"items": {
+				"type": "string"
+			},
+			"uniqueItems": true
+		}
+	}
+}
