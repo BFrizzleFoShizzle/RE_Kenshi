@@ -22,6 +22,9 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "tiny_dng_loader.h"
 
+// NOTE: historic discrepancies for this are handled in the settings file rebinding code
+static const std::string HIEGHTMAP_CIF_PATH = "data\\newland/land\\fullmap.cif";
+static const std::string HEIGHTMAP_TIF_PATH = "data\\newland/land\\fullmap.tif"; 
 CompressToolsLib::CompressedImageFileHdl heightmapHandle = nullptr;
 
 // TODO named after reversed behaviour, no idea what it actutally is
@@ -364,7 +367,7 @@ void HeightmapHook::UpdateHeightmapSettings()
 					mode = CompressToolsLib::ImageMode::Preload;
 
 				DebugLog("Loading compressed heightmap...");
-				heightmapHandle = CompressToolsLib::OpenImage(Settings::ResolvePath("data/newland/land/fullmap.cif").c_str(), mode);
+				heightmapHandle = CompressToolsLib::OpenImage(Settings::ResolvePath(HIEGHTMAP_CIF_PATH).c_str(), mode);
 				if (!heightmapHandle)
 				{
 					ErrorLog("Could not open compressed heightmap, reverting setting to vanilla");
@@ -385,7 +388,7 @@ void HeightmapHook::UpdateHeightmapSettings()
 	else if (newMode == FAST_UNCOMPRESSED && mappedHeightmapPixels == nullptr)
 	{
 		DebugLog("Opening fast heightmap...");
-		mappedHeightmapPixels = MMapTIFF(Settings::ResolvePath("data/newland/land/fullmap.tif"));
+		mappedHeightmapPixels = MMapTIFF(Settings::ResolvePath(HEIGHTMAP_TIF_PATH));
 		if (mappedHeightmapPixels == nullptr)
 		{
 			ErrorLog("Error initializing fast heightmap loader");
@@ -415,7 +418,7 @@ bool HeightmapHook::CompressedHeightmapFileExists()
 {
 	if (compressedFilemapExists == UNSET)
 	{
-		if (boost::filesystem::exists(Settings::ResolvePath("data/newland/land/fullmap.cif")))
+		if (boost::filesystem::exists(Settings::ResolvePath(HIEGHTMAP_CIF_PATH)))
 			compressedFilemapExists = EXISTS;
 		else
 			compressedFilemapExists = DOESNT_EXIST;
@@ -426,7 +429,7 @@ bool HeightmapHook::CompressedHeightmapFileExists()
 HeightmapHook::HeightmapMode HeightmapHook::GetRecommendedHeightmapMode()
 {
 	// if the compressed heightmap exists and the user is loading off an HDD, that's probably the best setting
-	if (IO::GetDriveStorageType(Settings::ResolvePath("data/newland/land/fullmap.cif")) == IO::HDD)
+	if (IO::GetDriveStorageType(Settings::ResolvePath(HIEGHTMAP_CIF_PATH)) == IO::HDD)
 	{
 		return HeightmapHook::COMPRESSED;
 	}

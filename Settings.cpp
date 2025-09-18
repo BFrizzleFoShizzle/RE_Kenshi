@@ -237,6 +237,19 @@ void Settings::LoadModOverrides()
                 if (itr->value.IsString())
                 {
                     std::string origPath = itr->name.GetString();
+                    // Fix for discrepancy between historic vanilla + new heightmap paths
+                    if (origPath == "data/newland/land/fullmap.cif")
+                    {
+                        DebugLog("Updating outdated override path: \"data/newland/land/fullmap.cif\" -> \"data\\newland/land\\fullmap.cif\"");
+                        origPath = "data\\newland/land\\fullmap.cif";
+                    }
+                    // From fast heightmap code
+                    else if (origPath == "data/newland/land/fullmap.tif")
+                    {
+                        DebugLog("Updating outdated override path: \"data/newland/land/fullmap.tif\" -> \"data\\newland/land\\fullmap.tif\"");
+                        origPath = "data\\newland/land\\fullmap.tif";
+                    }
+
                     std::string newPath = ParsePath(itr->value.GetString());
 
                     // Note: mods lower (?) in the mod order get precedence
