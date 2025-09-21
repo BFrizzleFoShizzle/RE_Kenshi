@@ -981,11 +981,16 @@ void ReportBugPress(MyGUI::WidgetPtr sender)
 void SendBugPress(MyGUI::WidgetPtr sender)
 {
     MyGUI::EditBox* description = bugReportWindow->findWidget("BugDescription")->castType<MyGUI::EditBox>(false);
-    std::string uuid = "";
-    if (sendUUIDToggle->getStateSelected())
-        uuid = Bugs::GetUUIDHash();
-    Bugs::ReportUserBug(description->getCaption(), uuid);
-    description->setCaption(boost::locale::gettext("Report sent."));
+    // don't send empty bug reports
+    if (description->getCaption() != "" && description->getCaption() != boost::locale::gettext("Report sent."))
+    {
+        std::string uuid = "";
+        if (sendUUIDToggle->getStateSelected())
+            uuid = Bugs::GetUUIDHash();
+        Bugs::ReportUserBug(description->getCaption(), uuid);
+        description->setCaption(boost::locale::gettext("Report sent."));
+    }
+    // seems some users mash the button to make the window close
     bugReportWindow->setVisible(false);
 }
 
