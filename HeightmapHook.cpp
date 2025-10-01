@@ -22,6 +22,9 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "tiny_dng_loader.h"
 
+// NOTE: historic discrepancies for this are handled in the settings file rebinding code
+static const std::string HIEGHTMAP_CIF_PATH = "data\\newland/land\\fullmap.cif";
+static const std::string HEIGHTMAP_TIF_PATH = "data\\newland/land\\fullmap.tif"; 
 CompressToolsLib::CompressedImageFileHdl heightmapHandle = nullptr;
 
 // TODO named after reversed behaviour, no idea what it actutally is
@@ -112,10 +115,20 @@ static bool ParseDNGFromMemory(const char* mem, unsigned int size,
 		return false;
 	}
 
-	assert_release(images->size() == 1, "wrong number of images in TIFF");
+	if (images->size() != 1)
+	{
+		ErrorLog("wrong number of images in heightmap TIFF");
+		return false;
+	}
+
 	tinydng::DNGImage* image = &images->at(0);
 	image->bits_per_sample = image->bits_per_sample_original;
-	assert_release(image->bits_per_sample == 16, "wrong number of bits per sample in TIFF");
+
+	if (image->bits_per_sample != 16)
+	{
+		ErrorLog("wrong number of bits per sample in heightmap TIFF");
+		return false;
+	}
 
 	return true;
 }
@@ -125,6 +138,11 @@ static const uint64_t heightmapDim = 16385;
 
 static uint16_t* MMapTIFF(std::string path)
 {
+	if (!boost::filesystem::exists(path))
+	{
+		ErrorLog("Heightmap TIFF file doesn't exist!");
+		return nullptr;
+	}
 	size_t fileSize = boost::filesystem::file_size(path);
 	// TODO is sequential scan useful here?
 	HANDLE hFile = CreateFileA(path.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_NO_BUFFERING | FILE_FLAG_SEQUENTIAL_SCAN, NULL);
@@ -214,9 +232,9 @@ float Terrain_getHeight_hook(Terrain* thisPtr, class Ogre::Vector3 const& vec, i
 	int pixelY = int(z_transformed);
 
 	// in-game bounds checks
-	// TODO is it L or LE
-	if (pixelX <= thisPtr->bounds->mapMaxX
-		&& pixelY <= thisPtr->bounds->mapMaxY
+	// Tested: DEFINITELY L/G NOT LE/GE
+	if (pixelX < thisPtr->bounds->mapMaxX
+		&& pixelY < thisPtr->bounds->mapMaxY
 		&& pixelX >= 0
 		&& pixelY >= 0)
 	{
@@ -236,8 +254,9 @@ float Terrain_getHeight_hook(Terrain* thisPtr, class Ogre::Vector3 const& vec, i
 	}
 	else
 	{
-		// TODO
-		return 0 * thisPtr->heightScale;
+		// from my tests, this always returns 0
+		// TODO re-check why the function call here is broken
+		return 0.0f;// Terrain_getHeight_orig(thisPtr, vec, unk);
 	}
 }
 
@@ -256,12 +275,15 @@ unsigned __int64 Terrain_getRawData_hook(Terrain* thisPtr, int x, int y, int w, 
 
 	uint16_t *shortPtr = reinterpret_cast<uint16_t*>(out);
 	uint64_t written = 0;
+
+	const int mapXBound = thisPtr->bounds->mapMaxX - 1;
+	const int mapYBound = thisPtr->bounds->mapMaxY - 1;
 	for (int i = 0; i < h; ++i)
 	{
 		for (int j = 0; j < w; ++j)
 		{
-			int pixelX = x + j;
-			int pixelY = y + i;
+			const int pixelX = std::min(std::max(0, x + j), mapXBound);
+			const int pixelY = std::min(std::max(0, y + i), mapYBound);
 			uint16_t height = 0;
 			// Note: using useCompressedHeightmapCache directly here would be unsafe if the setting is 
 			// toggled part-way through the function and UseFastUncompressedHeightmap() is false
@@ -345,21 +367,37 @@ void HeightmapHook::UpdateHeightmapSettings()
 					mode = CompressToolsLib::ImageMode::Preload;
 
 				DebugLog("Loading compressed heightmap...");
-				heightmapHandle = CompressToolsLib::OpenImage(Settings::ResolvePath("data/newland/land/fullmap.cif").c_str(), mode);
-				DebugLog("Compressed heightmap loaded!");
+				heightmapHandle = CompressToolsLib::OpenImage(Settings::ResolvePath(HIEGHTMAP_CIF_PATH).c_str(), mode);
+				if (!heightmapHandle)
+				{
+					ErrorLog("Could not open compressed heightmap, reverting setting to vanilla");
+					Settings::SetHeightmapMode(HeightmapMode::VANILLA);
+				}
+				else
+				{
+					DebugLog("Compressed heightmap loaded!");
+				}
 			}
 		}
 		else
 		{
 			ErrorLog("Heightmap mode set to compressed, but the compressed heightmap doesn't exist!");
-			newMode = VANILLA;
+			Settings::SetHeightmapMode(VANILLA);
 		}
 	}
 	else if (newMode == FAST_UNCOMPRESSED && mappedHeightmapPixels == nullptr)
 	{
 		DebugLog("Opening fast heightmap...");
-		mappedHeightmapPixels = MMapTIFF(Settings::ResolvePath("data/newland/land/fullmap.tif"));
-		DebugLog("Fast heightmap mapped!");
+		mappedHeightmapPixels = MMapTIFF(Settings::ResolvePath(HEIGHTMAP_TIF_PATH));
+		if (mappedHeightmapPixels == nullptr)
+		{
+			ErrorLog("Error initializing fast heightmap loader");
+			Settings::SetHeightmapMode(VANILLA);
+		}
+		else
+		{
+			DebugLog("Fast heightmap mapped!");
+		}
 	}
 
 	// it's now safe to update these as all required files will be open
@@ -380,7 +418,7 @@ bool HeightmapHook::CompressedHeightmapFileExists()
 {
 	if (compressedFilemapExists == UNSET)
 	{
-		if (boost::filesystem::exists(Settings::ResolvePath("data/newland/land/fullmap.cif")))
+		if (boost::filesystem::exists(Settings::ResolvePath(HIEGHTMAP_CIF_PATH)))
 			compressedFilemapExists = EXISTS;
 		else
 			compressedFilemapExists = DOESNT_EXIST;
@@ -391,7 +429,7 @@ bool HeightmapHook::CompressedHeightmapFileExists()
 HeightmapHook::HeightmapMode HeightmapHook::GetRecommendedHeightmapMode()
 {
 	// if the compressed heightmap exists and the user is loading off an HDD, that's probably the best setting
-	if (IO::GetDriveStorageType(Settings::ResolvePath("data/newland/land/fullmap.cif")) == IO::HDD)
+	if (IO::GetDriveStorageType(Settings::ResolvePath(HIEGHTMAP_CIF_PATH)) == IO::HDD)
 	{
 		return HeightmapHook::COMPRESSED;
 	}

@@ -1,6 +1,6 @@
 #pragma once
 
-namespace FSHook
+namespace PhysicsHooks
 {
 	void Init();
 }

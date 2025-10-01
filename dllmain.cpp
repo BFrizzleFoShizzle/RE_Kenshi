@@ -37,6 +37,10 @@
 #include "Bugs.h"
 #include "Escort.h"
 #include "ShaderCache.h"
+#include "OgreSICCodec.h"
+#include "OgreDDSCodec2.h"
+#include "OgreHooks.h"
+#include "PhysicsHooks.h"
 
 #include <ogre/OgrePrerequisites.h>
 #include <ogre/OgreResourceGroupManager.h>
@@ -46,6 +50,8 @@
 
 #include <boost/locale.hpp>
 #include <boost/thread/condition_variable.hpp>
+
+extern "C" { int __afxForceUSRDLL; }
 
 float gameSpeed = 1.0f;
 MyGUI::TextBox* gameSpeedText = nullptr;
@@ -213,51 +219,60 @@ public:
     bool keyPressed(const OIS::KeyEvent& arg) override
     {
         InputHandler& inputHandler = Kenshi::GetInputHandler();
-        // Game speed hooks - runs after game listener so we can overwrite values
-        InputHandler::Command* command = inputHandler.map[arg.key];
-        std::string &eventName = command->name;
         bool output = kenshiKeyListener->keyPressed(arg);
-        // TODO pause?
-        if (eventName == "speed_1")
+
+        // Game speed hooks - runs after game listener so we can overwrite values
+        if (inputHandler.map.find(arg.key) != inputHandler.map.end())
         {
-            SetSpeed1();
-        }
-        else if (eventName == "speed_2")
-        {
-            // decrement on press
-            SetSpeed2();
-        }
-        else if (eventName == "speed_3")
-        {
-            // increment on press
-            SetSpeed3();
+            InputHandler::Command* command = inputHandler.map[arg.key];
+            std::string& eventName = command->name;
+
+            // TODO pause?
+            if (eventName == "speed_1")
+            {
+                SetSpeed1();
+            }
+            else if (eventName == "speed_2")
+            {
+                // decrement on press
+                SetSpeed2();
+            }
+            else if (eventName == "speed_3")
+            {
+                // increment on press
+                SetSpeed3();
+            }
         }
         return output;
     };
     bool keyReleased(const OIS::KeyEvent& arg) override
     {
         InputHandler& inputHandler = Kenshi::GetInputHandler();
-        // Game speed hooks - runs after game listener so we can overwrite values
-        InputHandler::Command* command = inputHandler.map[arg.key];
-        std::string& eventName = command->name;
         bool output = kenshiKeyListener->keyReleased(arg);
-        // TODO pause?
-        if (eventName == "speed_1")
+
+        // Game speed hooks - runs after game listener so we can overwrite values
+        if (inputHandler.map.find(arg.key) != inputHandler.map.end())
         {
-            SetSpeed1();
+            InputHandler::Command* command = inputHandler.map[arg.key];
+            std::string& eventName = command->name;
+
+            // TODO pause?
+            if (eventName == "speed_1")
+            {
+                SetSpeed1();
+            }
+            else if (eventName == "speed_2")
+            {
+                // update on release
+                ForceWriteSpeed();
+            }
+            else if (eventName == "speed_3")
+            {
+                // update on release
+                ForceWriteSpeed();
+            }
         }
-        else if (eventName == "speed_2")
-        {
-            // update on release
-            ForceWriteSpeed();
-        }
-        else if (eventName == "speed_3")
-        {
-            // update on release
-            ForceWriteSpeed();
-        }
-        return output;
-    };
+    }
 private:
     // Games key listener
     OIS::KeyListener* kenshiKeyListener;
@@ -967,11 +982,16 @@ void ReportBugPress(MyGUI::WidgetPtr sender)
 void SendBugPress(MyGUI::WidgetPtr sender)
 {
     MyGUI::EditBox* description = bugReportWindow->findWidget("BugDescription")->castType<MyGUI::EditBox>(false);
-    std::string uuid = "";
-    if (sendUUIDToggle->getStateSelected())
-        uuid = Bugs::GetUUIDHash();
-    Bugs::ReportUserBug(description->getCaption(), uuid);
-    description->setCaption("Report sent.");
+    // don't send empty bug reports
+    if (description->getCaption() != "" && description->getCaption() != boost::locale::gettext("Report sent."))
+    {
+        std::string uuid = "";
+        if (sendUUIDToggle->getStateSelected())
+            uuid = Bugs::GetUUIDHash();
+        Bugs::ReportUserBug(description->getCaption(), uuid);
+        description->setCaption(boost::locale::gettext("Report sent."));
+    }
+    // seems some users mash the button to make the window close
     bugReportWindow->setVisible(false);
 }
 
@@ -1063,26 +1083,16 @@ void InitGUI()
     {
         DebugLog("Version supported.");
 
-        // can't seem to find where the language is kept in memory...
-        // I've found the std::locale - but it doesn't work for some reason?
-        // Also found the boost::locale::generator but that isn't really useful
-        // unless you know the locale string... and std::locale::name/c_str 
-        // returns "*". Also, generator::generate seems to be called before 
-        // RE_Kenshi is loaded, so we can't hook that either...
-        // So we pick up langauge settings from the config file after
-        // the game is started
-        Ogre::ConfigFile config;
-        config.load("settings.cfg");
-        std::string language = config.getSetting("language");
-
-        boost::locale::generator gen;
-        gen.add_messages_path("RE_Kenshi/locale");
-        gen.add_messages_domain("re_kenshi");
-        // extend Kenshi's existing locale with our own
-        std::locale::global(gen.generate(std::locale(), language + ".UTF-8"));
+        // sometimes we hit here when the main menu isn't initialized properly and accessing the version text causes a crash
         MyGUI::Gui* gui = MyGUI::Gui::getInstancePtr();
+        MyGUI::WidgetPtr versionTextWidg = Kenshi::FindWidget(gui->getEnumerator(), "VersionText");
+        // defer to next frame on failiure
+        if (!versionTextWidg)
+            return;
+        MyGUI::TextBox* versionText = versionTextWidg->castType<MyGUI::TextBox>(false);
+        if (!versionText)
+            return;
 
-        MyGUI::TextBox* versionText = Kenshi::FindWidget(gui->getEnumerator(), "VersionText")->castType<MyGUI::TextBox>();
         MyGUI::UString version = versionText->getCaption();
         DebugLog(version);
 
@@ -1393,7 +1403,8 @@ void InitGUI()
         if (!HeightmapHook::CompressedHeightmapFileExists())
         {
             MyGUI::EditBox* noCompressedHeightmapLabel = performanceScroll->createWidget<MyGUI::EditBox>("Kenshi_TextboxStandardText", 15, positionY, canvasWidth - 30 * scale, 30 * scale, MyGUI::Align::VStretch | MyGUI::Align::Left, "NoCompressedHeightmapLabel");
-            noCompressedHeightmapLabel->setFontName("Kenshi_StandardFont_Medium18");
+            // this font causes localization issues
+            //noCompressedHeightmapLabel->setFontName("Kenshi_StandardFont_Medium18");
             noCompressedHeightmapLabel->setCaption(boost::locale::gettext("To enable compressed heightmap, reinstall RE_Kenshi and check \"Compress Heightmap\""));
             noCompressedHeightmapLabel->setEditWordWrap(true);
             noCompressedHeightmapLabel->setSize(noCompressedHeightmapLabel->getWidth(), noCompressedHeightmapLabel->getTextSize().height);
@@ -1668,16 +1679,70 @@ void DisplayVersionError(float timeDelta)
     }
 }
 
-void dllmain()
+// For stuff that should be done ASAP
+void SyncronousInit()
 {
-    DebugLog("RE_Kenshi " + Version::GetDisplayVersion());
-
-    Kenshi::Init();
-
     Kenshi::BinaryVersion gameVersion = Kenshi::GetKenshiVersion();
+
+    // this has to be done BEFORE switching to (non-borderless) fullscreen or bad things happen
+    IO::Init();
 
     // this has to be done *before* the file I/O hook since that causes settings reads
     Settings::Init();
+
+    // Escort has to be initialized BEFORE any hooks are installed
+    Escort::Init();
+
+    // version check bypass if enabled
+    if (Settings::GetIgnoreHashCheck() && Kenshi::GetKenshiVersion().GetPlatform() == Kenshi::BinaryVersion::UNKNOWN)
+    {
+        DebugLog("Hash doesn't match but hash check bypass is enabled, reading version from file");
+        std::ifstream versionFile("currentVersion.txt");
+        if (versionFile.good())
+        {
+            std::string versionText;
+            std::getline(versionFile, versionText);
+            // expected format: "Kenshi x.x.x - x64 (Newland)"
+            std::string numberText = versionText.substr(7, versionText.find(" ", 7) - 7);
+            std::string versionTrailing = versionText.substr(7 + numberText.length());
+            if (versionText.substr(0, 7) == "Kenshi " && versionTrailing == " - x64 (Newland)")
+            {
+                // deduce Steam/GOG via the executable's name
+                CHAR path[MAX_PATH];
+                GetModuleFileNameA(NULL, path, MAX_PATH);
+                CHAR* moduleName = strrchr(path, '\\') + 1;
+
+                Kenshi::BinaryVersion::KenshiPlatform platform = Kenshi::BinaryVersion::UNKNOWN;
+                if (strcmp(moduleName, "kenshi_GOG_x64.exe") == 0)
+                    platform = Kenshi::BinaryVersion::GOG;
+                else if (strcmp(moduleName, "kenshi_x64.exe") == 0)
+                    platform = Kenshi::BinaryVersion::STEAM;
+
+                if (platform != Kenshi::BinaryVersion::UNKNOWN)
+                {
+                    DebugLog("Got version: " + Kenshi::BinaryVersion(platform, numberText).ToString());
+                    if (Kenshi::OverrideKenshiVersion(Kenshi::BinaryVersion(platform, numberText)))
+                        DebugLog("Version override success");
+                    else
+                        ErrorLog("Version override failed");
+                }
+                else
+                {
+                    ErrorLog("Could not recognize game platform from binary name");
+                    ErrorLog("expected \"kenshi_x64.exe\" or \"kenshi_GOG_x64.exe\" but got \"" + std::string(moduleName) + "\"");
+                }
+            }
+            else
+            {
+                ErrorLog("currentVersion.txt is incorrectly formatted, version cannot be recognized");
+                DebugLog(versionText);
+            }
+        }
+        else
+        {
+            ErrorLog("currentVersion.txt couldn't be opened - try re-running the game.");
+        }
+    }
 
     // TODO refactor these branches
     if (gameVersion.GetPlatform() != Kenshi::BinaryVersion::UNKNOWN)
@@ -1686,25 +1751,52 @@ void dllmain()
         LoadMods_orig = Escort::JmpReplaceHook<void(GameWorld*)>((void*)GetRealAddress(&GameWorld::initialisationGameData), LoadMods_hook, 6);
 
         FSHook::Init();
+        Ogre::SICCodec::startup();
+        Ogre::DDSCodec2::startup();
     }
     else
     {
         DebugLog("Error: Unsupported Kenshi version. Hooks disabled.");
     }
-    
-    Version::Init();
 
     if (gameVersion.GetPlatform() != Kenshi::BinaryVersion::UNKNOWN)
     {
-        Bugs::Init();
+        Bugs::InitMenu();
         ShaderCache::Init();
         HeightmapHook::Preload();
         MiscHooks::Init();
         Sound::Init();
+        OgreHooks::Init();
+        PhysicsHooks::Init();
+    }
+}
 
+// workaround for exceptions on the dllStartPlugin thread not triggering UnhandledException and try/catch
+bool syncInit = false;
+boost::mutex syncInitLock;
+boost::condition_variable syncInitCV;
+
+DWORD WINAPI InitThread(LPVOID param)
+{
+    // Anything that could cause a race condition with the game (e.g. hook installation)
+    SyncronousInit();
+    DebugLog("Finished synchronous init stage");
+    {
+        boost::lock_guard<boost::mutex> lock(syncInitLock);
+        syncInit = true;
+        syncInitCV.notify_all();
+    }
+
+    // RE_Kenshi version manager
+    Version::Init();
+
+    Kenshi::BinaryVersion gameVersion = Kenshi::GetKenshiVersion();
+    if (gameVersion.GetPlatform() != Kenshi::BinaryVersion::UNKNOWN)
+    {
         DebugLog("Waiting for mod setup.");
         WaitForModSetup();
 
+        OgreHooks::InitFinalizeMods();
         Settings::LoadModOverrides();
         Sound::TryLoadQueuedBanks();
         HeightmapHook::Init();
@@ -1739,28 +1831,61 @@ void dllmain()
         DebugLog("ERROR: Game version not recognized.");
         DebugLog("");
         DebugLog("Supported versions:");
-        DebugLog("GOG 1.0.59, 1.0.64");
-        DebugLog("Steam 1.0.55, 1.0.64");
+        DebugLog("GOG 1.0.65, 1.0.68");
+        DebugLog("Steam 1.0.65, 1.0.68");
         DebugLog("RE_Kenshi initialization aborted!");
 
         // doing this on our thread is unsafe, need to do it on the GUI thread so we don't access UI elements as the game creates them
         // if we try to read + modify the version text on our current thread, the code fails about 50% of the time
         gui->eventFrameStart += MyGUI::newDelegate(DisplayVersionError);
     }
-}
 
-DWORD WINAPI threadWrapper(LPVOID param)
-{
-    dllmain();
+    // disable global crash handler so crashes are handled by Kenshi's
+    // this has to happen at the bottom of this function because Kenshi doesn't pick up exceptions on this thread (???)
+    Bugs::InitInGame();
+
     return 0;
 }
 
 // Ogre plugin export
 extern "C" void __declspec(dllexport) dllStartPlugin(void)
 {
+    DebugLog("RE_Kenshi " + Version::GetDisplayVersion());
 
-    // HACK this has to be done BEFORE switching to (non-borderless) fullscreen or bad things happen
-    // it should really be run in a hook
-    IO::Init();
-    CreateThread(NULL, 0, threadWrapper, 0, 0, 0);
+    // load RVAs
+    Kenshi::Init();
+
+    // hook unhandled exception filter function before doing anything else so we can catch 
+    // any weird exceptions before Kenshi sets up their own
+    Bugs::Init();
+
+
+    // can't seem to find where the language is kept in memory...
+    // I've found the std::locale - but it doesn't work for some reason?
+    // Also found the boost::locale::generator but that isn't really useful
+    // unless you know the locale string... and std::locale::name/c_str 
+    // returns "*". Also, generator::generate seems to be called before 
+    // RE_Kenshi is loaded, so we can't hook that either...
+    // TODO find this
+    // language should be loaded ASAP for the crash handler + version checker, so we do it synchronously
+    Ogre::ConfigFile config;
+    config.load("settings.cfg");
+    std::string language = config.getSetting("language");
+
+    boost::locale::generator gen;
+    gen.add_messages_path("RE_Kenshi/locale");
+    gen.add_messages_domain("re_kenshi");
+    // extend Kenshi's existing locale with our own
+    std::locale::global(gen.generate(std::locale(), language + ".UTF-8"));
+
+    // NOTE: exceptions triggered in THIS FUNCTION don't get caught by the error handler (there might be a try/catch above this?)
+    // so ALL INIT should be done on a thread so that failiures trigger the global exception handler
+    CreateThread(NULL, 0, InitThread, 0, 0, 0);
+
+    // Wait for sync init to finish
+    boost::unique_lock<boost::mutex> lock(syncInitLock);
+    while (!syncInit)
+    {
+        syncInitCV.wait(lock);
+    }
 }

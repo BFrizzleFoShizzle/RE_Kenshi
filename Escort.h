@@ -10,6 +10,7 @@
 
 namespace Escort
 {
+	void Init();
 	void Hook(void* sourceAddr, void* targetAddr, size_t replacedBytes);
 	void PushRetHook(void* sourceAddr, void* targetAddr, size_t replacedBytes);
 	// relative call, your call replaces func, args are passed over

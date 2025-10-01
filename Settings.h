@@ -19,6 +19,8 @@ namespace Settings
 	bool PreloadHeightmap();
 	void SetProfileLoads(bool value);
 	bool GetProfileLoads();
+	void SetIgnoreHashCheck(bool value);
+	bool GetIgnoreHashCheck();
 	int GetAttackSlots();
 	void SetAttackSlots(int num);
 	bool GetOverrideAttackSlots();
@@ -37,9 +39,8 @@ namespace Settings
 	void SetOverrideMaxSquads(bool value);
 	bool GetFixRNG();
 	void SetFixRNG(bool value);
-	// TODO remove after dropping support for old versions
-	bool GetFixFontSize();
-	void SetFixFontSize(bool value);
+	bool GetFixModListScroll();
+	void SetFixModListScroll(bool value);
 	void SetLogFileIO(bool value);
 	bool GetLogFileIO();
 	bool GetCheckUpdates();
@@ -52,6 +53,10 @@ namespace Settings
 	void SetIncreaseMaxCameraDistance(bool value);
 	bool GetCacheShaders();
 	void SetCacheShaders(bool value);
+	bool GetCachePhysXColliders();
+	void SetCachePhysXColliders(bool value);
+	void SetSkipUnusedMipmapReads(bool value);
+	bool GetSkipUnusedMipmapReads();
 	bool GetLogAudio();
 	void SetLogAudio(bool value);
 	bool GetEnableEmergencySaves();

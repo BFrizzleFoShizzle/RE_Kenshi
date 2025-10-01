@@ -2,7 +2,8 @@
 
 #include <vector>
 #include <sstream>
-#include <rapidjson/document.h>
+
+#include "rapidjson/document.h"
 
 #include "WinHttpClient.h"
 #include "Debug.h"
@@ -10,7 +11,7 @@
 
 #include <boost/locale.hpp>
 
-std::string version = "0.2.11";
+std::string version = "0.3.0";
 std::string latestVersionCache = "0.0.0";
 const bool isPrerelease = true;
 
@@ -87,6 +88,17 @@ DWORD WINAPI checkVersionThread(LPVOID param)
         document.Parse(responseStr.c_str());
         // "tag_name" is version of release
         // "vx.x.x"
+        if (document.HasParseError())
+        {
+            ErrorLog("Error parsing latest release: " + responseStr);
+            ErrorLog("Parse error: " + std::to_string((uint64_t)document.GetParseError()));
+            return 0;
+        }
+        if (!document.HasMember("tag_name"))
+        {
+            ErrorLog("Missing version tag name: " + responseStr);
+            return 0;
+        }
         latestVersionCache = document["tag_name"].GetString();
         DebugLog("Latest public release: " + latestVersionCache);
         if (Settings::GetSkippedVersion() == latestVersionCache)
@@ -104,8 +116,9 @@ DWORD WINAPI checkVersionThread(LPVOID param)
         // Ask if user wants to update if needed
         if (!Version::IsCurrentVersion())
         {
-            std::string msg = boost::locale::gettext("A new version of RE_Kenshi (") + latestVersionCache + boost::locale::gettext(") has been released.\nDo you want to update?");
-            int result = MessageBoxA(NULL, msg.c_str(), boost::locale::gettext("RE_Kenshi update").c_str(), MB_YESNO | MB_TOPMOST);
+            std::wstring versionStr = std::wstring(latestVersionCache.begin(), latestVersionCache.end());
+            std::wstring msg = boost::locale::gettext(L"A new version of RE_Kenshi (") + versionStr + boost::locale::gettext(L") has been released.\nDo you want to update?");
+            int result = MessageBoxW(NULL, msg.c_str(), boost::locale::gettext(L"RE_Kenshi update").c_str(), MB_YESNO | MB_TOPMOST);
             if (result == IDYES)
             {
                 DebugLog("Opening browser...");
@@ -113,12 +126,12 @@ DWORD WINAPI checkVersionThread(LPVOID param)
             }
             if (result == IDNO)
             {
-                std::string msg = boost::locale::gettext("Do you want to skip RE_Kenshi release ") + latestVersionCache + boost::locale::gettext("?\n(disables notifications for this release)");
-                result = MessageBoxA(NULL, msg.c_str(), boost::locale::gettext("RE_Kenshi update").c_str(), MB_YESNO | MB_TOPMOST);
+                std::wstring msg = boost::locale::gettext(L"Do you want to skip RE_Kenshi release ") + versionStr + boost::locale::gettext(L"?\n(disables notifications for this release)");
+                result = MessageBoxW(NULL, msg.c_str(), boost::locale::gettext(L"RE_Kenshi update").c_str(), MB_YESNO | MB_TOPMOST);
                 if (result == IDYES)
                 {
                     Settings::SetSkippedVersion(latestVersionCache);
-                    MessageBoxA(NULL, boost::locale::gettext("Version skipped!").c_str(), boost::locale::gettext("RE_Kenshi update").c_str(), MB_OK | MB_TOPMOST);
+                    MessageBoxW(NULL, boost::locale::gettext(L"Version skipped!").c_str(), boost::locale::gettext(L"RE_Kenshi update").c_str(), MB_OK | MB_TOPMOST);
                 }
             }
         }

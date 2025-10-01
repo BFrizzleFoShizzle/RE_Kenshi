@@ -51,15 +51,17 @@ rapidjson::Document GenerateDefaultSettings()
     defaultSettings.AddMember("MaxSquads", -1, defaultSettings.GetAllocator());
     defaultSettings.AddMember("MaxSquadsOverride", false, defaultSettings.GetAllocator());
     defaultSettings.AddMember("FixRNG", true, defaultSettings.GetAllocator());
-    // TODO remove after dropping support for old versions
-    defaultSettings.AddMember("FixFontSize", true, defaultSettings.GetAllocator());
+    defaultSettings.AddMember("FixModListScroll", true, defaultSettings.GetAllocator());
     defaultSettings.AddMember("CacheShaders", true, defaultSettings.GetAllocator());
+    defaultSettings.AddMember("CachePhysXColliders", true, defaultSettings.GetAllocator());
+    defaultSettings.AddMember("SkipUnusedMipReads", true, defaultSettings.GetAllocator());
     defaultSettings.AddMember("LogFileIO", false, defaultSettings.GetAllocator());
     defaultSettings.AddMember("CheckUpdates", true, defaultSettings.GetAllocator());
     defaultSettings.AddMember("SkippedVersion", "", defaultSettings.GetAllocator());
     defaultSettings.AddMember("OpenSettingOnStart", true, defaultSettings.GetAllocator());
     defaultSettings.AddMember("LogAudio", false, defaultSettings.GetAllocator());
     defaultSettings.AddMember("ProfileLoads", false, defaultSettings.GetAllocator());
+    defaultSettings.AddMember("IgnoreHash", false, defaultSettings.GetAllocator());
     defaultSettings.AddMember("EnableEmergencySaves", true, defaultSettings.GetAllocator());
     defaultSettings.AddMember("IncreaseMaxCameraDistance", false, defaultSettings.GetAllocator());
     rapidjson::Value gameSpeeds(rapidjson::kArrayType);
@@ -235,6 +237,19 @@ void Settings::LoadModOverrides()
                 if (itr->value.IsString())
                 {
                     std::string origPath = itr->name.GetString();
+                    // Fix for discrepancy between historic vanilla + new heightmap paths
+                    if (origPath == "data/newland/land/fullmap.cif")
+                    {
+                        DebugLog("Updating outdated override path: \"data/newland/land/fullmap.cif\" -> \"data\\newland/land\\fullmap.cif\"");
+                        origPath = "data\\newland/land\\fullmap.cif";
+                    }
+                    // From fast heightmap code
+                    else if (origPath == "data/newland/land/fullmap.tif")
+                    {
+                        DebugLog("Updating outdated override path: \"data/newland/land/fullmap.tif\" -> \"data\\newland/land\\fullmap.tif\"");
+                        origPath = "data\\newland/land\\fullmap.tif";
+                    }
+
                     std::string newPath = ParsePath(itr->value.GetString());
 
                     // Note: mods lower (?) in the mod order get precedence
@@ -409,6 +424,15 @@ bool Settings::GetProfileLoads()
     return GetSettingBool("ProfileLoads");
 }
 
+void Settings::SetIgnoreHashCheck(bool value)
+{
+    SetSettingBool("IgnoreHash", value);
+}
+bool Settings::GetIgnoreHashCheck()
+{
+    return GetSettingBool("IgnoreHash");
+}
+
 bool Settings::GetFixRNG()
 {
     return GetSettingBool("FixRNG");
@@ -419,15 +443,14 @@ void Settings::SetFixRNG(bool value)
     SetSettingBool("FixRNG", value);
 }
 
-// TODO remove after dropping support for old versions
-bool Settings::GetFixFontSize()
+bool Settings::GetFixModListScroll()
 {
-    return GetSettingBool("FixFontSize");
+    return GetSettingBool("FixModListScroll");
 }
 
-void Settings::SetFixFontSize(bool value)
+void Settings::SetFixModListScroll(bool value)
 {
-    SetSettingBool("FixFontSize", value);
+    SetSettingBool("FixModListScroll", value);
 }
 
 // -1 = use mod value
@@ -596,6 +619,26 @@ bool Settings::GetCacheShaders()
 void Settings::SetCacheShaders(bool value)
 {
     SetSettingBool("CacheShaders", value);
+}
+
+void Settings::SetCachePhysXColliders(bool value)
+{
+    SetSettingBool("CachePhysXColliders", value);
+}
+
+bool Settings::GetCachePhysXColliders()
+{
+    return GetSettingBool("CachePhysXColliders");
+}
+
+void Settings::SetSkipUnusedMipmapReads(bool value)
+{
+    SetSettingBool("SkipUnusedMipReads", value);
+}
+
+bool Settings::GetSkipUnusedMipmapReads()
+{
+    return GetSettingBool("SkipUnusedMipReads");
 }
 
 void Settings::SetLogFileIO(bool value)
