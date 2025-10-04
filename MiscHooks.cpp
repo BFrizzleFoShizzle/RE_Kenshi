@@ -3,7 +3,7 @@
 #include "MiscHooks.h"
 
 #include <kenshi/Kenshi.h>
-#include <kenshi/util/functions.h>
+#include <core/Functions.h>
 
 #include "Escort.h"
 #include "Settings.h"

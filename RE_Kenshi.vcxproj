@@ -85,7 +85,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <LibraryPath>$(BOOST_INCLUDE_PATH)\stage\lib;$(SolutionDir)$(Platform)\$(Configuration)\;KenshiLib/Libraries/ogre/;$(LibraryPath)</LibraryPath>
-    <IncludePath>$(DXSDK_DIR)Include;thirdparty;CompressTools;KenshiLib/Include/ois;KenshiLib/Include;$(VC_IncludePath);$(WindowsSDK_IncludePath);thirdparty/rapidjson\include;KenshiLib/Include/ogre;$(IncludePath)</IncludePath>
+    <IncludePath>$(DXSDK_DIR)Include;thirdparty;KenshiLib/Include/ois;KenshiLib/Include;KenshiLib/Include/ogre;CompressTools;$(VC_IncludePath);$(WindowsSDK_IncludePath);thirdparty/rapidjson\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>

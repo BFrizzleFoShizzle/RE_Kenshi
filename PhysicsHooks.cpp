@@ -4,7 +4,7 @@
 #include <kenshi/PhysicsActual.h>
 #include <kenshi/GameWorld.h>
 #include <kenshi/Kenshi.h>
-#include <kenshi/util/functions.h>
+#include <core/Functions.h>
 
 #include <boost/unordered_map.hpp>
 

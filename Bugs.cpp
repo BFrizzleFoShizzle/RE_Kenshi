@@ -9,7 +9,7 @@
 #include "Settings.h"
 #include <kenshi/Kenshi.h>
 #include <kenshi/Globals.h>
-#include <kenshi/util/functions.h>
+#include <core/Functions.h>
 #include <boost/locale/message.hpp>
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>

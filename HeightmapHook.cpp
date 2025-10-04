@@ -10,10 +10,10 @@
 #include <boost/filesystem.hpp>
 
 #include "Debug.h"
-#include "CompressTools/CompressToolsLib.h"
+#include <CompressToolsLib.h>
 #include "Settings.h"
 #include "io.h"
-#include "KenshiLib/Include/Release_Assert.h"
+#include <Release_Assert.h>
 
 
 // pretty sure this macro is defined in C++11? so we just NOP it out
@@ -23,7 +23,7 @@
 #include "tiny_dng_loader.h"
 
 // NOTE: historic discrepancies for this are handled in the settings file rebinding code
-static const std::string HIEGHTMAP_CIF_PATH = "data\\newland/land\\fullmap.cif";
+static const std::string HEIGHTMAP_CIF_PATH = "data\\newland/land\\fullmap.cif";
 static const std::string HEIGHTMAP_TIF_PATH = "data\\newland/land\\fullmap.tif"; 
 CompressToolsLib::CompressedImageFileHdl heightmapHandle = nullptr;
 
@@ -367,7 +367,7 @@ void HeightmapHook::UpdateHeightmapSettings()
 					mode = CompressToolsLib::ImageMode::Preload;
 
 				DebugLog("Loading compressed heightmap...");
-				heightmapHandle = CompressToolsLib::OpenImage(Settings::ResolvePath(HIEGHTMAP_CIF_PATH).c_str(), mode);
+				heightmapHandle = CompressToolsLib::OpenImage(Settings::ResolvePath(HEIGHTMAP_CIF_PATH).c_str(), mode);
 				if (!heightmapHandle)
 				{
 					ErrorLog("Could not open compressed heightmap, reverting setting to vanilla");
@@ -418,7 +418,7 @@ bool HeightmapHook::CompressedHeightmapFileExists()
 {
 	if (compressedFilemapExists == UNSET)
 	{
-		if (boost::filesystem::exists(Settings::ResolvePath(HIEGHTMAP_CIF_PATH)))
+		if (boost::filesystem::exists(Settings::ResolvePath(HEIGHTMAP_CIF_PATH)))
 			compressedFilemapExists = EXISTS;
 		else
 			compressedFilemapExists = DOESNT_EXIST;
@@ -429,7 +429,7 @@ bool HeightmapHook::CompressedHeightmapFileExists()
 HeightmapHook::HeightmapMode HeightmapHook::GetRecommendedHeightmapMode()
 {
 	// if the compressed heightmap exists and the user is loading off an HDD, that's probably the best setting
-	if (IO::GetDriveStorageType(Settings::ResolvePath(HIEGHTMAP_CIF_PATH)) == IO::HDD)
+	if (IO::GetDriveStorageType(Settings::ResolvePath(HEIGHTMAP_CIF_PATH)) == IO::HDD)
 	{
 		return HeightmapHook::COMPRESSED;
 	}

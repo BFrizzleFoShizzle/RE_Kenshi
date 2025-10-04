@@ -23,7 +23,7 @@
 #include <kenshi/GameWorld.h>
 #include <Kenshi/InputHandler.h> 
 #include <kenshi/GlobalConstants.h>
-#include <kenshi/util/functions.h>
+#include <core/functions.h>
 
 #include "FSHook.h"
 #include "HeightmapHook.h"
@@ -58,6 +58,27 @@ MyGUI::TextBox* gameSpeedText = nullptr;
 
 int gameSpeedIdx = 0;
 
+// TODO templateize
+// Kenshi prefixes it's widgets with a bunch of non-usefull stuff
+MyGUI::WidgetPtr FindWidget(MyGUI::EnumeratorWidgetPtr enumerator, std::string name)
+{
+    while (enumerator.next())
+    {
+        std::string widgetName = enumerator.current()->getName();
+        size_t splitPos = widgetName.find('_');
+
+        if (splitPos != std::string::npos && widgetName.substr(splitPos + 1) == name)
+            return enumerator.current();
+        if (enumerator.current()->getChildCount() > 0)
+        {
+            MyGUI::WidgetPtr childFoundWidget = FindWidget(enumerator.current()->getEnumerator(), name);
+            if (childFoundWidget != nullptr)
+                return childFoundWidget;
+        }
+    }
+    return nullptr;
+}
+
 // used to set highlighted game speed button
 // IDX 1-4
 void HighlightSpeedButton(int buttonIdx)
@@ -66,7 +87,7 @@ void HighlightSpeedButton(int buttonIdx)
     MyGUI::Gui* gui = MyGUI::Gui::getInstancePtr();
     MyGUI::ButtonPtr speedButton = nullptr;
     // button 1 (pause)
-    MyGUI::WidgetPtr widget = Kenshi::FindWidget(gui->getEnumerator(), "TimeSpeedButton1");
+    MyGUI::WidgetPtr widget = FindWidget(gui->getEnumerator(), "TimeSpeedButton1");
     if (widget)
         speedButton = widget->castType<MyGUI::Button>(false);
     if (speedButton)
@@ -74,7 +95,7 @@ void HighlightSpeedButton(int buttonIdx)
 
     // button 2 (play)
     speedButton = nullptr;
-    widget = Kenshi::FindWidget(gui->getEnumerator(), "TimeSpeedButton2");
+    widget = FindWidget(gui->getEnumerator(), "TimeSpeedButton2");
     if (widget)
         speedButton = widget->castType<MyGUI::Button>(false);
     if (speedButton)
@@ -82,7 +103,7 @@ void HighlightSpeedButton(int buttonIdx)
 
     // button 3 (2x)
     speedButton = nullptr;
-    widget = Kenshi::FindWidget(gui->getEnumerator(), "TimeSpeedButton3");
+    widget = FindWidget(gui->getEnumerator(), "TimeSpeedButton3");
     if (widget)
         speedButton = widget->castType<MyGUI::Button>(false);
     if (speedButton)
@@ -90,7 +111,7 @@ void HighlightSpeedButton(int buttonIdx)
 
     // button 4 (5x)
     speedButton = nullptr;
-    widget = Kenshi::FindWidget(gui->getEnumerator(), "TimeSpeedButton4");
+    widget = FindWidget(gui->getEnumerator(), "TimeSpeedButton4");
     if (widget)
         speedButton = widget->castType<MyGUI::Button>(false);
     if (speedButton)
@@ -306,7 +327,7 @@ void WaitForInGame()
     MyGUI::WidgetPtr speedButtonsPanel = nullptr;
     while (speedButtonsPanel == nullptr)
     {
-        speedButtonsPanel = Kenshi::FindWidget(gui->getEnumerator(), "SpeedButtonsPanel");
+        speedButtonsPanel = FindWidget(gui->getEnumerator(), "SpeedButtonsPanel");
         Sleep(10);
     }
 }
@@ -322,7 +343,7 @@ void WaitForMainMenu()
     MyGUI::WidgetPtr versionText = nullptr;
     while (versionText == nullptr)
     {
-        versionText = Kenshi::FindWidget(gui->getEnumerator(), "VersionText");
+        versionText = FindWidget(gui->getEnumerator(), "VersionText");
         Sleep(10);
     }
 }
@@ -960,7 +981,7 @@ void SetUseCustomGameSpeeds(bool useCustomGameSpeeds)
 
     // hit play to switch to 1x speed
     MyGUI::Gui* gui = MyGUI::Gui::getInstancePtr();
-    MyGUI::WidgetPtr speedButton2 = Kenshi::FindWidget(gui->getEnumerator(), "TimeSpeedButton2");// ->castType<MyGUI::Button>();
+    MyGUI::WidgetPtr speedButton2 = FindWidget(gui->getEnumerator(), "TimeSpeedButton2");// ->castType<MyGUI::Button>();
     if (speedButton2) 
     {
         speedButton2->eventMouseButtonClick(speedButton2);
@@ -1085,7 +1106,7 @@ void InitGUI()
 
         // sometimes we hit here when the main menu isn't initialized properly and accessing the version text causes a crash
         MyGUI::Gui* gui = MyGUI::Gui::getInstancePtr();
-        MyGUI::WidgetPtr versionTextWidg = Kenshi::FindWidget(gui->getEnumerator(), "VersionText");
+        MyGUI::WidgetPtr versionTextWidg = FindWidget(gui->getEnumerator(), "VersionText");
         // defer to next frame on failiure
         if (!versionTextWidg)
             return;
@@ -1470,7 +1491,7 @@ void InjectSettings()
 
     //  inject mod menu into Kenshi's settings menu "MODS" tab
     // this call can return nullptr so need an explicit check before the cast
-    MyGUI::Widget* optionsTabWidget = Kenshi::FindWidget(gui->getEnumerator(), "OptionsTab");
+    MyGUI::Widget* optionsTabWidget = FindWidget(gui->getEnumerator(), "OptionsTab");
     if (optionsTabWidget == nullptr)
         return;
 
@@ -1499,7 +1520,7 @@ void ReHookTimeButtons()
     MyGUI::Gui* gui = MyGUI::Gui::getInstancePtr();
     try
     {
-        MyGUI::WidgetPtr timeMoneyPanel = Kenshi::FindWidget(gui->getEnumerator(), "TimeMoneyPanel");
+        MyGUI::WidgetPtr timeMoneyPanel = FindWidget(gui->getEnumerator(), "TimeMoneyPanel");
 
         // When the game recreates it's GUI, gameSpeedText gets totally messed up
         // various calls on gameSpeedText succeed with sane values
@@ -1511,17 +1532,17 @@ void ReHookTimeButtons()
         
         if (timeMoneyPanel == nullptr)
             MessageBoxA(0, "TimeMoneyPanel not found.", "Debug", MB_OK);
-        MyGUI::WidgetPtr speedButton2 = Kenshi::FindWidget(gui->getEnumerator(), "TimeSpeedButton2");// ->castType<MyGUI::Button>();
+        MyGUI::WidgetPtr speedButton2 = FindWidget(gui->getEnumerator(), "TimeSpeedButton2");// ->castType<MyGUI::Button>();
         if (speedButton2 == nullptr) {
             MessageBoxA(0, "TimeSpeedButton2 not found.", "Debug", MB_OK);
             return;
         }
-        MyGUI::WidgetPtr speedButton3 = Kenshi::FindWidget(gui->getEnumerator(), "TimeSpeedButton3");// ->castType<MyGUI::Button>();
+        MyGUI::WidgetPtr speedButton3 = FindWidget(gui->getEnumerator(), "TimeSpeedButton3");// ->castType<MyGUI::Button>();
         if (speedButton3 == nullptr) {
             MessageBoxA(0, "TimeSpeedButton3 not found.", "Debug", MB_OK);
             return;
         }
-        MyGUI::WidgetPtr speedButton4 = Kenshi::FindWidget(gui->getEnumerator(), "TimeSpeedButton4");// ->castType<MyGUI::Button>();
+        MyGUI::WidgetPtr speedButton4 = FindWidget(gui->getEnumerator(), "TimeSpeedButton4");// ->castType<MyGUI::Button>();
         if (speedButton4 == nullptr) {
             MessageBoxA(0, "TimeSpeedButton4 not found.", "Debug", MB_OK);
             return;
@@ -1561,7 +1582,7 @@ void GUIUpdate(float timeDelta)
     // I have a hunch Kenshi may have actually freed our gameSpeedText object,
     // which would make that dangerous.
     // C++03 is awful. Shared pointers would completely solve this problem.
-    MyGUI::WidgetPtr timeMoneyPanel = Kenshi::FindWidget(gui->getEnumerator(), "TimeMoneyPanel");
+    MyGUI::WidgetPtr timeMoneyPanel = FindWidget(gui->getEnumerator(), "TimeMoneyPanel");
     if (timeMoneyPanel != nullptr)
     {
         if (timeMoneyPanel->findWidget("GameSpeedText") == nullptr)
@@ -1586,7 +1607,7 @@ void GUIUpdate(float timeDelta)
 
     if (!hookedLoad)
     {
-        MyGUI::WidgetPtr loadBtn = Kenshi::FindWidget(MyGUI::Gui::getInstancePtr()->getEnumerator(), "LoadButton");
+        MyGUI::WidgetPtr loadBtn = FindWidget(MyGUI::Gui::getInstancePtr()->getEnumerator(), "LoadButton");
         if (loadBtn)
         {
             loadBtn->eventMouseButtonClick += MyGUI::newDelegate(LoadStart);
@@ -1594,7 +1615,7 @@ void GUIUpdate(float timeDelta)
         }
     }
 
-    MyGUI::WidgetPtr loadingPanel = Kenshi::FindWidget(MyGUI::Gui::getInstancePtr()->getEnumerator(), "LoadingPanel");
+    MyGUI::WidgetPtr loadingPanel = FindWidget(MyGUI::Gui::getInstancePtr()->getEnumerator(), "LoadingPanel");
     if (loadingPanel && loadingPanel->getInheritedVisible() != oldLoadingPanelVisible && Settings::GetProfileLoads())
     {
         clock_t newTime = clock();
@@ -1668,7 +1689,7 @@ void DisplayVersionError(float timeDelta)
 {
     MyGUI::Gui* gui = MyGUI::Gui::getInstancePtr();
 
-    MyGUI::TextBox* versionText = Kenshi::FindWidget(gui->getEnumerator(), "VersionText")->castType<MyGUI::TextBox>(false);
+    MyGUI::TextBox* versionText = FindWidget(gui->getEnumerator(), "VersionText")->castType<MyGUI::TextBox>(false);
     if (versionText != nullptr)
     {
         MyGUI::UString version = versionText->getCaption();
