@@ -1,6 +1,7 @@
 #include "Bugs.h"
 
 #include "Discord.h"
+#include <Debug.h>
 
 #include "WinHttpClient.h"
 #include "Version.h"

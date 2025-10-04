@@ -9,11 +9,11 @@
 #include <sstream>
 #include <boost/filesystem.hpp>
 
-#include "CompressTools/CompressToolsLib.h"
 #include "Debug.h"
+#include "CompressTools/CompressToolsLib.h"
 #include "Settings.h"
 #include "io.h"
-#include "Release_Assert.h"
+#include "KenshiLib/Include/Release_Assert.h"
 
 
 // pretty sure this macro is defined in C++11? so we just NOP it out
