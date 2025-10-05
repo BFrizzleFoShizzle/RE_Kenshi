@@ -41,6 +41,7 @@
 #include "OgreDDSCodec2.h"
 #include "OgreHooks.h"
 #include "PhysicsHooks.h"
+#include "Plugins.h"
 
 #include <ogre/OgrePrerequisites.h>
 #include <ogre/OgreResourceGroupManager.h>
@@ -1667,6 +1668,8 @@ void LoadMods_hook(GameWorld* gameWorld)
     if (!setupMods)
     {
         DebugLog("Load mod hook");
+        Plugins::Postload();
+
         boost::lock_guard<boost::mutex> lock(modLoadLock);
         setupMods = true;
         modLoadCV.notify_all();
@@ -1772,16 +1775,9 @@ void SyncronousInit()
         LoadMods_orig = Escort::JmpReplaceHook<void(GameWorld*)>((void*)GetRealAddress(&GameWorld::initialisationGameData), LoadMods_hook, 6);
 
         FSHook::Init();
+        Plugins::Init();
         Ogre::SICCodec::startup();
         Ogre::DDSCodec2::startup();
-    }
-    else
-    {
-        DebugLog("Error: Unsupported Kenshi version. Hooks disabled.");
-    }
-
-    if (gameVersion.GetPlatform() != Kenshi::BinaryVersion::UNKNOWN)
-    {
         Bugs::InitMenu();
         ShaderCache::Init();
         HeightmapHook::Preload();
@@ -1789,6 +1785,10 @@ void SyncronousInit()
         Sound::Init();
         OgreHooks::Init();
         PhysicsHooks::Init();
+    }
+    else
+    {
+        DebugLog("Error: Unsupported Kenshi version. Hooks disabled.");
     }
 }
 

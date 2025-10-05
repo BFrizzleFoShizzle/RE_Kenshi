@@ -186,6 +186,7 @@
     <ClCompile Include="OgreHooks.cpp" />
     <ClCompile Include="OgreSICCodec.cpp" />
     <ClCompile Include="PhysicsHooks.cpp" />
+    <ClCompile Include="Plugins.cpp" />
     <ClCompile Include="Settings.cpp" />
     <ClCompile Include="ShaderCache.cpp" />
     <ClCompile Include="SIC.cpp" />
@@ -209,6 +210,7 @@
     <ClInclude Include="OgreHooks.h" />
     <ClInclude Include="OgreSICCodec.h" />
     <ClInclude Include="PhysicsHooks.h" />
+    <ClInclude Include="Plugins.h" />
     <ClInclude Include="Settings.h" />
     <ClInclude Include="ShaderCache.h" />
     <ClInclude Include="SIC.h" />
