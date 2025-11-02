@@ -579,7 +579,7 @@ void LogManager_destructor_hook(void* thisptr)
 			try
 			{
 				DebugLog("Attempting emergency save...");
-				SaveManager* saveManager = Kenshi::GetSaveManager();
+				SaveManager* saveManager = SaveManager::getSingleton();
 
 				int emergencySaveNum = 0;
 				for (; emergencySaveNum < 10000; ++emergencySaveNum)
@@ -590,7 +590,7 @@ void LogManager_destructor_hook(void* thisptr)
 				{
 					if (!saveManager->saveGame(saveManager->location, "emergency_save_" + std::to_string((uint64_t)emergencySaveNum)))
 					{
-						SaveFileSystem* saveFileSystem = Kenshi::GetSaveFileSystem();
+						SaveFileSystem* saveFileSystem = SaveFileSystem::getSingleton();
 						WaitForSingleObject(saveFileSystem->threadHandle, INFINITE);
 
 						// success? update continue save

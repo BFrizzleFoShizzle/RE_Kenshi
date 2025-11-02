@@ -8,6 +8,7 @@
 #include <ogre/OgreResourceGroupManager.h>
 #include <ogre/OgreTexture.h>
 #include <kenshi/Kenshi.h>
+#include <kenshi/Globals.h>
 #include <kenshi/OptionsHolder.h>
 
 Ogre::DDSCodec2 downscaleCodec = Ogre::DDSCodec2();
@@ -29,7 +30,7 @@ public:
 
 		// if it's a DDS texture and texture quality is below maximum, override Kenshi's texture resizing with our own (it's better)
 		// don't downres GUI
-		if (texture && name.size() > 4 && name.substr(name.size() - 4) == ".dds" && group != "GUI" && Settings::GetSkipUnusedMipmapReads() && Kenshi::GetOptions()->ddsTextureMipMapGimping > 0)
+		if (texture && name.size() > 4 && name.substr(name.size() - 4) == ".dds" && group != "GUI" && Settings::GetSkipUnusedMipmapReads() && options->ddsTextureMipMapGimping > 0)
 		{
 			return Ogre::DataStreamPtr();
 		}
@@ -69,9 +70,9 @@ public:
 		Ogre::Texture* texture = dynamic_cast<Ogre::Texture*>(resource);
 		// don't downres GUI
 		// (texture == resource) means "is type texture or value null"
-		if ((texture == resource) && name.size() > 4 && name.substr(name.size() - 4) == ".dds" && group != "GUI" && Settings::GetSkipUnusedMipmapReads() && Kenshi::GetOptions()->ddsTextureMipMapGimping > 0)
+		if ((texture == resource) && name.size() > 4 && name.substr(name.size() - 4) == ".dds" && group != "GUI" && Settings::GetSkipUnusedMipmapReads() && options->ddsTextureMipMapGimping > 0)
 		{
-			int mipsDropped = Kenshi::GetOptions()->ddsTextureMipMapGimping;
+			int mipsDropped = options->ddsTextureMipMapGimping;
 			// "_LO" decreases mips dropped by 1 (if it isn't zero)
 			if (name.size() > 7 && name.substr(name.size() - 7) == "_LO.dds")
 				mipsDropped = std::max(0, mipsDropped - 1);

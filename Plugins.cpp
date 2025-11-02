@@ -4,6 +4,7 @@
 #include <kenshi/Kenshi.h>
 #include <kenshi/GameWorld.h>
 #include <kenshi/ModInfo.h>
+#include <kenshi/Globals.h>
 #include <core/Functions.h>
 #include <rapidjson/istreamwrapper.h>
 #include <rapidjson/document.h>
@@ -53,7 +54,7 @@ void preload_init_hook(GameWorld* thisptr)
         // Load preload plugins
         hasPreloaded = true;
         DebugLog("Loading preload plugins...");
-        lektor<ModInfo*>& mods = Kenshi::GetGameWorld().availabelModsOrderedList;
+        lektor<ModInfo*>& mods = ou->availabelModsOrderedList;
         for (int i = 0; i < mods.size(); ++i)
         {
             std::string settingsPath = mods[i]->path + "\\RE_Kenshi.json";
@@ -88,7 +89,7 @@ void preload_init_hook(GameWorld* thisptr)
 void Plugins::Postload()
 {
     DebugLog("Loading post-load plugins...");
-    lektor<ModInfo*>& mods = Kenshi::GetGameWorld().activeMods;
+    lektor<ModInfo*>& mods = ou->activeMods;
     for (int i = 0; i < mods.size(); ++i)
     {
         std::string settingsPath = mods[i]->path + "\\RE_Kenshi.json";

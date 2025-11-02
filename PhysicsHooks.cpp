@@ -4,6 +4,7 @@
 #include <kenshi/PhysicsActual.h>
 #include <kenshi/GameWorld.h>
 #include <kenshi/Kenshi.h>
+#include <kenshi/Globals.h>
 #include <core/Functions.h>
 
 #include <boost/unordered_map.hpp>
@@ -25,11 +26,11 @@ NXU::NxuPhysicsCollection* loadPhysXResource_hook(const std::string& filename, i
 		{
 			// I can't find a function for cloning a collection, so I create a scaled copy instead
 			NXU::NxuPhysicsCollection* newCollection = loadPhysXResource_orig(filename, type);
-			physXCollectionCache.emplace(std::make_pair(filename, type), scaleCopyCollection(newCollection, (filename + "_CLONE_RK").c_str(), scale, ((PhysicsActual*)Kenshi::GetGameWorld().physics)->physicsSDK));
+			physXCollectionCache.emplace(std::make_pair(filename, type), scaleCopyCollection(newCollection, (filename + "_CLONE_RK").c_str(), scale, ((PhysicsActual*)ou->physics)->physicsSDK));
 
 			return newCollection;
 		}
-		return scaleCopyCollection(it->second, filename.c_str(), scale, ((PhysicsActual*)Kenshi::GetGameWorld().physics)->physicsSDK);
+		return scaleCopyCollection(it->second, filename.c_str(), scale, ((PhysicsActual*)ou->physics)->physicsSDK);
 	}
 	else
 	{

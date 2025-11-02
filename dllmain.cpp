@@ -23,6 +23,7 @@
 #include <kenshi/GameWorld.h>
 #include <Kenshi/InputHandler.h> 
 #include <kenshi/GlobalConstants.h>
+#include <kenshi/Globals.h>
 #include <core/functions.h>
 
 #include "FSHook.h"
@@ -129,9 +130,9 @@ void SetSpeed1()
 
         // TODO test keyboard bindings
 
-        GameWorld& gameWorld = Kenshi::GetGameWorld();
+        GameWorld* gameWorld = ou;
         if(gameSpeedText)
-            gameSpeedText->setCaption(std::to_string((long double)gameWorld.frameSpeedMult) + "x");
+            gameSpeedText->setCaption(std::to_string((long double)gameWorld->frameSpeedMult) + "x");
     }
     else
     {
@@ -142,9 +143,9 @@ void SetSpeed1()
 
         // Kenshi will probably set game speed to 1, next time speed3 or speed4 buttons are clicked, will revert to modified game speed...
         // TODO how to handle this better?
-        GameWorld& gameWorld = Kenshi::GetGameWorld();
-        std::string gameSpeedMessage = std::to_string((long double)gameWorld.frameSpeedMult) + "x";
-        if (gameWorld.frameSpeedMult != gameSpeedValues[gameSpeedIdx])
+        GameWorld* gameWorld = ou;
+        std::string gameSpeedMessage = std::to_string((long double)gameWorld->frameSpeedMult) + "x";
+        if (gameWorld->frameSpeedMult != gameSpeedValues[gameSpeedIdx])
             gameSpeedMessage += " (" + std::to_string((long double)gameSpeedValues[gameSpeedIdx]) + "x)";
         //gameSpeedMessage += " (" + std::to_string((unsigned long long)fileCount) + ")";
 
@@ -158,13 +159,13 @@ void SetSpeed2()
     if (!Settings::GetUseCustomGameSpeeds())
     {
         // vanilla - reimplement
-        GameWorld& gameWorld = Kenshi::GetGameWorld();
-        gameWorld.frameSpeedMult = 2;
+        GameWorld* gameWorld = ou;
+        gameWorld->frameSpeedMult = 2;
 
         HighlightSpeedButton(3);
 
         if (gameSpeedText)
-            gameSpeedText->setCaption(std::to_string((long double)gameWorld.frameSpeedMult) + "x");
+            gameSpeedText->setCaption(std::to_string((long double)gameWorld->frameSpeedMult) + "x");
     }
     else
     {
@@ -173,10 +174,10 @@ void SetSpeed2()
         // Clamp
         gameSpeedIdx = std::min(gameSpeedIdx, (int)gameSpeedValues.size() - 1);
         gameSpeedIdx = std::max(gameSpeedIdx, 0);
-        GameWorld& gameWorld = Kenshi::GetGameWorld();
-        gameWorld.frameSpeedMult = gameSpeedValues[gameSpeedIdx];
+        GameWorld* gameWorld = ou;
+        gameWorld->frameSpeedMult = gameSpeedValues[gameSpeedIdx];
         if (gameSpeedText)
-            gameSpeedText->setCaption(std::to_string((long double)gameWorld.frameSpeedMult) + "x");
+            gameSpeedText->setCaption(std::to_string((long double)gameWorld->frameSpeedMult) + "x");
     }
     
 }
@@ -186,13 +187,13 @@ void SetSpeed3()
     if (!Settings::GetUseCustomGameSpeeds())
     {
         // vanilla - reimplement
-        GameWorld& gameWorld = Kenshi::GetGameWorld();
-        gameWorld.frameSpeedMult = 5;
+        GameWorld* gameWorld = ou;
+        gameWorld->frameSpeedMult = 5;
 
         HighlightSpeedButton(4);
 
         if (gameSpeedText)
-            gameSpeedText->setCaption(std::to_string((long double)gameWorld.frameSpeedMult) + "x");
+            gameSpeedText->setCaption(std::to_string((long double)gameWorld->frameSpeedMult) + "x");
     }
     else
     {
@@ -201,28 +202,28 @@ void SetSpeed3()
         // Clamp
         gameSpeedIdx = std::min(gameSpeedIdx, (int)gameSpeedValues.size() - 1);
         gameSpeedIdx = std::max(gameSpeedIdx, 0);
-        GameWorld& gameWorld = Kenshi::GetGameWorld();
-        gameWorld.frameSpeedMult = gameSpeedValues[gameSpeedIdx];
+        GameWorld* gameWorld = ou;
+        gameWorld->frameSpeedMult = gameSpeedValues[gameSpeedIdx];
 
         if (gameSpeedText)
-            gameSpeedText->setCaption(std::to_string((long double)gameWorld.frameSpeedMult) + "x");
+            gameSpeedText->setCaption(std::to_string((long double)gameWorld->frameSpeedMult) + "x");
     }
 }
 // Used to re-overwrite Kenshi's value when required
 void ForceWriteSpeed()
 {
-    GameWorld& gameWorld = Kenshi::GetGameWorld();
+    GameWorld* gameWorld = ou;
     if (Settings::GetUseCustomGameSpeeds())
     {
         std::vector<float> gameSpeedValues = Settings::GetGameSpeeds();
         // Clamp
         gameSpeedIdx = std::min(gameSpeedIdx, (int)gameSpeedValues.size() - 1);
         gameSpeedIdx = std::max(gameSpeedIdx, 0);
-        gameWorld.frameSpeedMult = gameSpeedValues[gameSpeedIdx];
+        gameWorld->frameSpeedMult = gameSpeedValues[gameSpeedIdx];
     }
 
     if (gameSpeedText)
-        gameSpeedText->setCaption(std::to_string((long double)gameWorld.frameSpeedMult) + "x");
+        gameSpeedText->setCaption(std::to_string((long double)gameWorld->frameSpeedMult) + "x");
 }
 
 class KeyboardHook : public OIS::KeyListener
@@ -240,13 +241,13 @@ public:
     }
     bool keyPressed(const OIS::KeyEvent& arg) override
     {
-        InputHandler& inputHandler = Kenshi::GetInputHandler();
+        InputHandler* inputHandler = key;
         bool output = kenshiKeyListener->keyPressed(arg);
 
         // Game speed hooks - runs after game listener so we can overwrite values
-        if (inputHandler.map.find(arg.key) != inputHandler.map.end())
+        if (inputHandler->map.find(arg.key) != inputHandler->map.end())
         {
-            InputHandler::Command* command = inputHandler.map[arg.key];
+            InputHandler::Command* command = inputHandler->map[arg.key];
             std::string& eventName = command->name;
 
             // TODO pause?
@@ -269,13 +270,13 @@ public:
     };
     bool keyReleased(const OIS::KeyEvent& arg) override
     {
-        InputHandler& inputHandler = Kenshi::GetInputHandler();
+        InputHandler* inputHandler = key;
         bool output = kenshiKeyListener->keyReleased(arg);
 
         // Game speed hooks - runs after game listener so we can overwrite values
-        if (inputHandler.map.find(arg.key) != inputHandler.map.end())
+        if (inputHandler->map.find(arg.key) != inputHandler->map.end())
         {
-            InputHandler::Command* command = inputHandler.map[arg.key];
+            InputHandler::Command* command = inputHandler->map[arg.key];
             std::string& eventName = command->name;
 
             // TODO pause?
@@ -762,7 +763,7 @@ void AttackSlotScroll(MyGUI::ScrollBar* scrollBar, size_t newPos)
         str << newPos;
         numberText->setCaption(str.str());
         // TODO this sometimes causes a crash if Kenshi is unpaused
-        Kenshi::GetCon()->MAX_NUM_ATTACK_SLOTS = newPos;
+        con->MAX_NUM_ATTACK_SLOTS = newPos;
     }
     else
     {
@@ -770,7 +771,7 @@ void AttackSlotScroll(MyGUI::ScrollBar* scrollBar, size_t newPos)
         std::stringstream str;
         str << "(" << defaultAttackSlots << ")";
         numberText->setCaption(str.str());
-        Kenshi::GetCon()->MAX_NUM_ATTACK_SLOTS = defaultAttackSlots;
+        con->MAX_NUM_ATTACK_SLOTS = defaultAttackSlots;
     }
 
     // update stored setting
@@ -794,14 +795,14 @@ void MaxFactionSizeScroll(MyGUI::ScrollBar* scrollBar, size_t newPos)
         str << newPos;
         numberText->setCaption(str.str());
         // TODO this sometimes causes a crash if Kenshi is unpaused
-        Kenshi::GetCon()->MAX_FACTION_SIZE = newPos;
+        con->MAX_FACTION_SIZE = newPos;
     }
     else
     {
         std::stringstream str;
         str << "(" << defaultMaxFactionSize << ")";
         numberText->setCaption(str.str());
-        Kenshi::GetCon()->MAX_FACTION_SIZE = defaultMaxFactionSize;
+        con->MAX_FACTION_SIZE = defaultMaxFactionSize;
     }
 
     // update stored setting
@@ -840,14 +841,14 @@ void MaxSquadSizeScroll(MyGUI::ScrollBar* scrollBar, size_t newPos)
         str << newPos;
         numberText->setCaption(str.str());
         // TODO this sometimes causes a crash if Kenshi is unpaused
-        Kenshi::GetCon()->MAX_SQUAD_SIZE = newPos;
+        con->MAX_SQUAD_SIZE = newPos;
     }
     else
     {
         std::stringstream str;
         str << "(" << defaultMaxSquadSize << ")";
         numberText->setCaption(str.str());
-        Kenshi::GetCon()->MAX_SQUAD_SIZE = defaultMaxSquadSize;
+        con->MAX_SQUAD_SIZE = defaultMaxSquadSize;
     }
 
     // update stored setting
@@ -886,14 +887,14 @@ void MaxSquadsScroll(MyGUI::ScrollBar* scrollBar, size_t newPos)
         str << newPos;
         numberText->setCaption(str.str());
         // TODO this sometimes causes a crash if Kenshi is unpaused
-        Kenshi::GetCon()->MAX_SQUADS = newPos;
+        con->MAX_SQUADS = newPos;
     }
     else
     {
         std::stringstream str;
         str << "(" << defaultMaxSquads << ")";
         numberText->setCaption(str.str());
-        Kenshi::GetCon()->MAX_SQUADS = defaultMaxSquads;
+        con->MAX_SQUADS = defaultMaxSquads;
     }
 
     // update stored setting
@@ -1266,13 +1267,13 @@ void InitGUI()
         positionY += increaseMaxCameraDistanceButton->getHeight() + pad;
 
         // Attack slots
-        defaultAttackSlots = Kenshi::GetCon()->MAX_NUM_ATTACK_SLOTS;
+        defaultAttackSlots = con->MAX_NUM_ATTACK_SLOTS;
         const int numAttackSlotsSetting = Settings::GetAttackSlots();
         // Apply settings
         std::stringstream attackSlotsValue;
         if (Settings::GetOverrideAttackSlots() && numAttackSlotsSetting > 0)
         {
-            Kenshi::GetCon()->MAX_NUM_ATTACK_SLOTS = numAttackSlotsSetting;
+            con->MAX_NUM_ATTACK_SLOTS = numAttackSlotsSetting;
             attackSlotsValue << numAttackSlotsSetting;
         }
         else
@@ -1290,13 +1291,13 @@ void InitGUI()
         positionY += attackSlotsSlider->GetWidget()->getHeight() + pad;
 
         // max faction size
-        defaultMaxFactionSize = Kenshi::GetCon()->MAX_FACTION_SIZE;
+        defaultMaxFactionSize = con->MAX_FACTION_SIZE;
         const int maxFactionSizeSetting = Settings::GetMaxFactionSize();
         // Apply settings
         std::stringstream maxFactionSizeValue;
         if (Settings::GetOverrideMaxFactionSize() && maxFactionSizeSetting > 0)
         {
-            Kenshi::GetCon()->MAX_FACTION_SIZE = maxFactionSizeSetting;
+            con->MAX_FACTION_SIZE = maxFactionSizeSetting;
             maxFactionSizeValue << maxFactionSizeSetting;
         }
         else
@@ -1316,13 +1317,13 @@ void InitGUI()
         positionY += maxFactionSizeSlider->GetWidget()->getHeight() + pad;
 
         // max squad size
-        defaultMaxSquadSize = Kenshi::GetCon()->MAX_SQUAD_SIZE;
+        defaultMaxSquadSize = con->MAX_SQUAD_SIZE;
         const int maxSquadSizeSetting = Settings::GetMaxSquadSize();
         // Apply settings
         std::stringstream maxSquadSizeValue;
         if (Settings::GetOverrideMaxSquadSize() && maxSquadSizeSetting > 0)
         {
-            Kenshi::GetCon()->MAX_SQUAD_SIZE = maxSquadSizeSetting;
+            con->MAX_SQUAD_SIZE = maxSquadSizeSetting;
             maxSquadSizeValue << maxSquadSizeSetting;
         }
         else
@@ -1342,13 +1343,13 @@ void InitGUI()
         positionY += maxSquadSizeSlider->GetWidget()->getHeight() + pad;
 
         // max squads
-        defaultMaxSquads = Kenshi::GetCon()->MAX_SQUADS;
+        defaultMaxSquads = con->MAX_SQUADS;
         const int maxSquadsSetting = Settings::GetMaxSquads();
         // Apply settings
         std::stringstream maxSquadsValue;
         if (Settings::GetOverrideMaxSquads() && maxSquadsSetting > 0)
         {
-            Kenshi::GetCon()->MAX_SQUADS = maxSquadsSetting;
+            con->MAX_SQUADS = maxSquadsSetting;
             maxSquadsValue << maxSquadsSetting;
         }
         else
@@ -1842,9 +1843,9 @@ DWORD WINAPI InitThread(LPVOID param)
         // Keyboard hooks
         if (!keyboardHook)
         {
-            InputHandler& inputHandler = Kenshi::GetInputHandler();
-            keyboardHook = std::make_shared<KeyboardHook>(inputHandler.keyboard->getEventCallback());
-            inputHandler.keyboard->setEventCallback(keyboardHook.get());
+            InputHandler* inputHandler = key;
+            keyboardHook = std::make_shared<KeyboardHook>(inputHandler->keyboard->getEventCallback());
+            inputHandler->keyboard->setEventCallback(keyboardHook.get());
         }
     }
     else
