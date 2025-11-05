@@ -1064,7 +1064,7 @@ void CreateBugReportWindow(MyGUI::Gui* gui, float scale)
     infoText->setEditStatic(true);
     infoText->setCaption(MyGUI::UString(boost::locale::gettext("Your report will be sent to RE_Kenshi's developer (BFrizzleFoShizzle) with the following information:"))
         + "\n" + boost::locale::gettext("\nRE_Kenshi version: ") + Version::GetDisplayVersion()
-        + boost::locale::gettext("\nKenshi version: ") + Kenshi::GetKenshiVersion().ToString()
+        + boost::locale::gettext("\nKenshi version: ") + KenshiLib::GetKenshiVersion().ToString()
         + boost::locale::gettext("\nUUID hash: ") + Bugs::GetUUIDHash() + boost::locale::gettext(" (optional - allows the developer to know all your reports come from the same machine)")
         + boost::locale::gettext("\nYour bug description")
         + boost::locale::gettext("\n\nPlease describe the bug:"));
@@ -1097,12 +1097,12 @@ void CreateBugReportWindow(MyGUI::Gui* gui, float scale)
 void InitGUI()
 {
     DebugLog("Main menu loaded.");
-    Kenshi::BinaryVersion gameVersion = Kenshi::GetKenshiVersion();
+    KenshiLib::BinaryVersion gameVersion = KenshiLib::GetKenshiVersion();
 
     DebugLog("Kenshi version: " + gameVersion.GetVersion());
     DebugLog("Kenshi platform: " + gameVersion.GetPlatformStr());
 
-    if (gameVersion.GetPlatform() != Kenshi::BinaryVersion::UNKNOWN)
+    if (gameVersion.GetPlatform() != KenshiLib::BinaryVersion::UNKNOWN)
     {
         DebugLog("Version supported.");
 
@@ -1707,7 +1707,7 @@ void DisplayVersionError(float timeDelta)
 // For stuff that should be done ASAP
 void SyncronousInit()
 {
-    Kenshi::BinaryVersion gameVersion = Kenshi::GetKenshiVersion();
+    KenshiLib::BinaryVersion gameVersion = KenshiLib::GetKenshiVersion();
 
     // this has to be done BEFORE switching to (non-borderless) fullscreen or bad things happen
     IO::Init();
@@ -1719,7 +1719,7 @@ void SyncronousInit()
     Escort::Init();
 
     // version check bypass if enabled
-    if (Settings::GetIgnoreHashCheck() && Kenshi::GetKenshiVersion().GetPlatform() == Kenshi::BinaryVersion::UNKNOWN)
+    if (Settings::GetIgnoreHashCheck() && KenshiLib::GetKenshiVersion().GetPlatform() == KenshiLib::BinaryVersion::UNKNOWN)
     {
         DebugLog("Hash doesn't match but hash check bypass is enabled, reading version from file");
         std::ifstream versionFile("currentVersion.txt");
@@ -1737,16 +1737,16 @@ void SyncronousInit()
                 GetModuleFileNameA(NULL, path, MAX_PATH);
                 CHAR* moduleName = strrchr(path, '\\') + 1;
 
-                Kenshi::BinaryVersion::KenshiPlatform platform = Kenshi::BinaryVersion::UNKNOWN;
+                KenshiLib::BinaryVersion::KenshiPlatform platform = KenshiLib::BinaryVersion::UNKNOWN;
                 if (strcmp(moduleName, "kenshi_GOG_x64.exe") == 0)
-                    platform = Kenshi::BinaryVersion::GOG;
+                    platform = KenshiLib::BinaryVersion::GOG;
                 else if (strcmp(moduleName, "kenshi_x64.exe") == 0)
-                    platform = Kenshi::BinaryVersion::STEAM;
+                    platform = KenshiLib::BinaryVersion::STEAM;
 
-                if (platform != Kenshi::BinaryVersion::UNKNOWN)
+                if (platform != KenshiLib::BinaryVersion::UNKNOWN)
                 {
-                    DebugLog("Got version: " + Kenshi::BinaryVersion(platform, numberText).ToString());
-                    if (Kenshi::OverrideKenshiVersion(Kenshi::BinaryVersion(platform, numberText)))
+                    DebugLog("Got version: " + KenshiLib::BinaryVersion(platform, numberText).ToString());
+                    if (KenshiLib::OverrideKenshiVersion(KenshiLib::BinaryVersion(platform, numberText)))
                         DebugLog("Version override success");
                     else
                         ErrorLog("Version override failed");
@@ -1770,7 +1770,7 @@ void SyncronousInit()
     }
 
     // TODO refactor these branches
-    if (gameVersion.GetPlatform() != Kenshi::BinaryVersion::UNKNOWN)
+    if (gameVersion.GetPlatform() != KenshiLib::BinaryVersion::UNKNOWN)
     {
         // hook for loading mod config - has to be done early so we can override certain early I/O operations
         LoadMods_orig = Escort::JmpReplaceHook<void(GameWorld*)>((void*)GetRealAddress(&GameWorld::initialisationGameData), LoadMods_hook, 6);
@@ -1812,8 +1812,8 @@ DWORD WINAPI InitThread(LPVOID param)
     // RE_Kenshi version manager
     Version::Init();
 
-    Kenshi::BinaryVersion gameVersion = Kenshi::GetKenshiVersion();
-    if (gameVersion.GetPlatform() != Kenshi::BinaryVersion::UNKNOWN)
+    KenshiLib::BinaryVersion gameVersion = KenshiLib::GetKenshiVersion();
+    if (gameVersion.GetPlatform() != KenshiLib::BinaryVersion::UNKNOWN)
     {
         DebugLog("Waiting for mod setup.");
         WaitForModSetup();
@@ -1829,7 +1829,7 @@ DWORD WINAPI InitThread(LPVOID param)
 
     MyGUI::Gui* gui = MyGUI::Gui::getInstancePtr();
     
-    if (gameVersion.GetPlatform() != Kenshi::BinaryVersion::UNKNOWN)
+    if (gameVersion.GetPlatform() != KenshiLib::BinaryVersion::UNKNOWN)
     {
         // GUI will be created next frame
         gui->eventFrameStart += MyGUI::newDelegate(GUIUpdate);
@@ -1875,7 +1875,7 @@ extern "C" void __declspec(dllexport) dllStartPlugin(void)
     DebugLog("RE_Kenshi " + Version::GetDisplayVersion());
 
     // load RVAs
-    Kenshi::Init();
+    KenshiLib::Init();
 
     // hook unhandled exception filter function before doing anything else so we can catch 
     // any weird exceptions before Kenshi sets up their own

@@ -88,7 +88,7 @@ bool Bugs::ReportUserBug(std::string description, std::string uuid)
 {
 	WinHttpClient client(modBugDiscordWebHookURL);
 
-	std::string message = "<@" + discordID + ">\nRE_Kenshi " + Version::GetDisplayVersion() + " / Kenshi " + Kenshi::GetKenshiVersion().ToString();
+	std::string message = "<@" + discordID + ">\nRE_Kenshi " + Version::GetDisplayVersion() + " / Kenshi " + KenshiLib::GetKenshiVersion().ToString();
 	if (uuid != "")
 		message += "\nUUID: " + uuid;
 	message += " bug:\n" + description;
@@ -138,7 +138,7 @@ bool Bugs::ReportCrash(std::string description, std::string crashDumpName, std::
 	}
 
 	WinHttpClient client(modCrashDiscordWebHookURL);
-	std::string message = "\nRE_Kenshi " + Version::GetDisplayVersion() + " / Kenshi " + Kenshi::GetKenshiVersion().ToString();
+	std::string message = "\nRE_Kenshi " + Version::GetDisplayVersion() + " / Kenshi " + KenshiLib::GetKenshiVersion().ToString();
 	if (uuidHash != "")
 		message += "\nUUID: " + uuidHash;
 	message += " crash:\n" + description;
@@ -280,13 +280,13 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 				+ boost::locale::gettext(L"\nWould you like to send a crash report to the RE_Kenshi team?")
 				+ boost::locale::gettext(L"\nYour report will be sent to RE_Kenshi's developer (BFrizzleFoShizzle) with the following information:")
 				+ boost::locale::gettext(L"\n\nRE_Kenshi version: ") + to_wstr(Version::GetDisplayVersion())
-				+ boost::locale::gettext(L"\nKenshi version: ") + to_wstr(Kenshi::GetKenshiVersion().ToString())
+				+ boost::locale::gettext(L"\nKenshi version: ") + to_wstr(KenshiLib::GetKenshiVersion().ToString())
 				+ boost::locale::gettext(L"\nUUID hash: ") + to_wstr(Bugs::GetUUIDHash()) + boost::locale::gettext(L" (optional - allows the developer to know all your reports come from the same machine)")
 				+ boost::locale::gettext(L"\nRE_Kenshi settings") + L" (RE_Kenshi.ini)"
 				+ boost::locale::gettext(L"\nRE_Kenshi's log") + L" (RE_Kenshi_log.txt)";
 
 			WIN32_FIND_DATAA foundCrashDump;
-			std::string crashDumpSearchName = "crashDump" + Kenshi::GetKenshiVersion().GetVersion() + "_x64*.zip";
+			std::string crashDumpSearchName = "crashDump" + KenshiLib::GetKenshiVersion().GetVersion() + "_x64*.zip";
 			HANDLE searchHandle = FindFirstFileA(crashDumpSearchName.c_str(), &foundCrashDump);
 
 			if (searchHandle != INVALID_HANDLE_VALUE)
@@ -474,9 +474,9 @@ static LONG WINAPI UnhandledException(EXCEPTION_POINTERS* excpInfo = NULL)
 		ErrorLog("Main crash handler did not pick up exception");
 
 		// Generate crash dump
-		std::string dumpFileName = "crashDump" + Kenshi::GetKenshiVersion().GetVersion() + "_x64";
+		std::string dumpFileName = "crashDump" + KenshiLib::GetKenshiVersion().GetVersion() + "_x64";
 		std::string zipName = dumpFileName;
-		if (Kenshi::GetKenshiVersion().GetPlatform() == Kenshi::BinaryVersion::GOG)
+		if (KenshiLib::GetKenshiVersion().GetPlatform() == KenshiLib::BinaryVersion::GOG)
 			zipName += "_ns";
 		dumpFileName += ".dmp";
 		zipName += ".zip";

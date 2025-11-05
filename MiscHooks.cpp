@@ -197,7 +197,7 @@ void MiscHooks::SetFixRNG(bool value)
 
 void MiscHooks::SetMaxCameraDistance(float value)
 {
-	Escort::WriteProtected(&Kenshi::GetMaxCameraDistance(), &value, sizeof(float));
+	Escort::WriteProtected(&KenshiLib::GetMaxCameraDistance(), &value, sizeof(float));
 }
 
 // Kenshi calls ShowCursor a million times (probably every frame) - this causes problems 

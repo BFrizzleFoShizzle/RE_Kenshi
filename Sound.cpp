@@ -309,14 +309,14 @@ void Sound::TryLoadQueuedBanks()
 void Sound::Init()
 {
 	// find function addresses
-	AK_StreamMgr_GetFileLocationResolver = (CAkFilePackageLowLevelIOBlocking * (*)())Escort::GetFuncAddress(Kenshi::GetKenshiVersion().GetBinaryName(), "?GetFileLocationResolver@StreamMgr@AK@@YAPEAVIAkFileLocationResolver@12@XZ");
-	void* AK_SoundEngine_GetIDFromString_ptr = Escort::GetFuncAddress(Kenshi::GetKenshiVersion().GetBinaryName(), "?GetIDFromString@SoundEngine@AK@@YAKPEBD@Z");
-	void* AK_SoundEngine_GetIDFromString2_ptr = Escort::GetFuncAddress(Kenshi::GetKenshiVersion().GetBinaryName(), "?GetIDFromString@SoundEngine@AK@@YAKPEB_W@Z");
-	void* AK_SoundEngine_LoadBank_ptr = Escort::GetFuncAddress(Kenshi::GetKenshiVersion().GetBinaryName(), "?LoadBank@SoundEngine@AK@@YA?AW4AKRESULT@@PEBDJAEAK@Z");
-	void* AK_SoundEngine_SetState_ptr = Escort::GetFuncAddress(Kenshi::GetKenshiVersion().GetBinaryName(), "?SetState@SoundEngine@AK@@YA?AW4AKRESULT@@PEBD0@Z");
-	void* AK_SoundEngine_SetSwitch_ptr = Escort::GetFuncAddress(Kenshi::GetKenshiVersion().GetBinaryName(), "?SetSwitch@SoundEngine@AK@@YA?AW4AKRESULT@@PEBD0_K@Z");
-	void* AK_SoundEngine_PostEvent_ptr = Escort::GetFuncAddress(Kenshi::GetKenshiVersion().GetBinaryName(), "?PostEvent@SoundEngine@AK@@YAKPEBD_KKP6AXW4AkCallbackType@@PEAUAkCallbackInfo@@@ZPEAXKPEAUAkExternalSourceInfo@@K@Z");
-	void* AK_SoundEngine_PostEvent2_ptr = Escort::GetFuncAddress(Kenshi::GetKenshiVersion().GetBinaryName(), "?PostEvent@SoundEngine@AK@@YAKPEB_W_KKP6AXW4AkCallbackType@@PEAUAkCallbackInfo@@@ZPEAXKPEAUAkExternalSourceInfo@@K@Z");
+	AK_StreamMgr_GetFileLocationResolver = (CAkFilePackageLowLevelIOBlocking * (*)())Escort::GetFuncAddress(KenshiLib::GetKenshiVersion().GetBinaryName(), "?GetFileLocationResolver@StreamMgr@AK@@YAPEAVIAkFileLocationResolver@12@XZ");
+	void* AK_SoundEngine_GetIDFromString_ptr = Escort::GetFuncAddress(KenshiLib::GetKenshiVersion().GetBinaryName(), "?GetIDFromString@SoundEngine@AK@@YAKPEBD@Z");
+	void* AK_SoundEngine_GetIDFromString2_ptr = Escort::GetFuncAddress(KenshiLib::GetKenshiVersion().GetBinaryName(), "?GetIDFromString@SoundEngine@AK@@YAKPEB_W@Z");
+	void* AK_SoundEngine_LoadBank_ptr = Escort::GetFuncAddress(KenshiLib::GetKenshiVersion().GetBinaryName(), "?LoadBank@SoundEngine@AK@@YA?AW4AKRESULT@@PEBDJAEAK@Z");
+	void* AK_SoundEngine_SetState_ptr = Escort::GetFuncAddress(KenshiLib::GetKenshiVersion().GetBinaryName(), "?SetState@SoundEngine@AK@@YA?AW4AKRESULT@@PEBD0@Z");
+	void* AK_SoundEngine_SetSwitch_ptr = Escort::GetFuncAddress(KenshiLib::GetKenshiVersion().GetBinaryName(), "?SetSwitch@SoundEngine@AK@@YA?AW4AKRESULT@@PEBD0_K@Z");
+	void* AK_SoundEngine_PostEvent_ptr = Escort::GetFuncAddress(KenshiLib::GetKenshiVersion().GetBinaryName(), "?PostEvent@SoundEngine@AK@@YAKPEBD_KKP6AXW4AkCallbackType@@PEAUAkCallbackInfo@@@ZPEAXKPEAUAkExternalSourceInfo@@K@Z");
+	void* AK_SoundEngine_PostEvent2_ptr = Escort::GetFuncAddress(KenshiLib::GetKenshiVersion().GetBinaryName(), "?PostEvent@SoundEngine@AK@@YAKPEB_W_KKP6AXW4AkCallbackType@@PEAUAkCallbackInfo@@@ZPEAXKPEAUAkExternalSourceInfo@@K@Z");
 	
 	// add hooks
 	AK_SoundEngine_GetIDFromString_orig = Escort::JmpReplaceHook<unsigned long int(char const* __ptr64)>(AK_SoundEngine_GetIDFromString_ptr, AK_SoundEngine_GetIDFromStringHook);
