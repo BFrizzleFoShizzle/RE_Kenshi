@@ -14,6 +14,7 @@
 #include "Settings.h"
 #include "io.h"
 #include <Release_Assert.h>
+#include <core/Functions.h>
 
 
 // pretty sure this macro is defined in C++11? so we just NOP it out
@@ -336,12 +337,12 @@ void HeightmapHook::Init()
 	// mangled symbol for protected Terrain::getHeight()
 	// protected: float __cdecl Terrain::getHeight(class Ogre::Vector3 const & __ptr64,int) __ptr64
 	void* Terrain_getHeight_ptr = Escort::GetFuncAddress("Plugin_Terrain_x64.dll", "?getHeight@Terrain@@IEAAMAEBVVector3@Ogre@@H@Z");
-	Terrain_getHeight_orig = Escort::JmpReplaceHook<float(Terrain* thisPtr, class Ogre::Vector3 const& vec, int unk)>(Terrain_getHeight_ptr, Terrain_getHeight_hook);
+	KenshiLib::AddHook(Terrain_getHeight_ptr, Terrain_getHeight_hook, &Terrain_getHeight_orig);
 
 	// mangled symbol for Terrain::getRawData()
 	// public: unsigned __int64 __cdecl Terrain::getRawData(int,int,int,int,char * __ptr64)const __ptr64
 	void* Terrain_getRawData_ptr = Escort::GetFuncAddress("Plugin_Terrain_x64.dll", "?getRawData@Terrain@@QEBA_KHHHHPEAD@Z");
-	Terrain_getRawData_orig = Escort::JmpReplaceHook<uint64_t(Terrain* thisPtr, int x, int y, int w, int h, char* __ptr64 out)>(Terrain_getRawData_ptr, Terrain_getRawData_hook);
+	KenshiLib::AddHook(Terrain_getRawData_ptr, Terrain_getRawData_hook, &Terrain_getRawData_orig);
 
 	DebugLog("Heightmap hooks installed...");
 

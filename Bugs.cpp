@@ -656,7 +656,7 @@ void Bugs::Init()
 		DebugLog("UEF registered successfully");
 	}
 
-	CrashReport_orig = Escort::JmpReplaceHook<void* (void*, void*)>(GetRealFunction(showErrorMessage), &CrashReport_hook, 10);
+	KenshiLib::AddHook(KenshiLib::GetRealFunction(showErrorMessage), CrashReport_hook, &CrashReport_orig);
 }
 
 void Bugs::InitMenu()
@@ -684,7 +684,7 @@ void Bugs::InitMenu()
 	uint32_t* offsetPtr = (uint32_t*)(LogManagerDestructor_jmp_ptr + 1);
 	// find target of jmp
 	uint8_t* LogManagerDestructor_body_ptr = LogManagerDestructor_jmp_ptr + *offsetPtr + 5;
-	LogManager_destructor_orig = Escort::JmpReplaceHook<void (void*)>(LogManagerDestructor_body_ptr, &LogManager_destructor_hook, 6);
+	KenshiLib::AddHook(LogManagerDestructor_body_ptr, LogManager_destructor_hook, &LogManager_destructor_orig);
 }
 
 void Bugs::InitInGame()

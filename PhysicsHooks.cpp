@@ -40,5 +40,5 @@ NXU::NxuPhysicsCollection* loadPhysXResource_hook(const std::string& filename, i
 
 void PhysicsHooks::Init()
 {
-	loadPhysXResource_orig = Escort::JmpReplaceHook<NXU::NxuPhysicsCollection* (const std::string&, int)>((void*)GetRealAddress(&loadPhysXResource), loadPhysXResource_hook, 7);
+	KenshiLib::AddHook(KenshiLib::GetRealAddress(&loadPhysXResource), loadPhysXResource_hook, &loadPhysXResource_orig);
 }

@@ -121,5 +121,5 @@ void Plugins::Postload()
 
 void Plugins::Init()
 {
-	initModsList_orig = Escort::JmpReplaceHook<void(GameWorld*)>((void*)GetRealAddress(&GameWorld::initModsList), &preload_init_hook, 6);
+    KenshiLib::AddHook(KenshiLib::GetRealAddress(&GameWorld::initModsList), preload_init_hook, &initModsList_orig);
 }

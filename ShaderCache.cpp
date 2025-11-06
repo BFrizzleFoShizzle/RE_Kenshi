@@ -8,7 +8,8 @@
 #include <fstream>
 #include <boost/signals2/mutex.hpp>
 
-#include "KenshiLib/Include/core/md5.h"
+#include <core/md5.h>
+#include <core/Functions.h>
 
 HRESULT(*D3DCompile_orig)(LPCVOID pSrcData,
 	SIZE_T                 SrcDataSize,
@@ -698,7 +699,5 @@ void ShaderCache::Init()
 
 	// enable hook
 	void* shaderCompileAddr = Escort::GetFuncAddress("D3DCompiler_43.dll", "D3DCompile");
-	D3DCompile_orig = Escort::JmpReplaceHook<HRESULT(LPCVOID, SIZE_T, LPCSTR, const D3D_SHADER_MACRO*, ID3DInclude* pInclude
-		, LPCSTR, LPCSTR, UINT, UINT, ID3DBlob**, ID3DBlob** )>
-		(shaderCompileAddr, D3DCompile_hook, 6);
+	KenshiLib::AddHook(shaderCompileAddr, D3DCompile_hook, &D3DCompile_orig);
 }

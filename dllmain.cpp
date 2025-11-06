@@ -1773,7 +1773,7 @@ void SyncronousInit()
     if (gameVersion.GetPlatform() != KenshiLib::BinaryVersion::UNKNOWN)
     {
         // hook for loading mod config - has to be done early so we can override certain early I/O operations
-        LoadMods_orig = Escort::JmpReplaceHook<void(GameWorld*)>((void*)GetRealAddress(&GameWorld::initialisationGameData), LoadMods_hook, 6);
+        KenshiLib::AddHook(KenshiLib::GetRealAddress(&GameWorld::initialisationGameData), LoadMods_hook, &LoadMods_orig);
 
         FSHook::Init();
         Plugins::Init();

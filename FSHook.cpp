@@ -5,6 +5,7 @@
 #include "FSHook.h"
 
 #include "Escort.h"
+#include <core/Functions.h>
 #include "Settings.h"
 
 // old assembler-based code
@@ -81,11 +82,11 @@ void FSHook::Init()
 
 	std::string debugStr = "Address: " + std::to_string((uint64_t)fsopen);
 
-	_fsopen_orig = Escort::JmpReplaceHook<FILE*(const char* filename, const char* mode, int shflag)>(fsopen, _fsopen_hook);
+	KenshiLib::AddHook(fsopen, _fsopen_hook, &_fsopen_orig);
 	
 	// First instruction has a relative offset that gets bork'd by the hook, so we call the kernel32 function instead
 	// I think this is a leaf function, so can't use SEH prologue lookup, need to hard-code replaced bytes...
-	FindFirstFileW_orig = Escort::JmpReplaceHook<HANDLE (LPCWSTR lpFileName, LPWIN32_FIND_DATAW lpFindFileData)>(findFirstFileW, FindFirstFileW_hook, 6);
+	KenshiLib::AddHook(findFirstFileW, FindFirstFileW_hook, &FindFirstFileW_orig);
 	
 	// Windows reserves the bottom 64k of the address space?
 	//Escort::AllocateRWXNear((void*)0x10000, 5);

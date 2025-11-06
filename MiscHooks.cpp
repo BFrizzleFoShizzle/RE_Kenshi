@@ -153,24 +153,24 @@ void EnableFixRNG()
 	// Note: rand() can't be  wrapper hooked because it has problematic instructions
 	// we bork the function and just reimplement it entirely
 	void* randPtr = Escort::GetFuncAddress("MSVCR100.dll", "rand");
-	Escort::JmpReplaceHook<int()>(randPtr, rand_hook, 9);
+	KenshiLib::AddHook(randPtr, rand_hook, nullptr);
 	if (getFoliageRotation_orig == nullptr)
-		getFoliageRotation_orig = Escort::JmpReplaceHook<void(FoliageSystem::EntData*, float, float, Ogre::Quaternion&)>((void*)GetRealAddress(&getFoliageRotation) , getFoliageRotation_hook, 9);
-	randomInt_orig = (int(*)(int, int))GetRealAddress(&UtilityT::randomInt);// Kenshi::GetUtilityTRandomIntFunction();
-	random_orig = (float(*)(float, float))GetRealAddress((float(*)(float, float)) &UtilityT::random);//GetUtilityTRandomFunction();
-	uint8_t* buildingSelectPartsPtr = (uint8_t*)GetRealAddress(&Building::selectParts);//Kenshi::GetBuildingSelectPartsFunction();
+		KenshiLib::AddHook(KenshiLib::GetRealAddress(&getFoliageRotation), getFoliageRotation_hook, &getFoliageRotation_orig);
+
+	randomInt_orig = (int(*)(int, int))KenshiLib::GetRealAddress(&UtilityT::randomInt);// Kenshi::GetUtilityTRandomIntFunction();
+	random_orig = (float(*)(float, float))KenshiLib::GetRealAddress((float(*)(float, float)) &UtilityT::random);//GetUtilityTRandomFunction();
+	uint8_t* buildingSelectPartsPtr = (uint8_t*)KenshiLib::GetRealAddress(&Building::selectParts);//Kenshi::GetBuildingSelectPartsFunction();
 	// call to UtilityT::randomInt
 	CallOverwrite(buildingSelectPartsPtr + 0x113, randomInt_hook);
 	CallOverwrite(buildingSelectPartsPtr + 0x26D, random_hook);
 	// call to UtilityT::random
 	void* srandPtr = Escort::GetFuncAddress("MSVCR100.dll", "srand");
-	Escort::PushRetHookASM(srandPtr, srand_hook, 15);
+	KenshiLib::AddHook(srandPtr, srand_hook, nullptr);
 	rngHooksInstalled = true;
 }
 
 void DisableFixRNG()
 {
-	void* srandPtr = Escort::GetFuncAddress("MSVCR100.dll", "srand");
 	rngHooksInstalled = false;
 	// default to rand()
 	TLSRandFlag::SetPtr((TLS::GCTLSObj*)1);
@@ -246,6 +246,6 @@ void MiscHooks::Init()
 	// trying to hook USER32.dll/ShowCursor is a massive pain, so we go straight to win32u/NtUserShowCursor
 	// (ShowCursor is a wrapper for NtUserShowCursor)
 	void* NtUserShowCursor = Escort::GetFuncAddress("win32u.dll", "NtUserShowCursor");
-	ShowCursor_orig = Escort::JmpReplaceHook<int(bool)>(NtUserShowCursor, ShowCursor_hook, 8);
-	TabMods_updateModsList_orig = Escort::JmpReplaceHook<void(GameLauncher::TabMods*, bool)>((void*)GetRealAddress(&GameLauncher::TabMods::updateModsList), TabMods_updateModsList_hook, 6);
+	KenshiLib::AddHook(NtUserShowCursor, ShowCursor_hook, &ShowCursor_orig);
+	KenshiLib::AddHook(KenshiLib::GetRealAddress(&GameLauncher::TabMods::updateModsList), TabMods_updateModsList_hook, &TabMods_updateModsList_orig);
 }
