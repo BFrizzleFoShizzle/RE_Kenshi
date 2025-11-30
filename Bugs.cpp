@@ -637,7 +637,7 @@ void LogManager_destructor_hook(void* thisptr)
 }
 
 // catches bugs that occur before Kenshi's crash handler gets set up
-void Bugs::Init()
+void Bugs::PreInit()
 {
 	if (discordID == "PUT_YOUR_ID_HERE")
 		MessageBoxA(NULL, "Discord setup error", "Add your info to \"Discord.h\" and recompile to fix bug reporting", MB_ICONWARNING);
@@ -655,7 +655,26 @@ void Bugs::Init()
 	{
 		DebugLog("UEF registered successfully");
 	}
+}
 
+void Bugs::UndoPreInit()
+{
+	// register our error handler
+	if (vanillaFilter != nullptr)
+	{
+		SetUnhandledExceptionFilter(vanillaFilter);
+		DebugLog("UEF unregistered successfully");
+	}
+	else
+	{
+		ErrorLog("Attempted to register vanilla exception handler but got NULL");
+	}
+}
+
+// 2nd init stage - run after KenshiLib init
+void Bugs::Init()
+{
+	// secondary crash hook - this one uses Kenshi's crash handling code to generate most of the dump files
 	KenshiLib::AddHook(KenshiLib::GetRealFunction(showErrorMessage), CrashReport_hook, &CrashReport_orig);
 }
 

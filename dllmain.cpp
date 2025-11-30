@@ -1712,11 +1712,43 @@ void SyncronousInit()
     // this has to be done BEFORE switching to (non-borderless) fullscreen or bad things happen
     IO::Init();
 
-    // this has to be done *before* the file I/O hook since that causes settings reads
-    Settings::Init();
-
     // Escort has to be initialized BEFORE any hooks are installed
     Escort::Init();
+
+    // TODO refactor these branches
+    if (gameVersion.GetPlatform() != KenshiLib::BinaryVersion::UNKNOWN)
+    {
+        // hook for loading mod config - has to be done early so we can override certain early I/O operations
+        KenshiLib::AddHook(KenshiLib::GetRealAddress(&GameWorld::initialisationGameData), LoadMods_hook, &LoadMods_orig);
+
+        FSHook::Init();
+        Plugins::Init();
+        Ogre::SICCodec::startup();
+        Ogre::DDSCodec2::startup();
+        // TODO is this in the right place?
+        Bugs::InitMenu();
+        ShaderCache::Init();
+        HeightmapHook::Preload();
+        MiscHooks::Init();
+        Sound::Init();
+        OgreHooks::Init();
+        PhysicsHooks::Init();
+    }
+    else
+    {
+        DebugLog("Error: Unsupported Kenshi version. Hooks disabled.");
+    }
+}
+
+// workaround for exceptions on the dllStartPlugin thread not triggering UnhandledException and try/catch
+bool syncInit = false;
+boost::mutex syncInitLock;
+boost::condition_variable syncInitCV;
+
+DWORD WINAPI InitThread(LPVOID param)
+{
+    // this has to be done *before* KenshiLib init so we can override the game version
+    Settings::Init();
 
     // version check bypass if enabled
     if (Settings::GetIgnoreHashCheck() && KenshiLib::GetKenshiVersion().GetPlatform() == KenshiLib::BinaryVersion::UNKNOWN)
@@ -1769,37 +1801,44 @@ void SyncronousInit()
         }
     }
 
-    // TODO refactor these branches
-    if (gameVersion.GetPlatform() != KenshiLib::BinaryVersion::UNKNOWN)
+    // load RVAs
+    if (!KenshiLib::Init())
     {
-        // hook for loading mod config - has to be done early so we can override certain early I/O operations
-        KenshiLib::AddHook(KenshiLib::GetRealAddress(&GameWorld::initialisationGameData), LoadMods_hook, &LoadMods_orig);
+        // Handle KenshiLib error
+        ErrorLog("Error during initialization, RE_Kenshi has been disabled.");
+        Bugs::UndoPreInit();
 
-        FSHook::Init();
-        Plugins::Init();
-        Ogre::SICCodec::startup();
-        Ogre::DDSCodec2::startup();
-        Bugs::InitMenu();
-        ShaderCache::Init();
-        HeightmapHook::Preload();
-        MiscHooks::Init();
-        Sound::Init();
-        OgreHooks::Init();
-        PhysicsHooks::Init();
+        // release init lock
+        {
+            boost::lock_guard<boost::mutex> lock(syncInitLock);
+            syncInit = true;
+            syncInitCV.notify_all();
+        }
+        // TODO display error
+        return -1;
     }
-    else
-    {
-        DebugLog("Error: Unsupported Kenshi version. Hooks disabled.");
-    }
-}
 
-// workaround for exceptions on the dllStartPlugin thread not triggering UnhandledException and try/catch
-bool syncInit = false;
-boost::mutex syncInitLock;
-boost::condition_variable syncInitCV;
+    // secondary hook
+    Bugs::Init();
 
-DWORD WINAPI InitThread(LPVOID param)
-{
+    // can't seem to find where the language is kept in memory...
+    // I've found the std::locale - but it doesn't work for some reason?
+    // Also found the boost::locale::generator but that isn't really useful
+    // unless you know the locale string... and std::locale::name/c_str 
+    // returns "*". Also, generator::generate seems to be called before 
+    // RE_Kenshi is loaded, so we can't hook that either...
+    // TODO find this
+    // language should be loaded ASAP for the crash handler + version checker, so we do it synchronously
+    Ogre::ConfigFile config;
+    config.load("settings.cfg");
+    std::string language = config.getSetting("language");
+
+    boost::locale::generator gen;
+    gen.add_messages_path("RE_Kenshi/locale");
+    gen.add_messages_domain("re_kenshi");
+    // extend Kenshi's existing locale with our own
+    std::locale::global(gen.generate(std::locale(), language + ".UTF-8"));
+
     // Anything that could cause a race condition with the game (e.g. hook installation)
     SyncronousInit();
     DebugLog("Finished synchronous init stage");
@@ -1874,31 +1913,9 @@ extern "C" void __declspec(dllexport) dllStartPlugin(void)
 {
     DebugLog("RE_Kenshi " + Version::GetDisplayVersion());
 
-    // load RVAs
-    KenshiLib::Init();
-
     // hook unhandled exception filter function before doing anything else so we can catch 
     // any weird exceptions before Kenshi sets up their own
-    Bugs::Init();
-
-
-    // can't seem to find where the language is kept in memory...
-    // I've found the std::locale - but it doesn't work for some reason?
-    // Also found the boost::locale::generator but that isn't really useful
-    // unless you know the locale string... and std::locale::name/c_str 
-    // returns "*". Also, generator::generate seems to be called before 
-    // RE_Kenshi is loaded, so we can't hook that either...
-    // TODO find this
-    // language should be loaded ASAP for the crash handler + version checker, so we do it synchronously
-    Ogre::ConfigFile config;
-    config.load("settings.cfg");
-    std::string language = config.getSetting("language");
-
-    boost::locale::generator gen;
-    gen.add_messages_path("RE_Kenshi/locale");
-    gen.add_messages_domain("re_kenshi");
-    // extend Kenshi's existing locale with our own
-    std::locale::global(gen.generate(std::locale(), language + ".UTF-8"));
+    Bugs::PreInit();
 
     // NOTE: exceptions triggered in THIS FUNCTION don't get caught by the error handler (there might be a try/catch above this?)
     // so ALL INIT should be done on a thread so that failiures trigger the global exception handler

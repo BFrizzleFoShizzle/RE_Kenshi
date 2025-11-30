@@ -5,6 +5,11 @@
 namespace Bugs
 {
 	// Hooks globally uncaught exceptions that occur before Kenshi's crash handler is set up
+	// 1st init stage - run before KenshiLib init
+	void PreInit();
+	// run after 1st stage if the version isn't supported
+	void UndoPreInit();
+	// 2nd init stage - run after KenshiLib init
 	void Init();
 	// Hooks Kenshi's crash report function
 	void InitMenu();
