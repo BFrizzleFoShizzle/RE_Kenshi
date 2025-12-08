@@ -662,8 +662,11 @@ void Bugs::UndoPreInit()
 	// register our error handler
 	if (vanillaFilter != nullptr)
 	{
-		SetUnhandledExceptionFilter(vanillaFilter);
-		DebugLog("UEF unregistered successfully");
+		LPTOP_LEVEL_EXCEPTION_FILTER filterCheck = SetUnhandledExceptionFilter(vanillaFilter);
+		if (filterCheck != &UnhandledException)
+			ErrorLog("Unexpected filter change in Bugs::UndoPreInit()");
+		else
+			DebugLog("UEF unregistered successfully");
 	}
 	else
 	{
@@ -709,7 +712,10 @@ void Bugs::InitMenu()
 void Bugs::InitInGame()
 {
 	// disable global crash handler so only crashes that trigger ~LogManager() are hooked
-	SetUnhandledExceptionFilter(vanillaFilter);
-	DebugLog("UEF unregistered.");
+	LPTOP_LEVEL_EXCEPTION_FILTER filterCheck = SetUnhandledExceptionFilter(vanillaFilter);
+	if (filterCheck != &UnhandledException)
+		ErrorLog("Unexpected filter change in Bugs::UndoPreInit()");
+	else
+		DebugLog("UEF unregistered.");
 	inGame = true;
 }

@@ -1892,8 +1892,8 @@ DWORD WINAPI InitThread(LPVOID param)
         DebugLog("ERROR: Game version not recognized.");
         DebugLog("");
         DebugLog("Supported versions:");
-        DebugLog("GOG 1.0.65, 1.0.68");
-        DebugLog("Steam 1.0.65, 1.0.68");
+        DebugLog("GOG 1.0.65");
+        DebugLog("Steam 1.0.65");
         DebugLog("RE_Kenshi initialization aborted!");
 
         // doing this on our thread is unsafe, need to do it on the GUI thread so we don't access UI elements as the game creates them
@@ -1904,6 +1904,9 @@ DWORD WINAPI InitThread(LPVOID param)
     // disable global crash handler so crashes are handled by Kenshi's
     // this has to happen at the bottom of this function because Kenshi doesn't pick up exceptions on this thread (???)
     Bugs::InitInGame();
+
+    // Note: any exception that happens on this thread after InitInGame() will NOT be caught properly
+    // DO NOT PUT CODE HERE
 
     return 0;
 }
@@ -1917,7 +1920,7 @@ extern "C" void __declspec(dllexport) dllStartPlugin(void)
     // any weird exceptions before Kenshi sets up their own
     Bugs::PreInit();
 
-    // NOTE: exceptions triggered in THIS FUNCTION don't get caught by the error handler (there might be a try/catch above this?)
+    // NOTE: exceptions triggered in dllStartPlugin don't get caught by the error handler (there might be a try/catch above this?)
     // so ALL INIT should be done on a thread so that failiures trigger the global exception handler
     CreateThread(NULL, 0, InitThread, 0, 0, 0);
 
