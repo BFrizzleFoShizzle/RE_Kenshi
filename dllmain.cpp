@@ -1750,6 +1750,9 @@ DWORD WINAPI InitThread(LPVOID param)
     // this has to be done *before* KenshiLib init so we can override the game version
     Settings::Init();
 
+    // RE_Kenshi version manager
+    Version::Init();
+
     // version check bypass if enabled
     if (Settings::GetIgnoreHashCheck() && KenshiLib::GetKenshiVersion().GetPlatform() == KenshiLib::BinaryVersion::UNKNOWN)
     {
@@ -1847,9 +1850,6 @@ DWORD WINAPI InitThread(LPVOID param)
         syncInit = true;
         syncInitCV.notify_all();
     }
-
-    // RE_Kenshi version manager
-    Version::Init();
 
     KenshiLib::BinaryVersion gameVersion = KenshiLib::GetKenshiVersion();
     if (gameVersion.GetPlatform() != KenshiLib::BinaryVersion::UNKNOWN)

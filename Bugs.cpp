@@ -659,6 +659,9 @@ void Bugs::PreInit()
 
 void Bugs::UndoPreInit()
 {
+	// Sync version checker to make sure it no longer needs the global crash handler
+	Version::SyncInit();
+
 	// register our error handler
 	if (vanillaFilter != nullptr)
 	{

@@ -10,6 +10,8 @@
 #include "Settings.h"
 
 #include <boost/locale.hpp>
+#include <boost/thread/condition_variable.hpp>
+#include <boost/thread/mutex.hpp>
 
 std::string version = "0.3.0";
 std::string latestVersionCache = "0.0.0";
@@ -70,6 +72,12 @@ bool IsVersionNewer(std::string versionStr1, std::string versionStr2)
     return false;
 }
 
+// workaround to ensure the version checker finishes before the global exception filter is removed 
+// if the version is undetected/etc
+static bool versionInit = false;
+static boost::mutex syncInitLock;
+static boost::condition_variable syncInitCV;
+
 DWORD WINAPI checkVersionThread(LPVOID param)
 {
     DebugLog("Checking latest version...");
@@ -92,19 +100,19 @@ DWORD WINAPI checkVersionThread(LPVOID param)
         {
             ErrorLog("Error parsing latest release: " + responseStr);
             ErrorLog("Parse error: " + std::to_string((uint64_t)document.GetParseError()));
-            return 0;
+            goto unlock;
         }
         if (!document.HasMember("tag_name"))
         {
             ErrorLog("Missing version tag name: " + responseStr);
-            return 0;
+            goto unlock;
         }
         latestVersionCache = document["tag_name"].GetString();
         DebugLog("Latest public release: " + latestVersionCache);
         if (Settings::GetSkippedVersion() == latestVersionCache)
         {
             DebugLog("Version " + latestVersionCache + " skipped.");
-            return 0;
+            goto unlock;
         }
         // parse + compare version number strings
         bool isRemoteNewer = IsVersionNewer(latestVersionCache, Version::GetCurrentVersion());
@@ -140,6 +148,17 @@ DWORD WINAPI checkVersionThread(LPVOID param)
     {
         DebugLog("Could not connect to update server. Update check failed.");
     }
+
+unlock:
+    // release init lock
+    {
+        boost::lock_guard<boost::mutex> lock(syncInitLock);
+        versionInit = true;
+        syncInitCV.notify_all();
+    }
+
+    // IT IS UNSAFE TO DO ANYTHING HERE
+
     return 0;
 }
 
@@ -149,6 +168,16 @@ void Version::Init()
     {
         // moved to another thread as it causes other code to hang
         CreateThread(NULL, 0, checkVersionThread, 0, 0, 0);
+    }
+}
+
+void Version::SyncInit()
+{
+    // Wait for version init to finish
+    boost::unique_lock<boost::mutex> lock(syncInitLock);
+    while (!versionInit)
+    {
+        syncInitCV.wait(lock);
     }
 }
 
