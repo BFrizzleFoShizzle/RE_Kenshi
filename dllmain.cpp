@@ -1,6 +1,7 @@
 // dllmain.cpp : Defines the entry point for the DLL application.
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <ShellAPI.h>
 
 #include "mygui/MyGUI_Gui.h"
 #include "mygui/MyGUI_Button.h"
@@ -1916,9 +1917,59 @@ extern "C" void __declspec(dllexport) dllStartPlugin(void)
 {
     DebugLog("RE_Kenshi " + Version::GetDisplayVersion());
 
+
+    // check command line switch to avoid recursion
+    LPWSTR cmdLine = GetCommandLineW();
+    int argc;
+    LPWSTR* argv = CommandLineToArgvW(cmdLine, &argc);
+    if (argv == NULL)
+        ErrorLog("Error getting args");
+
+    bool noRestart = false;
+    bool noReKenshi = false;
+    for (int i = 0; i < argc; ++i)
+    {
+        if (wcscmp(argv[i], L"--norestart") == 0)
+            noRestart = true;
+        if (wcscmp(argv[i], L"--norekenshi") == 0)
+            noReKenshi = true;
+    }
+
+    if (noReKenshi)
+    {
+        DebugLog("RE_Kenshi disabled via flag.");
+        return;
+    }
+
     // hook unhandled exception filter function before doing anything else so we can catch 
     // any weird exceptions before Kenshi sets up their own
     Bugs::PreInit();
+
+    if (KenshiLib::GetKenshiVersion().GetPlatform() == KenshiLib::BinaryVersion::UNKNOWN)
+    {
+        if (!noRestart)
+        {
+            DebugLog("Version incompatible, restarting... " + KenshiLib::GetKenshiVersion().ToString());
+            // TODO wstring
+            DWORD processID = GetProcessId(NULL);
+            // TODO use binary name
+            std::string params = "powershell.exe -command Wait-Process -Id " + std::to_string((uint64_t)processID) + "; ./RE_Kenshi/Kenshi_x64.exe --norestart";
+            //std::string params = "powershell.exe -command echo test; ./RE_Kenshi.exe; pause";
+
+            STARTUPINFOA si;
+            PROCESS_INFORMATION pi;
+            ZeroMemory(&si, sizeof(si));
+            si.cb = sizeof(si);
+            ZeroMemory(&pi, sizeof(pi));
+            // WARNING: this potentially modifies params content
+            CreateProcessA(NULL, (char*)params.c_str(), NULL, NULL, false, CREATE_NO_WINDOW, NULL, NULL, &si, &pi);
+            ExitProcess(0);
+        }
+        else
+        {
+            ErrorLog("Incorrect version and restarting is disabled via flag.");
+        }
+    }
 
     // NOTE: exceptions triggered in dllStartPlugin don't get caught by the error handler (there might be a try/catch above this?)
     // so ALL INIT should be done on a thread so that failiures trigger the global exception handler
