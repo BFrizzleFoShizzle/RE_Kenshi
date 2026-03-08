@@ -169,7 +169,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
       <AdditionalLibraryDirectories>KenshiLib/Libraries/mygui;$(DXSDK_DIR)\Lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>libboost_system-vc100-mt-1_60.lib;CompressToolsLib.lib;MyGUIEngine_x64.lib;d3dcompiler.lib;dbghelp.lib;OgreMain_x64.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libboost_system-vc100-mt-1_60.lib;CompressToolsLib.lib;MyGUIEngine_x64.lib;d3dcompiler.lib;dbghelp.lib;OgreMain_x64.lib;Psapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>

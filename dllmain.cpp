@@ -2,6 +2,8 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <ShellAPI.h>
+#include <Psapi.h>
+#include <Shlwapi.h>
 
 #include "mygui/MyGUI_Gui.h"
 #include "mygui/MyGUI_Button.h"
@@ -1917,7 +1919,6 @@ extern "C" void __declspec(dllexport) dllStartPlugin(void)
 {
     DebugLog("RE_Kenshi " + Version::GetDisplayVersion());
 
-
     // check command line switch to avoid recursion
     LPWSTR cmdLine = GetCommandLineW();
     int argc;
@@ -1927,12 +1928,16 @@ extern "C" void __declspec(dllexport) dllStartPlugin(void)
 
     bool noRestart = false;
     bool noReKenshi = false;
-    for (int i = 0; i < argc; ++i)
+    std::string extraArgs = "";
+    for (int i = 1; i < argc; ++i)
     {
         if (wcscmp(argv[i], L"--norestart") == 0)
             noRestart = true;
-        if (wcscmp(argv[i], L"--norekenshi") == 0)
+        else if (wcscmp(argv[i], L"--norekenshi") == 0)
             noReKenshi = true;
+        else 
+            // pass on existing args
+            extraArgs += "\"" + std::string(argv[i], argv[i] + wcslen(argv[i])) + "\" ";
     }
 
     if (noReKenshi)
@@ -1951,10 +1956,12 @@ extern "C" void __declspec(dllexport) dllStartPlugin(void)
         {
             DebugLog("Version incompatible, restarting... " + KenshiLib::GetKenshiVersion().ToString());
             // TODO wstring
-            DWORD processID = GetProcessId(NULL);
-            // TODO use binary name
-            std::string params = "powershell.exe -command Wait-Process -Id " + std::to_string((uint64_t)processID) + "; ./RE_Kenshi/Kenshi_x64.exe --norestart";
-            //std::string params = "powershell.exe -command echo test; ./RE_Kenshi.exe; pause";
+            DWORD processID = GetProcessId(GetCurrentProcess());
+            // use current process file name
+            char exeName[MAX_PATH];
+            GetModuleFileNameA(NULL, exeName, sizeof(exeName));
+            // run downgraded executable (using current process file name) passing --norestart to avoid infinite recursion
+            std::string params = "powershell.exe -command Wait-Process -Id " + std::to_string((uint64_t)processID) + "; ./RE_Kenshi/" + PathFindFileNameA(exeName) + " --norestart " + extraArgs;
 
             STARTUPINFOA si;
             PROCESS_INFORMATION pi;
