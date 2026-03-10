@@ -474,11 +474,14 @@ void SpeedSliderTextChange(MyGUI::EditBox* editBox)
     Settings::SetGameSpeeds(gameSpeeds);
 }
 
-enum SliderButton
+namespace SliderButton
 {
-    CLOSE,
-    CHECK,
-    NONE
+    enum Enum
+    {
+        CLOSE,
+        CHECK,
+        NONE
+    };
 };
 
 void EnableSliderToggle(MyGUI::WidgetPtr sender)
@@ -508,7 +511,7 @@ void EnableSliderToggle(MyGUI::WidgetPtr sender)
     }
 }
 // Root widget name will be "[namePrefix]SliderRoot"
-MyGUI::WidgetPtr CreateSlider(MyGUI::WidgetPtr parent, int x, int y, int w, int h, std::string namePrefix, SliderButton buttonType)
+MyGUI::WidgetPtr CreateSlider(MyGUI::WidgetPtr parent, int x, int y, int w, int h, std::string namePrefix, SliderButton::Enum buttonType)
 {
     /* THIS TEMPLATE USES A READ-ONLY TEXTBOX SO ISN'T USEFUL
     MyGUI::IResourcePtr sliderRes = MyGUI::ResourceManager::getInstancePtr()->findByName("Kenshi_Slider");
@@ -532,11 +535,11 @@ MyGUI::WidgetPtr CreateSlider(MyGUI::WidgetPtr parent, int x, int y, int w, int 
     int endButtonSize = h - 5;
     // move widgets along if there's no delete button
     int shift = 0;
-    if (buttonType == CLOSE)
+    if (buttonType == SliderButton::CLOSE)
     {
         MyGUI::ButtonPtr closeButton = sliderRoot->createWidget<MyGUI::Button>("Kenshi_CloseButtonSkin", w - endButtonSize, (h - endButtonSize) / 2, endButtonSize, endButtonSize, MyGUI::Align::Right | MyGUI::Align::Center, namePrefix + "DeleteButton");
     }
-    else if (buttonType == CHECK)
+    else if (buttonType == SliderButton::CHECK)
     {
         MyGUI::ButtonPtr checkButton = sliderRoot->createWidget<MyGUI::Button>("Kenshi_TickBoxSkin", w - endButtonSize, (h - endButtonSize) / 2, endButtonSize, endButtonSize, MyGUI::Align::Right | MyGUI::Align::Center, namePrefix + "EnableButton");
         checkButton->eventMouseButtonClick += MyGUI::newDelegate(TickButtonBehaviourClick);
@@ -571,7 +574,7 @@ MyGUI::WidgetPtr CreateSlider(MyGUI::WidgetPtr parent, int x, int y, int w, int 
 class Slider
 {
 public:
-    Slider(MyGUI::WidgetPtr parent, int x, int y, int w, int h, std::string namePrefix, SliderButton buttonType, std::string label, bool readOnlyText, std::string defaultValue, int defaultPosition, int scrollRange,
+    Slider(MyGUI::WidgetPtr parent, int x, int y, int w, int h, std::string namePrefix, SliderButton::Enum buttonType, std::string label, bool readOnlyText, std::string defaultValue, int defaultPosition, int scrollRange,
     MyGUI::delegates::IDelegate1<MyGUI::Widget*>* onClick = nullptr)
     {
         slider = CreateSlider(parent, x, y, w, h, namePrefix, buttonType);
@@ -592,7 +595,7 @@ public:
         scrollBar->setScrollPosition(defaultPosition);
 
         // TODO move to sub-class?
-        if (buttonType == CHECK)
+        if (buttonType == SliderButton::CHECK)
         {
             MyGUI::ButtonPtr tickBtn = slider->findWidget(namePrefix + "EnableButton")->castType<MyGUI::Button>();
             if (onClick)
