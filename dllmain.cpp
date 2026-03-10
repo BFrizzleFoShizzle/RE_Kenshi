@@ -27,6 +27,8 @@
 #include <Kenshi/InputHandler.h> 
 #include <kenshi/GlobalConstants.h>
 #include <kenshi/Globals.h>
+#include <kenshi/gui/ForgottenGUI.h>
+#include <kenshi/gui/MainBarGUI.h>
 #include <core/functions.h>
 
 #include "FSHook.h"
@@ -1100,7 +1102,9 @@ void CreateBugReportWindow(MyGUI::Gui* gui, float scale)
     bugReportWindow->setVisible(false);
 }
 
-void InitGUI()
+void GUIUpdate(float timeDelta);
+
+bool InitGUI()
 {
     DebugLog("Main menu loaded.");
     KenshiLib::BinaryVersion gameVersion = KenshiLib::GetKenshiVersion();
@@ -1112,15 +1116,14 @@ void InitGUI()
     {
         DebugLog("Version supported.");
 
-        // sometimes we hit here when the main menu isn't initialized properly and accessing the version text causes a crash
         MyGUI::Gui* gui = MyGUI::Gui::getInstancePtr();
         MyGUI::WidgetPtr versionTextWidg = FindWidget(gui->getEnumerator(), "VersionText");
         // defer to next frame on failiure
         if (!versionTextWidg)
-            return;
+            return false;
         MyGUI::TextBox* versionText = versionTextWidg->castType<MyGUI::TextBox>(false);
         if (!versionText)
-            return;
+            return false;
 
         MyGUI::UString version = versionText->getCaption();
         DebugLog(version);
@@ -1479,7 +1482,12 @@ void InitGUI()
 
         MyGUI::TextBox* debugOut = debugLogScrollView->createWidget<MyGUI::TextBox>("Kenshi_GenericTextBox", 0, positionY, canvasWidth, 100, MyGUI::Align::Stretch, "DebugPrint");
         debugOut->setEnabled(false);
+
+        gui->eventFrameStart += MyGUI::newDelegate(GUIUpdate);
+
+        return true;
     }
+    return false;
 }
 
 bool hookedLoad = false;
@@ -1579,11 +1587,22 @@ void ReHookTimeButtons()
     }
 }
 
+// TODO reinit on font size change?
+void (*ForgottenGUI_changeFontSize_orig)();
+void ForgottenGUI_changeFontSize_hook()
+{
+    ForgottenGUI_changeFontSize_orig();
+
+    if (modMenuWindow == nullptr)
+    {
+        if (!InitGUI())
+            ErrorLog("Could not initialize UI");
+    }
+}
+
 void GUIUpdate(float timeDelta)
 {
     MyGUI::Gui* gui = MyGUI::Gui::getInstancePtr();
-    if (modMenuWindow == nullptr)
-        InitGUI();
 
     // HACK sometimes Kenshi re-generates it's UI and we have to re-inject our elements
     // a nicer method would be to call "gameSpeedText->getParent() == nullptr", but
@@ -1710,6 +1729,26 @@ void DisplayVersionError(float timeDelta)
     }
 }
 
+MainBarGUI* (*MainBarGUI_CONSTRUCTOR_orig)(MainBarGUI* thisptr);
+MainBarGUI* MainBarGUI_CONSTRUCTOR_hook(MainBarGUI* thisptr)
+{
+    MainBarGUI_CONSTRUCTOR_orig(thisptr);
+
+    DebugLog("In-game.");
+
+    ReHookTimeButtons();
+
+    // Keyboard hooks
+    if (!keyboardHook)
+    {
+        InputHandler* inputHandler = key;
+        keyboardHook = std::make_shared<KeyboardHook>(inputHandler->keyboard->getEventCallback());
+        inputHandler->keyboard->setEventCallback(keyboardHook.get());
+    }
+
+    return thisptr;
+}
+
 // For stuff that should be done ASAP
 void SyncronousInit()
 {
@@ -1739,6 +1778,12 @@ void SyncronousInit()
         Sound::Init();
         OgreHooks::Init();
         PhysicsHooks::Init();
+        // Create UI after font size is set so it looks right
+        if (KenshiLib::SUCCESS != KenshiLib::AddHook(KenshiLib::GetRealAddress(&ForgottenGUI::changeFontSize), ForgottenGUI_changeFontSize_hook, &ForgottenGUI_changeFontSize_orig))
+            ErrorLog("ForgottenGUI::changeFontSize - Could not add hook!");
+        // Safe place to acccess game speed controls
+        if (KenshiLib::SUCCESS != KenshiLib::AddHook(KenshiLib::GetRealAddress(&MainBarGUI::_CONSTRUCTOR), MainBarGUI_CONSTRUCTOR_hook, &MainBarGUI_CONSTRUCTOR_orig))
+            ErrorLog("MainBarGUI::MainBarGUI - Could not add hook!");
     }
     else
     {
@@ -1868,31 +1913,6 @@ DWORD WINAPI InitThread(LPVOID param)
         Sound::TryLoadQueuedBanks();
         HeightmapHook::Init();
     }
-
-    DebugLog("Waiting for main menu.");
-    WaitForMainMenu();
-
-    MyGUI::Gui* gui = MyGUI::Gui::getInstancePtr();
-    
-    if (gameVersion.GetPlatform() != KenshiLib::BinaryVersion::UNKNOWN)
-    {
-        // GUI will be created next frame
-        gui->eventFrameStart += MyGUI::newDelegate(GUIUpdate);
-
-        WaitForInGame();
-
-        DebugLog("In-game.");
-
-        ReHookTimeButtons();
-
-        // Keyboard hooks
-        if (!keyboardHook)
-        {
-            InputHandler* inputHandler = key;
-            keyboardHook = std::make_shared<KeyboardHook>(inputHandler->keyboard->getEventCallback());
-            inputHandler->keyboard->setEventCallback(keyboardHook.get());
-        }
-    }
     else
     {
         DebugLog("ERROR: Game version not recognized.");
@@ -1901,10 +1921,6 @@ DWORD WINAPI InitThread(LPVOID param)
         DebugLog("GOG 1.0.65");
         DebugLog("Steam 1.0.65");
         DebugLog("RE_Kenshi initialization aborted!");
-
-        // doing this on our thread is unsafe, need to do it on the GUI thread so we don't access UI elements as the game creates them
-        // if we try to read + modify the version text on our current thread, the code fails about 50% of the time
-        gui->eventFrameStart += MyGUI::newDelegate(DisplayVersionError);
     }
 
     // disable global crash handler so crashes are handled by Kenshi's
