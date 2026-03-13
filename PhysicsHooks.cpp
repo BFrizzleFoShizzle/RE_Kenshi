@@ -15,7 +15,11 @@ boost::unordered_map<std::pair<std::string, int>, NXU::NxuPhysicsCollection*> ph
 NXU::NxuPhysicsCollection* (*loadPhysXResource_orig)(const std::string& filename, int type);// RVA = 0x7E4850
 NXU::NxuPhysicsCollection* loadPhysXResource_hook(const std::string& filename, int type)
 {
-	if (Settings::GetCachePhysXColliders())
+	std::string nameLow = filename;
+	std::transform(nameLow.begin(), nameLow.end(), nameLow.begin(), std::tolower);
+	// doesn't work on XML files for some reason
+	// XML call happens in PhysicsActual::convertXMLToBin()
+	if (Settings::GetCachePhysXColliders() && nameLow.size() > 4 && nameLow.substr(nameLow.size()-4) != ".xml")
 	{
 		boost::unordered_map<std::pair<std::string, int>, NXU::NxuPhysicsCollection*>::iterator it = physXCollectionCache.find(std::make_pair(filename, type));
 		NxVec3 scale;
@@ -34,7 +38,7 @@ NXU::NxuPhysicsCollection* loadPhysXResource_hook(const std::string& filename, i
 	}
 	else
 	{
-		return loadPhysXResource_hook(filename, type);
+		return loadPhysXResource_orig(filename, type);
 	}
 }
 
