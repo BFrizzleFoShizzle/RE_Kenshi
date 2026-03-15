@@ -57,6 +57,8 @@ namespace Settings
 	void SetCachePhysXColliders(bool value);
 	void SetSkipUnusedMipmapReads(bool value);
 	bool GetSkipUnusedMipmapReads();
+	void SetSkipSplashScreens(bool value);
+	bool GetSkipSplashScreens();
 	bool GetLogAudio();
 	void SetLogAudio(bool value);
 	bool GetEnableEmergencySaves();

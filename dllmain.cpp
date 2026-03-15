@@ -1418,6 +1418,10 @@ bool InitGUI()
         /******            PERFORMANCE SETTINGS            ******/
         positionY = 2;
 
+        MyGUI::ButtonPtr skipSplashButton = CreateStandardTickButton<ButtonToggleSetting<Settings::SetSkipSplashScreens>>(performanceScroll,
+            boost::locale::gettext("Skip splash screens"), 2, positionY, canvasWidth - 4, 26 * scale, "SkipSplashScreensToggle", Settings::GetSkipSplashScreens());
+        positionY += skipSplashButton->getHeight() + pad;
+
         MyGUI::ButtonPtr cacheShadersButton = CreateStandardTickButton<ButtonToggleSetting<Settings::SetCacheShaders>>(performanceScroll,
             boost::locale::gettext("Cache shaders"), 2, positionY, canvasWidth - 4, 26 * scale, "CacheShadersToggle", Settings::GetCacheShaders());
         positionY += cacheShadersButton->getHeight() + pad;

@@ -20,6 +20,7 @@
 
 #include <kenshi/util/UtilityT.h>
 #include <kenshi/Building.h>
+#include <kenshi/gui/SplashScreen.h>
 
 // bootleg hack so we can switch between seeded rand() and true random
 // we use thread-local storage so we can switch rand() behaviour based on what function is executing
@@ -224,6 +225,22 @@ int ShowCursor_hook(bool value)
 	return cursorShowing ? 0 : -1;
 }
 
+SplashScreen* (*SplashScreen_constructor_orig)(SplashScreen* thisptr);
+SplashScreen* SplashScreen_constructor_hook(SplashScreen* thisptr)
+{
+	SplashScreen_constructor_orig(thisptr);
+	if(Settings::GetSkipSplashScreens())
+		thisptr->skip();
+	return thisptr;
+}
+
+void (*SplashScreen_addLogo_orig)(SplashScreen* thisptr, const std::string& file, float scale);
+void SplashScreen_addLogo_hook(SplashScreen* thisptr, const std::string& file, float scale)
+{
+	if (!Settings::GetSkipSplashScreens() || thisptr->logos.size() == 0)
+		SplashScreen_addLogo_orig(thisptr, file, scale);
+}
+
 void MiscHooks::Init()
 {
 	// good enough
@@ -248,4 +265,6 @@ void MiscHooks::Init()
 	void* NtUserShowCursor = Escort::GetFuncAddress("win32u.dll", "NtUserShowCursor");
 	KenshiLib::AddHook(NtUserShowCursor, ShowCursor_hook, &ShowCursor_orig);
 	KenshiLib::AddHook(KenshiLib::GetRealAddress(&GameLauncher::TabMods::updateModsList), TabMods_updateModsList_hook, &TabMods_updateModsList_orig);
+	KenshiLib::AddHook(KenshiLib::GetRealAddress(&SplashScreen::_CONSTRUCTOR), SplashScreen_constructor_hook, &SplashScreen_constructor_orig);
+	KenshiLib::AddHook(KenshiLib::GetRealAddress(&SplashScreen::addLogo), SplashScreen_addLogo_hook, &SplashScreen_addLogo_orig);
 }

@@ -56,6 +56,7 @@ rapidjson::Document GenerateDefaultSettings()
     defaultSettings.AddMember("CacheShaders", true, defaultSettings.GetAllocator());
     defaultSettings.AddMember("CachePhysXColliders", true, defaultSettings.GetAllocator());
     defaultSettings.AddMember("SkipUnusedMipReads", true, defaultSettings.GetAllocator());
+    defaultSettings.AddMember("SkipSplashScreens", true, defaultSettings.GetAllocator());
     defaultSettings.AddMember("LogFileIO", false, defaultSettings.GetAllocator());
     defaultSettings.AddMember("CheckUpdates", true, defaultSettings.GetAllocator());
     defaultSettings.AddMember("SkippedVersion", "", defaultSettings.GetAllocator());
@@ -640,6 +641,16 @@ void Settings::SetSkipUnusedMipmapReads(bool value)
 bool Settings::GetSkipUnusedMipmapReads()
 {
     return GetSettingBool("SkipUnusedMipReads");
+}
+
+void Settings::SetSkipSplashScreens(bool value)
+{
+    SetSettingBool("SkipSplashScreens", value);
+}
+
+bool Settings::GetSkipSplashScreens()
+{
+    return GetSettingBool("SkipSplashScreens");
 }
 
 void Settings::SetLogFileIO(bool value)
