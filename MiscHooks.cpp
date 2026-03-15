@@ -225,20 +225,16 @@ int ShowCursor_hook(bool value)
 	return cursorShowing ? 0 : -1;
 }
 
-SplashScreen* (*SplashScreen_constructor_orig)(SplashScreen* thisptr);
-SplashScreen* SplashScreen_constructor_hook(SplashScreen* thisptr)
+void (*SplashScreen_update_orig)(SplashScreen* thisptr);
+void SplashScreen_update_hook(SplashScreen* thisptr)
 {
-	SplashScreen_constructor_orig(thisptr);
-	if(Settings::GetSkipSplashScreens())
-		thisptr->skip();
-	return thisptr;
-}
-
-void (*SplashScreen_addLogo_orig)(SplashScreen* thisptr, const std::string& file, float scale);
-void SplashScreen_addLogo_hook(SplashScreen* thisptr, const std::string& file, float scale)
-{
-	if (!Settings::GetSkipSplashScreens() || thisptr->logos.size() == 0)
-		SplashScreen_addLogo_orig(thisptr, file, scale);
+	// instantly trigger logo timeout (4 seconds)
+	if (Settings::GetSkipSplashScreens())
+		thisptr->startTime -= 5;
+	SplashScreen_update_orig(thisptr);
+	// logo switches happen when delay >= 3, doing this before the first update seems to crash the game
+	if (Settings::GetSkipSplashScreens())
+		thisptr->delay = 3;
 }
 
 void MiscHooks::Init()
@@ -265,6 +261,5 @@ void MiscHooks::Init()
 	void* NtUserShowCursor = Escort::GetFuncAddress("win32u.dll", "NtUserShowCursor");
 	KenshiLib::AddHook(NtUserShowCursor, ShowCursor_hook, &ShowCursor_orig);
 	KenshiLib::AddHook(KenshiLib::GetRealAddress(&GameLauncher::TabMods::updateModsList), TabMods_updateModsList_hook, &TabMods_updateModsList_orig);
-	KenshiLib::AddHook(KenshiLib::GetRealAddress(&SplashScreen::_CONSTRUCTOR), SplashScreen_constructor_hook, &SplashScreen_constructor_orig);
-	KenshiLib::AddHook(KenshiLib::GetRealAddress(&SplashScreen::addLogo), SplashScreen_addLogo_hook, &SplashScreen_addLogo_orig);
+	KenshiLib::AddHook(KenshiLib::GetRealAddress(&SplashScreen::update), SplashScreen_update_hook, &SplashScreen_update_orig);
 }
