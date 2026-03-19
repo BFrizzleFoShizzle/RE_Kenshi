@@ -2,8 +2,8 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <ShellAPI.h>
-#include <Psapi.h>
 #include <Shlwapi.h>
+#include <process.h>
 
 #include "mygui/MyGUI_Gui.h"
 #include "mygui/MyGUI_Button.h"
@@ -1952,16 +1952,23 @@ extern "C" void __declspec(dllexport) dllStartPlugin(void)
     bool noRestart = false;
     bool noReKenshi = false;
     std::string extraArgs = "";
+    std::vector<const wchar_t*> restartArgs;
+    // HACK overwrite later with path to exe
+    restartArgs.push_back(nullptr);
+    restartArgs.push_back(L"--norestart");
     for (int i = 1; i < argc; ++i)
     {
         if (wcscmp(argv[i], L"--norestart") == 0)
             noRestart = true;
         else if (wcscmp(argv[i], L"--norekenshi") == 0)
             noReKenshi = true;
-        else 
+        else
             // pass on existing args
-            extraArgs += "\"" + std::string(argv[i], argv[i] + wcslen(argv[i])) + "\" ";
+            restartArgs.push_back(argv[i]);
+        DebugLog(std::string(argv[i], argv[i] + wcslen(argv[i])));
     }
+    // NULL terminated as per _wspawnv spec
+    restartArgs.push_back(NULL);
 
     if (noReKenshi)
     {
@@ -1978,22 +1985,25 @@ extern "C" void __declspec(dllexport) dllStartPlugin(void)
         if (!noRestart)
         {
             DebugLog("Version incompatible, restarting... " + KenshiLib::GetKenshiVersion().ToString());
-            // TODO wstring
-            DWORD processID = GetProcessId(GetCurrentProcess());
             // use current process file name
-            char exeName[MAX_PATH];
-            GetModuleFileNameA(NULL, exeName, sizeof(exeName));
-            // run downgraded executable (using current process file name) passing --norestart to avoid infinite recursion
-            std::string params = "powershell.exe -command Wait-Process -Id " + std::to_string((uint64_t)processID) + "; ./RE_Kenshi/" + PathFindFileNameA(exeName) + " --norestart " + extraArgs;
+            wchar_t exeName[MAX_PATH];
+            GetModuleFileNameW(NULL, exeName, sizeof(exeName));
+            StrCpyW(exeName, PathFindFileNameW(exeName));
+            // compose path
+            wchar_t restartPath[MAX_PATH] = L"./RE_Kenshi/";
+            StrCpyW(restartPath + lstrlenW(restartPath), exeName);
+            // 0th arg is path to executable
+
+            restartArgs[0] = restartPath;
 
             STARTUPINFOA si;
             PROCESS_INFORMATION pi;
             ZeroMemory(&si, sizeof(si));
             si.cb = sizeof(si);
             ZeroMemory(&pi, sizeof(pi));
-            // WARNING: this potentially modifies params content
-            CreateProcessA(NULL, (char*)params.c_str(), NULL, NULL, false, CREATE_NO_WINDOW, NULL, NULL, &si, &pi);
-            ExitProcess(0);
+
+            // run downgraded executable (using current process file name) passing --norestart to avoid infinite recursion
+            _wspawnv(_P_OVERLAY, restartArgs[0], &restartArgs[0]);
         }
         else
         {
