@@ -19,7 +19,8 @@
 #include <boost/thread/lock_guard.hpp>
 
 #include <kenshi/util/UtilityT.h>
-#include <kenshi/Building.h>
+#include <kenshi/Building/Building.h>
+#include <kenshi/Globals.h>
 #include <kenshi/gui/SplashScreen.h>
 
 // bootleg hack so we can switch between seeded rand() and true random
@@ -108,12 +109,6 @@ float random_hook(float lo, float hi)
 	}
 }
 
-namespace FoliageSystem
-{
-	class EntData;
-}
-// TODO move to header
-void getFoliageRotation(FoliageSystem::EntData* data, float x, float z, Ogre::Quaternion& rotation);// RVA = 0x6CB8A0
 void (*getFoliageRotation_orig)(FoliageSystem::EntData* data, float x, float z, Ogre::Quaternion& rotation) = nullptr;
 void getFoliageRotation_hook(FoliageSystem::EntData* data, float x, float z, Ogre::Quaternion& rotation)
 {
