@@ -24,6 +24,8 @@
 
 #include <kenshi/Kenshi.h>
 #include <kenshi/GameWorld.h>
+#include <kenshi/PlayerInterface.h>
+#include <kenshi/CameraClass.h>
 #include <Kenshi/InputHandler.h> 
 #include <kenshi/GlobalConstants.h>
 #include <kenshi/Globals.h>
@@ -269,6 +271,11 @@ public:
             {
                 // increment on press
                 SetSpeed3();
+            }
+            else if (eventName == "toggle_fps_camera")
+            {
+                // toggle freecam
+                ou->player->getCamera()->setFreeCameraMode(!ou->player->getCamera()->isFreeCameraMode());
             }
         }
         return output;

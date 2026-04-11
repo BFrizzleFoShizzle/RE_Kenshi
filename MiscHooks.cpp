@@ -17,11 +17,15 @@
 #include <boost/random/random_device.hpp>
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/lock_guard.hpp>
+#include <boost/locale.hpp>
 
 #include <kenshi/util/UtilityT.h>
 #include <kenshi/Building/Building.h>
 #include <kenshi/Globals.h>
 #include <kenshi/gui/SplashScreen.h>
+#include <kenshi/gui/DataPanelGUI.h>
+#include <kenshi/gui/DataPanelLine.h>
+#include <kenshi/InputHandler.h>
 
 // bootleg hack so we can switch between seeded rand() and true random
 // we use thread-local storage so we can switch rand() behaviour based on what function is executing
@@ -232,6 +236,26 @@ void SplashScreen_update_hook(SplashScreen* thisptr)
 		thisptr->delay = 3;
 }
 
+// Freecam setup
+// Jank way of inserting our key config into the controls tab
+void (*DatapanelGUI_addCustomLine_orig)(DatapanelGUI* thisptr, DataPanelLine* line);
+void DatapanelGUI_addCustomLine_hook(DatapanelGUI* thisptr, DataPanelLine* line)
+{
+	DatapanelGUI_addCustomLine_orig(thisptr, line);
+	// Insert after "Toggle game editor"
+	if (line->s1 == "Toggle game editor") 
+		// I don't know what the 25 refers to (maybe some enum?) but it's needed here
+		thisptr->addCustomLine(new DataPanelLine_KeyConfig("toggle_fps_camera", boost::locale::gettext("Toggle Free Camera mode"), 25));
+}
+
+// InputHandler::loadConfig only loads config of commands that already exist, so we add our command before the load happens
+void (*InputHandler_loadConfig_orig)(InputHandler* thisptr);
+void InputHandler_loadConfig_hook(InputHandler* thisptr)
+{
+	thisptr->addCommand("toggle_fps_camera", false, OIS::KeyCode::KC_SEMICOLON, OIS::KeyCode::KC_UNASSIGNED, InputHandler::NONE_MASK, InputHandler::GLOBAL);
+	InputHandler_loadConfig_orig(thisptr); 
+}
+
 void MiscHooks::Init()
 {
 	// good enough
@@ -257,4 +281,6 @@ void MiscHooks::Init()
 	KenshiLib::AddHook(NtUserShowCursor, ShowCursor_hook, &ShowCursor_orig);
 	KenshiLib::AddHook(KenshiLib::GetRealAddress(&GameLauncher::TabMods::updateModsList), TabMods_updateModsList_hook, &TabMods_updateModsList_orig);
 	KenshiLib::AddHook(KenshiLib::GetRealAddress(&SplashScreen::update), SplashScreen_update_hook, &SplashScreen_update_orig);
+	KenshiLib::AddHook(KenshiLib::GetRealAddress(&DatapanelGUI::addCustomLine), DatapanelGUI_addCustomLine_hook, &DatapanelGUI_addCustomLine_orig);
+	KenshiLib::AddHook(KenshiLib::GetRealAddress(&InputHandler::loadConfig), InputHandler_loadConfig_hook, &InputHandler_loadConfig_orig);
 }
