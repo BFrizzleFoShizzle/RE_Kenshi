@@ -276,6 +276,7 @@ public:
             {
                 // toggle freecam
                 ou->player->getCamera()->setFreeCameraMode(!ou->player->getCamera()->isFreeCameraMode());
+                gui->setMouseCursorVisible(!ou->player->getCamera()->isFreeCameraMode());
             }
         }
         return output;
@@ -1133,7 +1134,7 @@ bool InitGUI()
             return false;
 
         MyGUI::UString version = versionText->getCaption();
-        DebugLog(version);
+        DebugLog(version.asUTF8());
 
         Ogre::ResourceGroupManager* resMan = Ogre::ResourceGroupManager::getSingletonPtr();
         if (resMan)

@@ -21,11 +21,18 @@
 
 #include <kenshi/util/UtilityT.h>
 #include <kenshi/Building/Building.h>
+#include <kenshi/GameWorld.h>
+#include <kenshi/PlayerInterface.h>
+#include <kenshi/CameraClass.h>
 #include <kenshi/Globals.h>
 #include <kenshi/gui/SplashScreen.h>
 #include <kenshi/gui/DataPanelGUI.h>
 #include <kenshi/gui/DataPanelLine.h>
+#include <kenshi/gui/ForgottenGUI.h>
 #include <kenshi/InputHandler.h>
+
+#include <ogre/OgreWindowEventUtilities.h>
+#include <ogre/OgreRenderWindow.h>
 
 // bootleg hack so we can switch between seeded rand() and true random
 // we use thread-local storage so we can switch rand() behaviour based on what function is executing
@@ -224,9 +231,31 @@ int ShowCursor_hook(bool value)
 	return cursorShowing ? 0 : -1;
 }
 
+// Fix for freecam keeping cursor locked when alt-tabbing
+class WindowFocusListener : public Ogre::WindowEventListener
+{
+	virtual void windowFocusChange(Ogre::RenderWindow* rw) override
+	{
+		if (!rw->isActive() && ou->player->camera->isFreeCameraMode())
+		{
+			// disable freecam
+			ou->player->getCamera()->setFreeCameraMode(!ou->player->getCamera()->isFreeCameraMode());
+			gui->setMouseCursorVisible(!ou->player->getCamera()->isFreeCameraMode());
+		}
+	}
+};
+
+bool hasSetupFocusListener = false;
 void (*SplashScreen_update_orig)(SplashScreen* thisptr);
 void SplashScreen_update_hook(SplashScreen* thisptr)
 {
+	if (!hasSetupFocusListener)
+	{
+		Ogre::WindowEventUtilities::addWindowEventListener(Ogre::WindowEventUtilities::_msWindows.at(0), new WindowFocusListener());
+		Ogre::WindowEventUtilities::_msWindows.at(0)->setDeactivateOnFocusChange(true);
+		hasSetupFocusListener = true;
+	}
+
 	// instantly trigger logo timeout (4 seconds)
 	if (Settings::GetSkipSplashScreens())
 		thisptr->startTime -= 5;
