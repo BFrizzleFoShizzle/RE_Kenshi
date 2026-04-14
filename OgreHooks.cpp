@@ -138,5 +138,5 @@ void OgreHooks::InitFinalizeMods()
 
 void OgreHooks::Init()
 {
-
+	// Note: this is currently called before all Ogre plugins have loaded
 }

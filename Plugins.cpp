@@ -119,7 +119,22 @@ void Plugins::Postload()
     }
 }
 
+#define LOAD_LIBRARY_SEARCH_DEFAULT_DIRS 0x00001000
+
 void Plugins::Init()
 {
     KenshiLib::AddHook(KenshiLib::GetRealAddress(&GameWorld::initModsList), preload_init_hook, &initModsList_orig);
+
+    wchar_t cwd[MAX_PATH];
+    GetCurrentDirectory(MAX_PATH, cwd);
+
+    // add Kenshi install dir to DLL load path to fix tools that use DLL proxying (e.g. ReShade)
+    BOOL(*SetDefaultDllDirectories)(DWORD DirectoryFlags);
+    SetDefaultDllDirectories = (BOOL(*)(DWORD))GetProcAddress(GetModuleHandleA("kernel32.dll"), "SetDefaultDllDirectories");
+    // FYI confusingly, DEFAULT_DIRS isn't the default behaviour, so we have to explicitly set this
+    SetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
+    // not included in our headers, have to get via GetProcAddress as per Microsoft's docs
+    DLL_DIRECTORY_COOKIE(*AddDllDirectory)(PCWSTR NewDirectory);
+    AddDllDirectory = (DLL_DIRECTORY_COOKIE(*)(PCWSTR))GetProcAddress(GetModuleHandleA("kernel32.dll"), "AddDllDirectory");
+    AddDllDirectory(cwd);
 }
