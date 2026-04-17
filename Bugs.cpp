@@ -460,6 +460,74 @@ static void CreateCrashReportWindow()
 		MessageBoxW(NULL, boost::locale::gettext(L"Crash report failed to send").c_str(), boost::locale::gettext(L"Error").c_str(), MB_OK | MB_SYSTEMMODAL | MB_ICONERROR);
 }
 
+void TryEmergencySave()
+{
+	// force cursor to be shown
+	ShowCursor(true);
+
+	// emergency save
+	int result = MessageBoxW(NULL, (boost::locale::gettext(L"Kenshi is probably crashing.")
+		+ L"\n" + boost::locale::gettext(L"Do you want to force Kenshi to save before it crashes?")).c_str(), boost::locale::gettext(L"RE_Kenshi crash handler").c_str(), MB_YESNO | MB_SYSTEMMODAL | MB_ICONWARNING);
+
+	if (result == IDYES)
+	{
+		try
+		{
+			DebugLog("Attempting emergency save...");
+			SaveManager* saveManager = SaveManager::getSingleton();
+
+			int emergencySaveNum = 0;
+			for (; emergencySaveNum < 10000; ++emergencySaveNum)
+				if (!boost::filesystem::exists(saveManager->location + "emergency_save_" + std::to_string((uint64_t)emergencySaveNum)))
+					break;
+
+			if (emergencySaveNum < 10000)
+			{
+				if (!saveManager->saveGame(saveManager->location, "emergency_save_" + std::to_string((uint64_t)emergencySaveNum)))
+				{
+					SaveFileSystem* saveFileSystem = SaveFileSystem::getSingleton();
+					WaitForSingleObject(saveFileSystem->threadHandle, INFINITE);
+
+					// success? update continue save
+					Ogre::ConfigFile config;
+					config.load("settings.cfg");
+					std::ofstream outSettings("settings.cfg");
+
+					// copy out settings from default section
+					Ogre::ConfigFile::SectionIterator settingsIter = config.getSectionIterator();
+					for (Ogre::ConfigFile::SettingsMultiMap::iterator mapIter = settingsIter.current()->second->begin();
+						mapIter != settingsIter.current()->second->end(); ++mapIter)
+					{
+						// update continue save
+						if (mapIter->first == "continue")
+							outSettings << "continue=emergency_save_" << emergencySaveNum << std::endl;
+						else
+							outSettings << mapIter->first << "=" << mapIter->second << std::endl;
+					}
+
+					DebugLog("Emergency save completed successfully");
+					MessageBoxW(NULL, boost::locale::gettext(L"The game has saved successfully and will now crash.").c_str(), boost::locale::gettext(L"Save success").c_str(), MB_OK | MB_SYSTEMMODAL | MB_ICONINFORMATION);
+				}
+				else
+				{
+					ErrorLog("Couldn't create emergency save");
+					MessageBoxW(NULL, boost::locale::gettext(L"Error creating save file.").c_str(), boost::locale::gettext(L"Save failed").c_str(), MB_OK | MB_SYSTEMMODAL | MB_ICONERROR);
+				}
+			}
+			else
+			{
+				ErrorLog("Error finding unused emergency save slot");
+				MessageBoxW(NULL, boost::locale::gettext(L"Error finding unused emergency save slot.").c_str(), boost::locale::gettext(L"Save failed").c_str(), MB_OK | MB_SYSTEMMODAL | MB_ICONERROR);
+			}
+		}
+		catch (...)
+		{
+			ErrorLog("Unspecified emergency save error");
+			MessageBoxW(NULL, boost::locale::gettext(L"An unspecified error occurred while saving.").c_str(), boost::locale::gettext(L"Save failed").c_str(), MB_OK | MB_SYSTEMMODAL | MB_ICONERROR);
+		}
+	}
+}
+
 // probably doesn't need to be atomic but who cares
 static boost::atomic_bool crashHandlerExecuted(false);
 static boost::recursive_mutex unhandledExceptionMx;
@@ -533,6 +601,8 @@ static LONG WINAPI UnhandledException(EXCEPTION_POINTERS* excpInfo = NULL)
 			ErrorLog("Couldn't create dump .zip");
 		}
 
+		TryEmergencySave();
+
 		// trigger crashdump handler
 		CreateCrashReportWindow();
 	}
@@ -567,70 +637,7 @@ void LogManager_destructor_hook(void* thisptr)
 
 	if (inGame && Settings::GetEnableEmergencySaves())
 	{
-		// force cursor to be shown
-		ShowCursor(true);
-
-		// emergency save
-		int result = MessageBoxW(NULL, (boost::locale::gettext(L"Kenshi is probably crashing.")
-			+ L"\n" + boost::locale::gettext(L"Do you want to force Kenshi to save before it crashes?")).c_str(), boost::locale::gettext(L"RE_Kenshi crash handler").c_str(), MB_YESNO | MB_SYSTEMMODAL | MB_ICONWARNING);
-
-		if (result == IDYES)
-		{
-			try
-			{
-				DebugLog("Attempting emergency save...");
-				SaveManager* saveManager = SaveManager::getSingleton();
-
-				int emergencySaveNum = 0;
-				for (; emergencySaveNum < 10000; ++emergencySaveNum)
-					if (!boost::filesystem::exists(saveManager->location + "emergency_save_" + std::to_string((uint64_t)emergencySaveNum)))
-						break;
-
-				if (emergencySaveNum < 10000)
-				{
-					if (!saveManager->saveGame(saveManager->location, "emergency_save_" + std::to_string((uint64_t)emergencySaveNum)))
-					{
-						SaveFileSystem* saveFileSystem = SaveFileSystem::getSingleton();
-						WaitForSingleObject(saveFileSystem->threadHandle, INFINITE);
-
-						// success? update continue save
-						Ogre::ConfigFile config;
-						config.load("settings.cfg");
-						std::ofstream outSettings("settings.cfg");
-
-						// copy out settings from default section
-						Ogre::ConfigFile::SectionIterator settingsIter = config.getSectionIterator();
-						for (Ogre::ConfigFile::SettingsMultiMap::iterator mapIter = settingsIter.current()->second->begin();
-							mapIter != settingsIter.current()->second->end(); ++mapIter)
-						{
-							// update continue save
-							if (mapIter->first == "continue")
-								outSettings << "continue=emergency_save_" << emergencySaveNum << std::endl;
-							else
-								outSettings << mapIter->first << "=" << mapIter->second << std::endl;
-						}
-
-						DebugLog("Emergency save completed successfully");
-						MessageBoxW(NULL, boost::locale::gettext(L"The game has saved successfully and will now crash.").c_str(), boost::locale::gettext(L"Save success").c_str(), MB_OK | MB_SYSTEMMODAL | MB_ICONINFORMATION);
-					}
-					else
-					{
-						ErrorLog("Couldn't create emergency save");
-						MessageBoxW(NULL, boost::locale::gettext(L"Error creating save file.").c_str(), boost::locale::gettext(L"Save failed").c_str(), MB_OK | MB_SYSTEMMODAL | MB_ICONERROR);
-					}
-				}
-				else
-				{
-					ErrorLog("Error finding unused emergency save slot");
-					MessageBoxW(NULL, boost::locale::gettext(L"Error finding unused emergency save slot.").c_str(), boost::locale::gettext(L"Save failed").c_str(), MB_OK | MB_SYSTEMMODAL | MB_ICONERROR);
-				}
-			}
-			catch (...)
-			{
-				ErrorLog("Unspecified emergency save error");
-				MessageBoxW(NULL, boost::locale::gettext(L"An unspecified error occurred while saving.").c_str(), boost::locale::gettext(L"Save failed").c_str(), MB_OK | MB_SYSTEMMODAL | MB_ICONERROR);
-			}
-		}
+		TryEmergencySave();
 	}
 
 	LogManager_destructor_orig(thisptr);
@@ -662,6 +669,9 @@ void Bugs::UndoPreInit()
 	// Sync version checker to make sure it no longer needs the global crash handler
 	Version::SyncInit();
 
+	// TODO is this needed?
+	SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
+	
 	// register our error handler
 	if (vanillaFilter != nullptr)
 	{
@@ -714,11 +724,5 @@ void Bugs::InitMenu()
 
 void Bugs::InitInGame()
 {
-	// disable global crash handler so only crashes that trigger ~LogManager() are hooked
-	LPTOP_LEVEL_EXCEPTION_FILTER filterCheck = SetUnhandledExceptionFilter(vanillaFilter);
-	if (filterCheck != &UnhandledException)
-		ErrorLog("Unexpected filter change in Bugs::UndoPreInit()");
-	else
-		DebugLog("UEF unregistered.");
 	inGame = true;
 }
