@@ -10,6 +10,8 @@
 #include <rapidjson/document.h>
 #include <rapidjson/error/en.h>
 
+#include <boost/filesystem/operations.hpp>
+
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
@@ -23,21 +25,24 @@ void AddPluginPath(std::string path)
     // not included in our headers, have to get via GetProcAddress as per Microsoft's docs
     DLL_DIRECTORY_COOKIE(*AddDllDirectory)(PCWSTR NewDirectory);
     AddDllDirectory = (DLL_DIRECTORY_COOKIE(*)(PCWSTR))GetProcAddress(GetModuleHandleA("kernel32.dll"), "AddDllDirectory");
-    AddDllDirectory(std::wstring(path.begin(), path.end()).c_str());
+    if (NULL == AddDllDirectory(std::wstring(path.begin(), path.end()).c_str()))
+        ErrorLog("Could not add DLL directory: " + path);
 }
 
 void LoadPlugin(std::string path)
 {
-    HMODULE plugin = LoadLibraryExA(path.c_str(), NULL, LOAD_WITH_ALTERED_SEARCH_PATH);
+    HMODULE plugin = LoadLibraryA(path.c_str());
     if (!plugin)
     {
         ErrorLog("Could not load plugin: " + path);
+        ErrorLog(GetLastErrorStdStr());
         return;
     }
     FARPROC start = GetProcAddress(plugin, "?startPlugin@@YAXXZ");
     if (!start)
     {
-        ErrorLog("Could not start plugin: " + path);
+        ErrorLog("Could not intialized plugin: " + path);
+        ErrorLog(GetLastErrorStdStr());
         return;
     }
     start();
@@ -70,16 +75,17 @@ void preload_init_hook(GameWorld* thisptr)
                 ErrorLog("Error parsing \"" + settingsPath + "\" : " + rapidjson::GetParseError_En(modDOM.GetParseError()));
 
             // parse output
-            // FILE REBINDS
             if (modDOM.HasMember("PreloadPlugins") && modDOM["PreloadPlugins"].IsArray())
             {
+                // use canonical path to allow multiple plugins with same filename
+                std::string path = boost::filesystem::canonical(mods[i]->path).string();
                 // TODO make force enabled in mod list
-                AddPluginPath(mods[i]->path);
+                AddPluginPath(path);
                 const rapidjson::Value& item = modDOM["PreloadPlugins"];
                 for (rapidjson::Value::ConstValueIterator itr = item.Begin(); itr != item.End(); ++itr)
                 {
                     DebugLog(mods[i]->name + " -> " + itr->GetString());
-                    LoadPlugin(mods[i]->path + "/" + itr->GetString());
+                    LoadPlugin(path + "/" + itr->GetString());
                 }
             }
         }
@@ -105,15 +111,16 @@ void Plugins::Postload()
             ErrorLog("Error parsing \"" + settingsPath + "\" : " + rapidjson::GetParseError_En(modDOM.GetParseError()));
 
         // parse output
-        // FILE REBINDS
         if (modDOM.HasMember("Plugins") && modDOM["Plugins"].IsArray())
         {
-            AddPluginPath(mods[i]->path);
+            // use canonical path to allow multiple plugins with same filename
+            std::string path = boost::filesystem::canonical(mods[i]->path).string();
+            AddPluginPath(path);
             const rapidjson::Value& item = modDOM["Plugins"];
             for (rapidjson::Value::ConstValueIterator itr = item.Begin(); itr != item.End(); ++itr)
             {
                 DebugLog(mods[i]->name + " -> " + itr->GetString());
-                LoadPlugin(mods[i]->path + "/" + itr->GetString());
+                LoadPlugin(path + "/" + itr->GetString());
             }
         }
     }
@@ -133,8 +140,5 @@ void Plugins::Init()
     SetDefaultDllDirectories = (BOOL(*)(DWORD))GetProcAddress(GetModuleHandleA("kernel32.dll"), "SetDefaultDllDirectories");
     // FYI confusingly, DEFAULT_DIRS isn't the default behaviour, so we have to explicitly set this
     SetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
-    // not included in our headers, have to get via GetProcAddress as per Microsoft's docs
-    DLL_DIRECTORY_COOKIE(*AddDllDirectory)(PCWSTR NewDirectory);
-    AddDllDirectory = (DLL_DIRECTORY_COOKIE(*)(PCWSTR))GetProcAddress(GetModuleHandleA("kernel32.dll"), "AddDllDirectory");
-    AddDllDirectory(cwd);
+    SetDllDirectoryW(cwd);
 }
