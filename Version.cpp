@@ -13,7 +13,7 @@
 #include <boost/thread/condition_variable.hpp>
 #include <boost/thread/mutex.hpp>
 
-std::string version = "0.3.1";
+std::string version = "0.3.2";
 std::string latestVersionCache = "0.0.0";
 const bool isPrerelease = true;
 
