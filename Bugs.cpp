@@ -9,6 +9,7 @@
 #include "Settings.h"
 #include <kenshi/Kenshi.h>
 #include <kenshi/Globals.h>
+#include <kenshi/GameWorld.h>
 #include <core/Functions.h>
 #include <boost/locale/message.hpp>
 #include <boost/uuid/uuid.hpp>
@@ -694,6 +695,13 @@ void Bugs::Init()
 	KenshiLib::AddHook(KenshiLib::GetRealFunction(showErrorMessage), CrashReport_hook, &CrashReport_orig);
 }
 
+void (*GameWorld_DESTRUCTOR_orig)(GameWorld* thisptr);
+void GameWorld_DESTRUCTOR_hook(GameWorld* thisptr)
+{
+	SetUnhandledExceptionFilter(vanillaFilter);
+	GameWorld_DESTRUCTOR_orig(thisptr);
+}
+
 void Bugs::InitMenu()
 {
 	// I tried a few ways of hooking the root crash function
@@ -720,6 +728,8 @@ void Bugs::InitMenu()
 	// find target of jmp
 	uint8_t* LogManagerDestructor_body_ptr = LogManagerDestructor_jmp_ptr + *offsetPtr + 5;
 	KenshiLib::AddHook(LogManagerDestructor_body_ptr, LogManager_destructor_hook, &LogManager_destructor_orig);
+	// remove global crash handler on exit because ~GameWorld often throws exceptions and crashes the game during normal exit
+	KenshiLib::AddHook(KenshiLib::GetRealAddress(&GameWorld::_DESTRUCTOR), &GameWorld_DESTRUCTOR_hook, &GameWorld_DESTRUCTOR_orig);
 }
 
 void Bugs::InitInGame()
