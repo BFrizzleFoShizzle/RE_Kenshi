@@ -331,22 +331,6 @@ void playButtonHook(MyGUI::WidgetPtr _sender)
     SetSpeed1();
 }
 
-void WaitForInGame()
-{
-    MyGUI::Gui* gui = nullptr;
-    while (gui == nullptr)
-    {
-        gui = MyGUI::Gui::getInstancePtr();
-        Sleep(10);
-    }
-    MyGUI::WidgetPtr speedButtonsPanel = nullptr;
-    while (speedButtonsPanel == nullptr)
-    {
-        speedButtonsPanel = FindWidget(gui->getEnumerator(), "SpeedButtonsPanel");
-        Sleep(10);
-    }
-}
-
 void WaitForMainMenu()
 {
     MyGUI::Gui* gui = nullptr;
@@ -1934,10 +1918,6 @@ DWORD WINAPI InitThread(LPVOID param)
         DebugLog("Steam 1.0.65");
         DebugLog("RE_Kenshi initialization aborted!");
     }
-
-    // disable global crash handler so crashes are handled by Kenshi's
-    // this has to happen at the bottom of this function because Kenshi doesn't pick up exceptions on this thread (???)
-    Bugs::InitInGame();
 
     // Note: any exception that happens on this thread after InitInGame() will NOT be caught properly
     // DO NOT PUT CODE HERE

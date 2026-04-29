@@ -13,7 +13,6 @@ namespace Bugs
 	void Init();
 	// Hooks Kenshi's crash report function
 	void InitMenu();
-	void InitInGame();
 	std::string GetUUIDHash();
 	// manual bug reporting
 	bool ReportUserBug(std::string description, std::string uuidHash = "");

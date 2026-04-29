@@ -10,6 +10,7 @@
 #include <kenshi/Kenshi.h>
 #include <kenshi/Globals.h>
 #include <kenshi/GameWorld.h>
+#include <kenshi/gui/LoadingWindow.h>
 #include <core/Functions.h>
 #include <boost/locale/message.hpp>
 #include <boost/uuid/uuid.hpp>
@@ -688,11 +689,20 @@ void Bugs::UndoPreInit()
 	}
 }
 
+void (*LoadingWindow_hide_orig)(LoadingWindow* thisptr);
+void LoadingWindow_hide_hook(LoadingWindow* thisptr)
+{
+	LoadingWindow_hide_orig(thisptr);
+	inGame = true;
+	DebugLog("In-game");
+}
+
 // 2nd init stage - run after KenshiLib init
 void Bugs::Init()
 {
 	// secondary crash hook - this one uses Kenshi's crash handling code to generate most of the dump files
 	KenshiLib::AddHook(KenshiLib::GetRealFunction(showErrorMessage), CrashReport_hook, &CrashReport_orig);
+	KenshiLib::AddHook(KenshiLib::GetRealAddress(&LoadingWindow::hide), LoadingWindow_hide_hook, &LoadingWindow_hide_orig);
 }
 
 void (*GameWorld_DESTRUCTOR_orig)(GameWorld* thisptr);
@@ -730,9 +740,4 @@ void Bugs::InitMenu()
 	KenshiLib::AddHook(LogManagerDestructor_body_ptr, LogManager_destructor_hook, &LogManager_destructor_orig);
 	// remove global crash handler on exit because ~GameWorld often throws exceptions and crashes the game during normal exit
 	KenshiLib::AddHook(KenshiLib::GetRealAddress(&GameWorld::_DESTRUCTOR), &GameWorld_DESTRUCTOR_hook, &GameWorld_DESTRUCTOR_orig);
-}
-
-void Bugs::InitInGame()
-{
-	inGame = true;
 }
