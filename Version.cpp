@@ -186,3 +186,8 @@ bool Version::IsCurrentVersion()
 {
     return !IsVersionNewer(latestVersionCache, GetCurrentVersion());
 }
+
+bool Version::IsPrerelease()
+{
+    return isPrerelease;
+}
