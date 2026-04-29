@@ -20,28 +20,28 @@ bool hasPreloaded = false;
 typedef PVOID DLL_DIRECTORY_COOKIE, * PDLL_DIRECTORY_COOKIE;
 
 // adds path to DLL load search path
-void AddPluginPath(std::string path)
+void AddPluginPath(std::wstring path)
 {
     // not included in our headers, have to get via GetProcAddress as per Microsoft's docs
     DLL_DIRECTORY_COOKIE(*AddDllDirectory)(PCWSTR NewDirectory);
     AddDllDirectory = (DLL_DIRECTORY_COOKIE(*)(PCWSTR))GetProcAddress(GetModuleHandleA("kernel32.dll"), "AddDllDirectory");
-    if (NULL == AddDllDirectory(std::wstring(path.begin(), path.end()).c_str()))
-        ErrorLog("Could not add DLL directory: " + path);
+    if (NULL == AddDllDirectory(path.c_str()))
+        ErrorLog(L"Could not add DLL directory: " + path);
 }
 
-void LoadPlugin(std::string path)
+void LoadPlugin(std::wstring path)
 {
-    HMODULE plugin = LoadLibraryA(path.c_str());
+    HMODULE plugin = LoadLibraryW(path.c_str());
     if (!plugin)
     {
-        ErrorLog("Could not load plugin: " + path);
+        ErrorLog(L"Could not load plugin: " + path);
         ErrorLog(GetLastErrorStdStr());
         return;
     }
     FARPROC start = GetProcAddress(plugin, "?startPlugin@@YAXXZ");
     if (!start)
     {
-        ErrorLog("Could not intialized plugin: " + path);
+        ErrorLog(L"Could not intialized plugin: " + path);
         ErrorLog(GetLastErrorStdStr());
         return;
     }
@@ -78,14 +78,14 @@ void preload_init_hook(GameWorld* thisptr)
             if (modDOM.HasMember("PreloadPlugins") && modDOM["PreloadPlugins"].IsArray())
             {
                 // use canonical path to allow multiple plugins with same filename
-                std::string path = boost::filesystem::canonical(mods[i]->path).string();
+                std::wstring path = boost::filesystem::canonical(mods[i]->path).wstring();
                 // TODO make force enabled in mod list
                 AddPluginPath(path);
                 const rapidjson::Value& item = modDOM["PreloadPlugins"];
                 for (rapidjson::Value::ConstValueIterator itr = item.Begin(); itr != item.End(); ++itr)
                 {
                     DebugLog(mods[i]->name + " -> " + itr->GetString());
-                    LoadPlugin(path + "/" + itr->GetString());
+                    LoadPlugin(path + L"/" + std::wstring(itr->GetString(), itr->GetString()+strlen(itr->GetString())));
                 }
             }
         }
@@ -114,13 +114,13 @@ void Plugins::Postload()
         if (modDOM.HasMember("Plugins") && modDOM["Plugins"].IsArray())
         {
             // use canonical path to allow multiple plugins with same filename
-            std::string path = boost::filesystem::canonical(mods[i]->path).string();
+            std::wstring path = boost::filesystem::canonical(mods[i]->path).wstring();
             AddPluginPath(path);
             const rapidjson::Value& item = modDOM["Plugins"];
             for (rapidjson::Value::ConstValueIterator itr = item.Begin(); itr != item.End(); ++itr)
             {
                 DebugLog(mods[i]->name + " -> " + itr->GetString());
-                LoadPlugin(path + "/" + itr->GetString());
+                LoadPlugin(path + L"/" + std::wstring(itr->GetString(), itr->GetString()+strlen(itr->GetString())));
             }
         }
     }
