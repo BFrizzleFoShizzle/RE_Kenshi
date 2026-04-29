@@ -431,6 +431,10 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 
 static void CreateCrashReportWindow()
 {
+	// drop 3/4 of crash dumps because I get literally thousands
+	if (rand() % 4 != 0)
+		return;
+
 	MSG  msg;
 	WNDCLASS wc = { 0 };
 	wc.lpszClassName = TEXT("RE_Kenshi Crash Reporter");
