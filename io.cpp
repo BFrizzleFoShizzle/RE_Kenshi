@@ -242,7 +242,8 @@ IO::DriveType IO::GetDriveStorageType(std::string path)
     // there should be at least one value
     if (uReturn == 0)
     {
-        ErrorLog("MSFT_Partition iterator has no items");
+        // MSFT_Partition iterator has no items
+        DebugLog("Could not detect install drive type");
         pSvc->Release();
         pLoc->Release();
         CoUninitialize();
