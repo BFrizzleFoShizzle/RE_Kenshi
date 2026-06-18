@@ -270,9 +270,9 @@ void SplashScreen_update_hook(SplashScreen* thisptr)
 void (*DatapanelGUI_addCustomLine_orig)(DatapanelGUI* thisptr, DataPanelLine* line);
 void DatapanelGUI_addCustomLine_hook(DatapanelGUI* thisptr, DataPanelLine* line)
 {
+	DataPanelLine_KeyConfig* keyConf = dynamic_cast<DataPanelLine_KeyConfig*>(line);
 	DatapanelGUI_addCustomLine_orig(thisptr, line);
-	// Insert after "Toggle game editor"
-	if (line->s1 == "Toggle game editor") 
+	if (keyConf && keyConf->command == "editor_toggle")
 		// I don't know what the 25 refers to (maybe some enum?) but it's needed here
 		thisptr->addCustomLine(new DataPanelLine_KeyConfig("toggle_fps_camera", boost::locale::gettext("Toggle Free Camera mode"), 25));
 }
