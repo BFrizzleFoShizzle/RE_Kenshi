@@ -45,13 +45,38 @@ If you have a different version of Visual Studio 2010 othe WIn7.1 SDK installed,
 
 At this point you can open the project and compile.
 
-# Manual installation (outdated) (more info: https://github.com/BFrizzleFoShizzle/RE_Kenshi/issues/4)
-Copy RE_Kenshi.dll to your kenshi install dir  
-Open "Plugins_x64.cfg" in your kenshi install directory and add the line:  
-`Plugin=RE_Kenshi`  
-after:  
-`Plugin=Plugin_Terrain_x64`  
-Run Kenshi and the mod will be loaded automatically.  
+# Installation
+The installer is the recommended way to install or update RE_Kenshi.
+
+1. Download the latest standard archive from the [releases page](https://github.com/BFrizzleFoShizzle/RE_Kenshi/releases).
+2. Extract the complete archive and run the included `RE_Kenshi_vX.X.X.exe` installer.
+3. Follow the installer prompts, then start Kenshi normally.
+4. Confirm that the RE_Kenshi version appears on the main menu.
+
+RE_Kenshi is based on Kenshi 1.0.65. For supported 1.0.68 installations, the installer creates a compatible executable in the `RE_Kenshi` directory. Use the `--norekenshi` launch argument to start vanilla Kenshi 1.0.68 with RE_Kenshi disabled.
+
+To reopen the settings menu, go to **Options -> Mods -> RE_Kenshi Settings** from the main menu or the in-game Esc menu.
+
+## Manual installation
+Manual installation is intended for supported Steam and GOG builds of Kenshi 1.0.65. Use the installer for Kenshi 1.0.68 because it performs the required compatibility setup.
+
+1. Download and extract the latest `RE_Kenshi_vX.X.X_loose.zip` release.
+2. Copy these items from the archive's `install` directory into the root of the Kenshi installation:
+   - `RE_Kenshi.dll`
+   - `KenshiLib.dll`
+   - `CompressToolsLib.dll`
+   - The complete `RE_Kenshi` directory, including its `locale`, `RVAs`, and `game_speed_tutorial.png` contents
+3. Open `Plugins_x64.cfg` in the Kenshi installation directory and add RE_Kenshi as the first plugin, before `Plugin=RenderSystem_Direct3D11_x64`:
+
+   ```text
+   Plugin=RE_Kenshi
+   ```
+
+4. Start Kenshi and confirm that the RE_Kenshi version appears on the main menu.
+
+## Uninstallation
+
+Run the release installer, select the Kenshi installation, and choose **Uninstall**. If the installer cannot run, remove `Plugin=RE_Kenshi` from `Plugins_x64.cfg` to disable the mod.
 
 # License
 The core codebase is GPLv3, check the dependencies for their respective licenses.
