@@ -130,7 +130,7 @@ void Plugins::Postload()
 
 void Plugins::Init()
 {
-    KenshiLib::AddHook(KenshiLib::GetRealAddress(&GameWorld::initModsList), preload_init_hook, &initModsList_orig);
+    KenshiLib::QueueHook(KenshiLib::GetRealAddress(&GameWorld::initModsList), preload_init_hook, &initModsList_orig);
 
     wchar_t cwd[MAX_PATH];
     GetCurrentDirectory(MAX_PATH, cwd);

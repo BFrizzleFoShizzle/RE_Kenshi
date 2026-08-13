@@ -307,9 +307,9 @@ void MiscHooks::Init()
 	// trying to hook USER32.dll/ShowCursor is a massive pain, so we go straight to win32u/NtUserShowCursor
 	// (ShowCursor is a wrapper for NtUserShowCursor)
 	void* NtUserShowCursor = Escort::GetFuncAddress("win32u.dll", "NtUserShowCursor");
-	KenshiLib::AddHook(NtUserShowCursor, ShowCursor_hook, &ShowCursor_orig);
-	KenshiLib::AddHook(KenshiLib::GetRealAddress(&GameLauncher::TabMods::updateModsList), TabMods_updateModsList_hook, &TabMods_updateModsList_orig);
-	KenshiLib::AddHook(KenshiLib::GetRealAddress(&SplashScreen::update), SplashScreen_update_hook, &SplashScreen_update_orig);
-	KenshiLib::AddHook(KenshiLib::GetRealAddress(&DatapanelGUI::addCustomLine), DatapanelGUI_addCustomLine_hook, &DatapanelGUI_addCustomLine_orig);
-	KenshiLib::AddHook(KenshiLib::GetRealAddress(&InputHandler::loadConfig), InputHandler_loadConfig_hook, &InputHandler_loadConfig_orig);
+	KenshiLib::QueueHook(NtUserShowCursor, ShowCursor_hook, &ShowCursor_orig);
+	KenshiLib::QueueHook(KenshiLib::GetRealAddress(&GameLauncher::TabMods::updateModsList), TabMods_updateModsList_hook, &TabMods_updateModsList_orig);
+	KenshiLib::QueueHook(KenshiLib::GetRealAddress(&SplashScreen::update), SplashScreen_update_hook, &SplashScreen_update_orig);
+	KenshiLib::QueueHook(KenshiLib::GetRealAddress(&DatapanelGUI::addCustomLine), DatapanelGUI_addCustomLine_hook, &DatapanelGUI_addCustomLine_orig);
+	KenshiLib::QueueHook(KenshiLib::GetRealAddress(&InputHandler::loadConfig), InputHandler_loadConfig_hook, &InputHandler_loadConfig_orig);
 }

@@ -181,7 +181,6 @@
     <ClCompile Include="io.cpp" />
     <ClCompile Include="KenshiLib\Source\core\md5.cpp" />
     <ClCompile Include="MiscHooks.cpp" />
-    <ClCompile Include="MyGUIHooks.cpp" />
     <ClCompile Include="OgreDDSCodec2.cpp" />
     <ClCompile Include="OgreHooks.cpp" />
     <ClCompile Include="OgreSICCodec.cpp" />
@@ -205,7 +204,6 @@
     <ClInclude Include="io.h" />
     <ClInclude Include="KenshiLib\Include\core\md5.h" />
     <ClInclude Include="MiscHooks.h" />
-    <ClInclude Include="MyGUIHooks.h" />
     <ClInclude Include="OgreDDSCodec2.h" />
     <ClInclude Include="OgreHooks.h" />
     <ClInclude Include="OgreSICCodec.h" />

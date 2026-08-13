@@ -29,7 +29,7 @@ static const std::string HEIGHTMAP_TIF_PATH = "data\\newland/land\\fullmap.tif";
 CompressToolsLib::CompressedImageFileHdl heightmapHandle = nullptr;
 
 // TODO named after reversed behaviour, no idea what it actutally is
-struct TerrainBounds
+struct TiffStream
 {
 	char unk1[8];
 	int mapMaxX;
@@ -39,7 +39,7 @@ struct TerrainBounds
 struct Terrain
 {
 	char unk1[0x1B8];
-	TerrainBounds* bounds;
+	TiffStream* bounds;
 	// 0x1C0
 	char unk2[0x10];
 	// 0x1D0
@@ -337,14 +337,14 @@ void HeightmapHook::Init()
 	// mangled symbol for protected Terrain::getHeight()
 	// protected: float __cdecl Terrain::getHeight(class Ogre::Vector3 const & __ptr64,int) __ptr64
 	void* Terrain_getHeight_ptr = Escort::GetFuncAddress("Plugin_Terrain_x64.dll", "?getHeight@Terrain@@IEAAMAEBVVector3@Ogre@@H@Z");
-	KenshiLib::AddHook(Terrain_getHeight_ptr, Terrain_getHeight_hook, &Terrain_getHeight_orig);
+	KenshiLib::QueueHook(Terrain_getHeight_ptr, Terrain_getHeight_hook, &Terrain_getHeight_orig);
 
 	// mangled symbol for Terrain::getRawData()
 	// public: unsigned __int64 __cdecl Terrain::getRawData(int,int,int,int,char * __ptr64)const __ptr64
 	void* Terrain_getRawData_ptr = Escort::GetFuncAddress("Plugin_Terrain_x64.dll", "?getRawData@Terrain@@QEBA_KHHHHPEAD@Z");
-	KenshiLib::AddHook(Terrain_getRawData_ptr, Terrain_getRawData_hook, &Terrain_getRawData_orig);
+	KenshiLib::QueueHook(Terrain_getRawData_ptr, Terrain_getRawData_hook, &Terrain_getRawData_orig);
 
-	DebugLog("Heightmap hooks installed...");
+	DebugLog("Heightmap hooks queued...");
 
 	UpdateHeightmapSettings();
 }

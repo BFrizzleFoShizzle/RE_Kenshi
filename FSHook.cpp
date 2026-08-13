@@ -82,11 +82,11 @@ void FSHook::Init()
 
 	std::string debugStr = "Address: " + std::to_string((uint64_t)fsopen);
 
-	KenshiLib::AddHook(fsopen, _fsopen_hook, &_fsopen_orig);
+	KenshiLib::QueueHook(fsopen, _fsopen_hook, &_fsopen_orig);
 	
 	// First instruction has a relative offset that gets bork'd by the hook, so we call the kernel32 function instead
 	// I think this is a leaf function, so can't use SEH prologue lookup, need to hard-code replaced bytes...
-	KenshiLib::AddHook(findFirstFileW, FindFirstFileW_hook, &FindFirstFileW_orig);
+	KenshiLib::QueueHook(findFirstFileW, FindFirstFileW_hook, &FindFirstFileW_orig);
 	
 	// Windows reserves the bottom 64k of the address space?
 	//Escort::AllocateRWXNear((void*)0x10000, 5);

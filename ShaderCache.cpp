@@ -699,5 +699,5 @@ void ShaderCache::Init()
 
 	// enable hook
 	void* shaderCompileAddr = Escort::GetFuncAddress("D3DCompiler_43.dll", "D3DCompile");
-	KenshiLib::AddHook(shaderCompileAddr, D3DCompile_hook, &D3DCompile_orig);
+	KenshiLib::QueueHook(shaderCompileAddr, D3DCompile_hook, &D3DCompile_orig);
 }

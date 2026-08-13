@@ -320,12 +320,12 @@ void Sound::Init()
 	void* AK_SoundEngine_PostEvent2_ptr = Escort::GetFuncAddress(KenshiLib::GetKenshiVersion().GetBinaryName(), "?PostEvent@SoundEngine@AK@@YAKPEB_W_KKP6AXW4AkCallbackType@@PEAUAkCallbackInfo@@@ZPEAXKPEAUAkExternalSourceInfo@@K@Z");
 	
 	// add hooks
-	KenshiLib::AddHook(AK_SoundEngine_GetIDFromString_ptr, AK_SoundEngine_GetIDFromStringHook, &AK_SoundEngine_GetIDFromString_orig);
-	KenshiLib::AddHook(AK_SoundEngine_GetIDFromString2_ptr, AK_SoundEngine_GetIDFromStringHook2, &AK_SoundEngine_GetIDFromString2_orig);
-	KenshiLib::AddHook(AK_SoundEngine_LoadBank_ptr, AK_SoundEngine_LoadBankHook, &AK_SoundEngine_LoadBank_orig);
-	KenshiLib::AddHook(AK_SoundEngine_SetState_ptr, AK_SoundEngine_SetState_hook, &AK_SoundEngine_SetState_orig);
-	KenshiLib::AddHook(AK_SoundEngine_SetSwitch_ptr, AK_SoundEngine_SetSwitch_hook, &AK_SoundEngine_SetSwitch_orig);
-	KenshiLib::AddHook(AK_SoundEngine_PostEvent_ptr, AK_SoundEngine_PostEvent_hook, &AK_SoundEngine_PostEvent_orig);
-	KenshiLib::AddHook(AK_SoundEngine_PostEvent2_ptr, AK_SoundEngine_PostEvent_hook2, &AK_SoundEngine_PostEvent_orig2);
+	KenshiLib::QueueHook(AK_SoundEngine_GetIDFromString_ptr, AK_SoundEngine_GetIDFromStringHook, &AK_SoundEngine_GetIDFromString_orig);
+	KenshiLib::QueueHook(AK_SoundEngine_GetIDFromString2_ptr, AK_SoundEngine_GetIDFromStringHook2, &AK_SoundEngine_GetIDFromString2_orig);
+	KenshiLib::QueueHook(AK_SoundEngine_LoadBank_ptr, AK_SoundEngine_LoadBankHook, &AK_SoundEngine_LoadBank_orig);
+	KenshiLib::QueueHook(AK_SoundEngine_SetState_ptr, AK_SoundEngine_SetState_hook, &AK_SoundEngine_SetState_orig);
+	KenshiLib::QueueHook(AK_SoundEngine_SetSwitch_ptr, AK_SoundEngine_SetSwitch_hook, &AK_SoundEngine_SetSwitch_orig);
+	KenshiLib::QueueHook(AK_SoundEngine_PostEvent_ptr, AK_SoundEngine_PostEvent_hook, &AK_SoundEngine_PostEvent_orig);
+	KenshiLib::QueueHook(AK_SoundEngine_PostEvent2_ptr, AK_SoundEngine_PostEvent_hook2, &AK_SoundEngine_PostEvent_orig2);
 	//AK_SoundEngine_RegisterGameObj_orig = Escort::JmpReplaceHook< enum AKRESULT(unsigned long long, char const* __ptr64, unsigned long int)>(Kenshi::GetSoundEngineRegisterGameObj(), AK_SoundEngine_RegisterGameObj_hook);
 }

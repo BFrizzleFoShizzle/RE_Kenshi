@@ -17,6 +17,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CompressToolsLib", "Compres
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CompressToolsCore", "CompressTools\CompressToolsCore.vcxproj", "{D68018E6-6B6E-495A-92E5-B643B5CF37AA}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "KenshiLib_Lint", "KenshiLib\KenshiLib_Lint\KenshiLib_Lint.vcxproj", "{74DFDBEF-F8DB-4820-BB5D-2DAE21E77502}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -39,6 +41,10 @@ Global
 		{D68018E6-6B6E-495A-92E5-B643B5CF37AA}.Debug|x64.Build.0 = Debug|x64
 		{D68018E6-6B6E-495A-92E5-B643B5CF37AA}.Release|x64.ActiveCfg = Release|x64
 		{D68018E6-6B6E-495A-92E5-B643B5CF37AA}.Release|x64.Build.0 = Release|x64
+		{74DFDBEF-F8DB-4820-BB5D-2DAE21E77502}.Debug|x64.ActiveCfg = Debug|x64
+		{74DFDBEF-F8DB-4820-BB5D-2DAE21E77502}.Debug|x64.Build.0 = Debug|x64
+		{74DFDBEF-F8DB-4820-BB5D-2DAE21E77502}.Release|x64.ActiveCfg = Release|x64
+		{74DFDBEF-F8DB-4820-BB5D-2DAE21E77502}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

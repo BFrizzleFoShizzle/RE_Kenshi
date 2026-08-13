@@ -706,8 +706,8 @@ void LoadingWindow_hide_hook(LoadingWindow* thisptr)
 void Bugs::Init()
 {
 	// secondary crash hook - this one uses Kenshi's crash handling code to generate most of the dump files
-	KenshiLib::AddHook(KenshiLib::GetRealFunction(showErrorMessage), CrashReport_hook, &CrashReport_orig);
-	KenshiLib::AddHook(KenshiLib::GetRealAddress(&LoadingWindow::hide), LoadingWindow_hide_hook, &LoadingWindow_hide_orig);
+	KenshiLib::QueueHook(KenshiLib::GetRealFunction(showErrorMessage), CrashReport_hook, &CrashReport_orig);
+	KenshiLib::QueueHook(KenshiLib::GetRealAddress(&LoadingWindow::hide), LoadingWindow_hide_hook, &LoadingWindow_hide_orig);
 }
 
 void (*GameWorld_DESTRUCTOR_orig)(GameWorld* thisptr);
@@ -742,7 +742,7 @@ void Bugs::InitMenu()
 	uint32_t* offsetPtr = (uint32_t*)(LogManagerDestructor_jmp_ptr + 1);
 	// find target of jmp
 	uint8_t* LogManagerDestructor_body_ptr = LogManagerDestructor_jmp_ptr + *offsetPtr + 5;
-	KenshiLib::AddHook(LogManagerDestructor_body_ptr, LogManager_destructor_hook, &LogManager_destructor_orig);
+	KenshiLib::QueueHook(LogManagerDestructor_body_ptr, LogManager_destructor_hook, &LogManager_destructor_orig);
 	// remove global crash handler on exit because ~GameWorld often throws exceptions and crashes the game during normal exit
-	KenshiLib::AddHook(KenshiLib::GetRealAddress(&GameWorld::_DESTRUCTOR), &GameWorld_DESTRUCTOR_hook, &GameWorld_DESTRUCTOR_orig);
+	KenshiLib::QueueHook(KenshiLib::GetRealAddress(&GameWorld::_DESTRUCTOR), &GameWorld_DESTRUCTOR_hook, &GameWorld_DESTRUCTOR_orig);
 }

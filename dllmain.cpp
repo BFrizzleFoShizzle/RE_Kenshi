@@ -36,7 +36,6 @@
 #include "FSHook.h"
 #include "HeightmapHook.h"
 #include "MiscHooks.h"
-#include "MyGUIHooks.h"
 #include "Sound.h"
 #include "io.h"
 #include "Debug.h"
@@ -1127,10 +1126,6 @@ bool InitGUI()
         MyGUI::FactoryManager& factory = MyGUI::FactoryManager::getInstance();
         MyGUI::IObject* object = factory.createObject("Resource", "ResourceTrueTypeFont");
 
-        // Fixes fonts
-        // TODO remove after dropping support for old versions
-        MyGUIHooks::InitMainMenu();
-
         // small font has to be created BEFORE the font fix
         // TODO move back after dropping support for old versions
         MyGUI::ResourceTrueTypeFont* smallFont = object->castType<MyGUI::ResourceTrueTypeFont>(false);
@@ -1760,7 +1755,7 @@ void SyncronousInit()
     if (gameVersion.GetPlatform() != KenshiLib::BinaryVersion::UNKNOWN)
     {
         // hook for loading mod config - has to be done early so we can override certain early I/O operations
-        KenshiLib::AddHook(KenshiLib::GetRealAddress(&GameWorld::initialisationGameData), LoadMods_hook, &LoadMods_orig);
+        KenshiLib::QueueHook(KenshiLib::GetRealAddress(&GameWorld::initialisationGameData), LoadMods_hook, &LoadMods_orig);
 
         FSHook::Init();
         Plugins::Init();
@@ -1775,11 +1770,13 @@ void SyncronousInit()
         OgreHooks::Init();
         PhysicsHooks::Init();
         // Create UI after font size is set so it looks right
-        if (KenshiLib::SUCCESS != KenshiLib::AddHook(KenshiLib::GetRealAddress(&ForgottenGUI::changeFontSize), ForgottenGUI_changeFontSize_hook, &ForgottenGUI_changeFontSize_orig))
+        if (KenshiLib::SUCCESS != KenshiLib::QueueHook(KenshiLib::GetRealAddress(&ForgottenGUI::changeFontSize), ForgottenGUI_changeFontSize_hook, &ForgottenGUI_changeFontSize_orig))
             ErrorLog("ForgottenGUI::changeFontSize - Could not add hook!");
         // Safe place to acccess game speed controls
-        if (KenshiLib::SUCCESS != KenshiLib::AddHook(KenshiLib::GetRealAddress(&MainBarGUI::_CONSTRUCTOR), MainBarGUI_CONSTRUCTOR_hook, &MainBarGUI_CONSTRUCTOR_orig))
+        if (KenshiLib::SUCCESS != KenshiLib::QueueHook(KenshiLib::GetRealAddress(&MainBarGUI::_CONSTRUCTOR), MainBarGUI_CONSTRUCTOR_hook, &MainBarGUI_CONSTRUCTOR_orig))
             ErrorLog("MainBarGUI::MainBarGUI - Could not add hook!");
+        if (KenshiLib::SUCCESS != KenshiLib::ApplyQueuedHooks())
+            ErrorLog("Error applying synchronous init hooks");
     }
     else
     {
@@ -1870,6 +1867,9 @@ DWORD WINAPI InitThread(LPVOID param)
 
     // secondary hook
     Bugs::Init();
+    // apply crash handler hooks immediately
+    if (KenshiLib::SUCCESS != KenshiLib::ApplyQueuedHooks())
+        ErrorLog("Error applying crash handler hooks");
 
     // can't seem to find where the language is kept in memory...
     // I've found the std::locale - but it doesn't work for some reason?
@@ -1908,6 +1908,8 @@ DWORD WINAPI InitThread(LPVOID param)
         Settings::LoadModOverrides();
         Sound::TryLoadQueuedBanks();
         HeightmapHook::Init();
+        if (KenshiLib::SUCCESS != KenshiLib::ApplyQueuedHooks())
+            ErrorLog("Error applying post-mod hooks");
     }
     else
     {

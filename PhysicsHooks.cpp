@@ -44,5 +44,5 @@ NXU::NxuPhysicsCollection* loadPhysXResource_hook(const std::string& filename, i
 
 void PhysicsHooks::Init()
 {
-	KenshiLib::AddHook(KenshiLib::GetRealAddress(&loadPhysXResource), loadPhysXResource_hook, &loadPhysXResource_orig);
-}
+	KenshiLib::QueueHook(KenshiLib::GetRealAddress(&loadPhysXResource), loadPhysXResource_hook, &loadPhysXResource_orig);
+} 
