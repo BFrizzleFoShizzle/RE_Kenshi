@@ -34,15 +34,19 @@ void LoadPlugin(std::wstring path)
     HMODULE plugin = LoadLibraryW(path.c_str());
     if (!plugin)
     {
+        // has to be done BEFORE logging as that overwrites the last error
+        std::string error = GetLastErrorStdStr();
         ErrorLog(L"Could not load plugin: " + path);
-        ErrorLog(GetLastErrorStdStr());
+        ErrorLog(error);
         return;
     }
     FARPROC start = GetProcAddress(plugin, "?startPlugin@@YAXXZ");
     if (!start)
     {
-        ErrorLog(L"Could not intialized plugin: " + path);
-        ErrorLog(GetLastErrorStdStr());
+        // has to be done BEFORE logging as that overwrites the last error
+        std::string error = GetLastErrorStdStr();
+        ErrorLog(L"Could not initialize plugin: " + path);
+        ErrorLog(error);
         return;
     }
     start();
