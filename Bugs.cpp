@@ -90,7 +90,7 @@ bool Bugs::ReportUserBug(std::string description, std::string uuid)
 {
 	WinHttpClient client(modBugDiscordWebHookURL);
 
-	std::string message = "<@" + discordID + ">\nRE_Kenshi " + Version::GetDisplayVersion() + " / Kenshi " + KenshiLib::GetKenshiVersion().ToString();
+	std::string message = "RE_Kenshi " + Version::GetDisplayVersion() + " / Kenshi " + KenshiLib::GetKenshiVersion().ToString();
 	if (uuid != "")
 		message += "\nUUID: " + uuid;
 	message += " bug:\n" + description;
