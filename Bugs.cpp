@@ -380,7 +380,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 			//SendMessage(editbox, EM_SETCUEBANNER, 0, (LPARAM)L"Describe what caused the crash...");
 
 			// default send UUID
-			CheckDlgButton(hwnd, 1, BST_CHECKED);
+			CheckDlgButton(hwnd, UUID_CHECKBOX, BST_CHECKED);
 
 			SetFocus(yesButton);
 
