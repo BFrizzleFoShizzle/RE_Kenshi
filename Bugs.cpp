@@ -212,9 +212,9 @@ static CRASH_REPORT_STATUS crashReportStatus = SKIPPED;
 
 enum BUTTON_ID
 {
-	UUID_CHECKBOX = 1,
-	YES_BTN,
-	NO_BTN,
+	YES_BTN = 1, // IDOK
+	NO_BTN, // IDCANCEL
+	UUID_CHECKBOX,
 	EDIT_BOX
 };
 
