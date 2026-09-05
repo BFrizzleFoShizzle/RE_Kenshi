@@ -13,6 +13,7 @@
 #include <kenshi/gui/LoadingWindow.h>
 #include <core/Functions.h>
 #include <boost/locale/message.hpp>
+#include <boost/format.hpp>
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
@@ -278,51 +279,92 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 			BITMAP bitmapInfo;
 			GetIconInfo(warningIcon, &iconInfo);
 			GetObject(iconInfo.hbmColor, sizeof(BITMAP), &bitmapInfo);
-			std::wstring errorMessage = boost::locale::gettext(L"Kenshi has crashed.")
-				+ boost::locale::gettext(L"\nWould you like to send a crash report to the RE_Kenshi team?")
-				+ boost::locale::gettext(L"\nYour report will be sent to RE_Kenshi's developer (BFrizzleFoShizzle) with the following information:")
-				+ boost::locale::gettext(L"\n\nRE_Kenshi version: ") + to_wstr(Version::GetDisplayVersion())
-				+ boost::locale::gettext(L"\nKenshi version: ") + to_wstr(KenshiLib::GetKenshiVersion().ToString())
-				+ boost::locale::gettext(L"\nUUID hash: ") + to_wstr(Bugs::GetUUIDHash()) + boost::locale::gettext(L" (optional - allows the developer to know all your reports come from the same machine)")
-				+ boost::locale::gettext(L"\nRE_Kenshi settings") + L" (RE_Kenshi.ini)"
-				+ boost::locale::gettext(L"\nRE_Kenshi's log") + L" (RE_Kenshi_log.txt)";
 
 			WIN32_FIND_DATAA foundCrashDump;
 			std::string crashDumpSearchName = "crashDump" + KenshiLib::GetKenshiVersion().GetVersion() + "_x64*.zip";
 			HANDLE searchHandle = FindFirstFileA(crashDumpSearchName.c_str(), &foundCrashDump);
 
+			std::wstring crashDumpFileLine = L"";
 			if (searchHandle != INVALID_HANDLE_VALUE)
 			{
 				crashDumpFileName = foundCrashDump.cFileName;
-				errorMessage += boost::locale::gettext(L"\nKenshi's crashdump (") + to_wstr(crashDumpFileName) + L")";
+				crashDumpFileLine = boost::locale::gettext(L"\n  Kenshi's crash dump file archive (") + to_wstr(crashDumpFileName) + L")";
 			}
 
-			errorMessage += boost::locale::gettext(L"\nYour bug description")
-				+ boost::locale::gettext(L"\n\nPlease describe the bug:");
-
-			HWND icon = CreateWindowA("static", "", WS_CHILD | WS_VISIBLE | SS_ICON,
-				20, 20, bitmapInfo.bmWidth, bitmapInfo.bmHeight, hwnd, 0, hInst, NULL);
-			HWND label = CreateWindowW(L"static", errorMessage.c_str(), WS_CHILD | WS_VISIBLE | SS_LEFT,
-				30 + bitmapInfo.bmWidth, 20, 470 - (30 + bitmapInfo.bmWidth), 240, hwnd, 0, hInst, NULL);
-			editbox = CreateWindow(L"EDIT", placeholderText.c_str(),
-				WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_BORDER | WS_TABSTOP | ES_LEFT | ES_MULTILINE| ES_WANTRETURN | ES_AUTOVSCROLL,
-				20,	250, 455, 150, hwnd, (HMENU)EDIT_BOX, hInst, NULL);
-			uuidCheckbox = CreateWindowW(L"button", boost::locale::gettext(L"Include UUID hash").c_str(), WS_VISIBLE | WS_CHILD | WS_TABSTOP | BS_NOTIFY | BS_CHECKBOX,
-				20, 410, 150, 20, hwnd, (HMENU)UUID_CHECKBOX, hInst, NULL);
-			yesButton = CreateWindowW(L"button", boost::locale::gettext(L"Send").c_str(), WS_VISIBLE | WS_CHILD | WS_TABSTOP | BS_NOTIFY | BS_DEFPUSHBUTTON,
-				200, 420, 100, 30, hwnd, (HMENU)YES_BTN, hInst, NULL);
-			noButton = CreateWindowW(L"button", boost::locale::gettext(L"Don't send").c_str(), WS_VISIBLE | WS_CHILD | WS_TABSTOP | BS_NOTIFY | BS_PUSHBUTTON,
-				320, 420, 100, 30, hwnd, (HMENU)NO_BTN, hInst, NULL);
-
-			// update icon
-			if(warningIcon != NULL)
-				SendMessage(icon, STM_SETICON, WPARAM(warningIcon), TRUE);
-
+			std::wstring errorMessage = (boost::wformat(boost::locale::gettext(
+				L"Kenshi has crashed."
+				L"\nWould you like to send a crash report to the RE_Kenshi team?"
+				L"\nYour report will be sent to RE_Kenshi's developer (BFrizzleFoShizzle) and stored on"
+				L" Discord's servers (located outside New Zealand). Reports are kept for up to 3 years."
+				L"\nFull privacy policy: https://github.com/BFrizzleFoShizzle/RE_Kenshi/blob/master/PRIVACY.md"
+				L"\n"
+				L"\nThe report will include:"
+				L"\n  RE_Kenshi version: %1%"
+				L"\n  Kenshi version: %2%"
+				L"\n  UUID hash (Machine identifier, optional): %3%"
+				L"\n  RE_Kenshi settings (RE_Kenshi.ini)"
+				L"\n  RE_Kenshi's log (RE_Kenshi_log.txt)"
+				L"%4%"// crash dump string added after if there's a valid dump
+				L"\n  Your bug description"
+				L"\n"
+				L"\nThe UUID hash is a hash of your machine's install ID. This lets the"
+				L" developer link multiple reports to the same machine, and lets you reference a specific"
+				L" report later if you want it looked into. If left unchecked, the developer has no way to"
+				L" find or delete your report after submission."
+				L"\n"
+				L"\nCrash dumps and logs may incidentally include file paths, your Windows username, or other"
+				L" data present in memory at the time of the crash."
+				L"\n"
+				L"\nPlease describe the bug:"
+				)) % to_wstr(Version::GetDisplayVersion()) % to_wstr(KenshiLib::GetKenshiVersion().ToString()) % to_wstr(Bugs::GetUUIDHash()) % crashDumpFileLine).str();
+			
 			// get system font
 			NONCLIENTMETRICS metrics = { 0 };
 			metrics.cbSize = sizeof(NONCLIENTMETRICS);
 			SystemParametersInfo(SPI_GETNONCLIENTMETRICS, sizeof(NONCLIENTMETRICS), &metrics, 0);
 			HFONT hFont = CreateFontIndirectW(&metrics.lfMessageFont);
+			HDC dc = GetDC(hwnd);
+			SelectObject(dc, hFont);
+
+			RECT rect;
+			rect.left = 20;
+			rect.top = 20;
+			rect.right = 470 - (30 + bitmapInfo.bmWidth);
+			rect.bottom = 800;
+			HWND icon = CreateWindowA("static", "", WS_CHILD | WS_VISIBLE | SS_ICON,
+				20, 20, bitmapInfo.bmWidth, bitmapInfo.bmHeight, hwnd, 0, hInst, NULL);
+			int height = DrawTextW(dc, errorMessage.c_str(), -1, &rect, DT_LEFT | DT_WORDBREAK | DT_CALCRECT); //DT_EXTERNALLEADING
+			HWND label = CreateWindowW(L"static", errorMessage.c_str(), WS_CHILD | WS_VISIBLE | SS_LEFT,
+				30 + bitmapInfo.bmWidth, 20, 470 - (30 + bitmapInfo.bmWidth), height, hwnd, 0, hInst, NULL);
+			editbox = CreateWindow(L"EDIT", placeholderText.c_str(),
+				WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_BORDER | WS_TABSTOP | ES_LEFT | ES_MULTILINE| ES_WANTRETURN | ES_AUTOVSCROLL,
+				20, height + 30, 455, 150, hwnd, (HMENU)EDIT_BOX, hInst, NULL);
+			uuidCheckbox = CreateWindowW(L"button", boost::locale::gettext(L"Include UUID hash").c_str(), WS_VISIBLE | WS_CHILD | WS_TABSTOP | BS_NOTIFY | BS_CHECKBOX,
+				20, height + 190, 150, 20, hwnd, (HMENU)UUID_CHECKBOX, hInst, NULL);
+			yesButton = CreateWindowW(L"button", boost::locale::gettext(L"Send").c_str(), WS_VISIBLE | WS_CHILD | WS_TABSTOP | BS_NOTIFY | BS_DEFPUSHBUTTON,
+				200, height + 200, 100, 30, hwnd, (HMENU)YES_BTN, hInst, NULL);
+			noButton = CreateWindowW(L"button", boost::locale::gettext(L"Don't send").c_str(), WS_VISIBLE | WS_CHILD | WS_TABSTOP | BS_NOTIFY | BS_PUSHBUTTON,
+				320, height + 200, 100, 30, hwnd, (HMENU)NO_BTN, hInst, NULL);
+
+			RECT windowRect;
+			windowRect.left = 0;
+			windowRect.top = 0;
+			windowRect.right = 500;
+			windowRect.bottom = height + 240;
+
+			LONG style = GetWindowLongPtr(hwnd, GWL_STYLE);
+			LONG exStyle = GetWindowLongPtr(hwnd, GWL_EXSTYLE);
+			BOOL hasMenu = GetMenu(hwnd) != NULL;
+
+			AdjustWindowRectEx(&windowRect, style, hasMenu, exStyle);
+			int windowWidth = windowRect.right - windowRect.left;
+			int windowHeight = windowRect.bottom - windowRect.top;
+
+			SetWindowPos(hwnd, NULL, 0, 0, windowWidth, windowHeight, SWP_NOMOVE | SWP_NOZORDER);
+
+			// update icon
+			if(warningIcon != NULL)
+				SendMessage(icon, STM_SETICON, WPARAM(warningIcon), TRUE);
 
 			// update fonts
 			SendMessage(label, WM_SETFONT, WPARAM(hFont), TRUE);
@@ -448,7 +490,7 @@ static void CreateCrashReportWindow()
 
 	HWND window = CreateWindowEx(WS_EX_TOPMOST, wc.lpszClassName, boost::locale::gettext(L"RE_Kenshi Crash Reporter").c_str(),
 		WS_SYSMENU | WS_OVERLAPPED | WS_VISIBLE,
-		CW_USEDEFAULT, CW_USEDEFAULT, 500, 500, NULL, 0, NULL, 0);
+		CW_USEDEFAULT, CW_USEDEFAULT, 500, 1000, NULL, 0, NULL, 0);
 
 	// force cursor to be shown
 	ShowCursor(true);

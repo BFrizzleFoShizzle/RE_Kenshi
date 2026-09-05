@@ -57,6 +57,7 @@
 #include "win32/Win32KeyBoard.h"
 
 #include <boost/locale.hpp>
+#include <boost/format.hpp>
 #include <boost/thread/condition_variable.hpp>
 
 extern "C" { int __afxForceUSRDLL; }
@@ -1046,6 +1047,34 @@ void CreateGameSpeedTutorialWindow(MyGUI::Gui* gui, float scale)
     gameSpeedTutorialWindow->setVisible(false);
 }
 
+// TODO refactor or something and remove this crap
+static std::wstring to_wstr(const std::string s)
+{
+    return std::wstring(s.begin(), s.end());
+}
+
+wchar_t* privacyURL = L"https://github.com/BFrizzleFoShizzle/RE_Kenshi/blob/master/PRIVACY.md";
+void BugReportInfoClick(MyGUI::Widget* widg, int x, int y, MyGUI::MouseButton mBtn)
+{
+    
+    MyGUI::EditBox* infoText = widg->castType<MyGUI::EditBox>(false);
+    if (infoText && mBtn == mBtn.Button0)
+    {
+        // god-awful way of figuring out if the URL was clicked
+        MyGUI::UString caption = infoText->getCaption();
+        MyGUI::UString beforeURL = caption.substr(0, caption.substr(0, caption.find(privacyURL)).find_last_of(L"\n"));
+        infoText->setCaption(beforeURL);
+        int lineStart = infoText->getAbsoluteTop() + infoText->getTextRegion().top + infoText->getTextSize().height;
+        infoText->setCaption(beforeURL + "\n");
+        int lineEnd = infoText->getAbsoluteTop() + infoText->getTextRegion().top + infoText->getTextSize().height;
+        if (y > lineStart && y < lineEnd)
+            ShellExecute(NULL, L"open", privacyURL, NULL, NULL, SW_SHOWNORMAL);
+
+        // reset caption
+        infoText->setCaption(caption);
+    }
+}
+
 void CreateBugReportWindow(MyGUI::Gui* gui, float scale)
 {
     // Create bug report window
@@ -1061,12 +1090,22 @@ void CreateBugReportWindow(MyGUI::Gui* gui, float scale)
     infoText->setEditMultiLine(true);
     infoText->setEditWordWrap(true);
     infoText->setEditStatic(true);
-    infoText->setCaption(MyGUI::UString(boost::locale::gettext("Your report will be sent to RE_Kenshi's developer (BFrizzleFoShizzle) with the following information:"))
-        + "\n" + boost::locale::gettext("\nRE_Kenshi version: ") + Version::GetDisplayVersion()
-        + boost::locale::gettext("\nKenshi version: ") + KenshiLib::GetKenshiVersion().ToString()
-        + boost::locale::gettext("\nUUID hash: ") + Bugs::GetUUIDHash() + boost::locale::gettext(" (optional - allows the developer to know all your reports come from the same machine)")
-        + boost::locale::gettext("\nYour bug description")
-        + boost::locale::gettext("\n\nPlease describe the bug:"));
+    infoText->eventMouseButtonPressed += MyGUI::newDelegate(BugReportInfoClick);
+    infoText->setCaption(MyGUI::UString((boost::wformat(boost::locale::gettext(
+        L"Your report will be sent to RE_Kenshi's developer (BFrizzleFoShizzle) and stored on Discord's servers (located outside New Zealand). Reports are kept for up to 3 years."
+        L"\nFull privacy policy:"
+        L"\n#0000EE%1%#000000"
+        L"\n"
+        L"\nThe report will include:"
+        L"\n  RE_Kenshi version: %2%"
+        L"\n  Kenshi version: %3%"
+        L"\n  UUID hash (Machine identifier, optional): %4%"
+        L"\n  Your bug description"
+        L"\n"
+        L"\nThe (optional) UUID hash is a hash of your machine's install ID. This lets the"
+        L" developer link multiple reports to the same machine, and lets you reference a specific"
+        L" report later if you want it looked into. If left unchecked, the developer has no way to"
+        L" find or delete your report after submission.")) % privacyURL % to_wstr(Version::GetDisplayVersion()) % to_wstr(KenshiLib::GetKenshiVersion().ToString()) % to_wstr(Bugs::GetUUIDHash())).str()));
     int sizeDelta = infoText->getTextSize().height - infoText->getTextRegion().height;
     if(sizeDelta > 0)
         infoText->setSize(infoText->getWidth(), infoText->getHeight() + sizeDelta);
