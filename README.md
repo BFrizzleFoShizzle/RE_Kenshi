@@ -80,3 +80,6 @@ Run the release installer, select the Kenshi installation, and choose **Uninstal
 
 # License
 The core codebase is GPLv3, check the dependencies for their respective licenses.
+The following "special" functions may be considered dual-licence, you can choose to use them under the GPLv3 or MIT licence (contained in `SPECIAL.md`):
+`void startPlugin()`
+All variations of `AddHook`, `QueueHook`, `ApplyQueuedHooks` in `functions.h`

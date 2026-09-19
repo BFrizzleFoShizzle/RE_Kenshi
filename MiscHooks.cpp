@@ -236,6 +236,11 @@ class WindowFocusListener : public Ogre::WindowEventListener
 {
 	virtual void windowFocusChange(Ogre::RenderWindow* rw) override
 	{
+		// the listener is registered from the splash screen and never removed, so it
+		// also fires before a game is loaded and while the window is torn down at quit
+		if (!ou || !ou->player || !ou->player->camera)
+			return;
+
 		if (!rw->isActive() && ou->player->camera->isFreeCameraMode())
 		{
 			// disable freecam
